@@ -8,7 +8,8 @@ main{max-width:1050px;margin:0 auto;padding:22px 14px 60px}h1{font-size:28px;mar
 .panel-head h2{font-size:17px;margin:0}.content{padding:14px 16px}.badge{background:#eef2ff;border-radius:999px;padding:4px 9px;font-size:12px;color:#3f51b5}
 .view-pane[hidden],.view-badge[hidden],.metric-panel[hidden],[data-completion-panel][hidden],.completion-view-segments[hidden]{display:none!important}
 .connection-dock{position:sticky;top:8px;z-index:30;margin-top:14px;max-height:calc(100vh - 16px);overflow:auto;background:rgba(255,255,255,.97);border:1px solid #d7e0ec;border-radius:17px;box-shadow:0 8px 28px rgba(15,23,42,.1);backdrop-filter:blur(12px);transition:border-radius .24s ease,box-shadow .24s ease,background-color .24s ease}
-.connection-dock.is-closing{overflow:hidden;pointer-events:none}
+.connection-dock.is-opening,.connection-dock.is-closing{overflow:hidden;pointer-events:none}
+.connection-dock.is-opening{height:var(--connection-summary-height);transition:height .38s cubic-bezier(.22,1,.36,1),border-radius .24s ease,box-shadow .32s ease,background-color .24s ease;will-change:height}
 .connection-status-bar{min-height:48px;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:9px 12px;cursor:pointer;list-style:none;user-select:none}
 .connection-status-bar::-webkit-details-marker{display:none}
 .connection-status-bar:focus-visible{outline:3px solid rgba(49,94,251,.26);outline-offset:-3px;border-radius:16px}
@@ -33,9 +34,9 @@ main{max-width:1050px;margin:0 auto;padding:22px 14px 60px}h1{font-size:28px;mar
 .connection-save-feedback:empty{display:none}
 .connection-symbol{display:inline-block;min-width:1em;font-size:11px;line-height:1;text-align:center}
 .connection-symbol::before{content:"▼"}.connection-dock[open] .connection-symbol::before{content:"＝";font-size:13px}
-.connection-settings-content{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px;border-top:1px solid var(--line);background:#f8fafc;transform-origin:top center;will-change:opacity,transform}
-.connection-dock[open]:not(.is-closing) .connection-settings-content{animation:connection-settings-in .28s cubic-bezier(.2,.78,.2,1) both}.connection-dock.is-closing .connection-settings-content{animation:connection-settings-out .28s cubic-bezier(.4,0,.6,1) both}
-@keyframes connection-settings-in{from{opacity:0;transform:translateY(-10px) scaleY(.97)}to{opacity:1;transform:none}}@keyframes connection-settings-out{from{opacity:1;transform:none}to{opacity:0;transform:translateY(-12px) scaleY(.96)}}
+.connection-settings-content{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px;border-top:1px solid var(--line);background:#f8fafc;transform-origin:top center;backface-visibility:hidden;will-change:opacity,transform}
+.connection-dock[open]:not(.is-closing) .connection-settings-content{animation:connection-settings-in .36s cubic-bezier(.22,1,.36,1) both}.connection-dock.is-closing .connection-settings-content{animation:connection-settings-out .26s cubic-bezier(.4,0,.6,1) both}
+@keyframes connection-settings-in{from{opacity:0;transform:translate3d(0,-6px,0)}to{opacity:1;transform:translate3d(0,0,0)}}@keyframes connection-settings-out{from{opacity:1;transform:translate3d(0,0,0)}to{opacity:0;transform:translate3d(0,-8px,0)}}
 @media(min-width:721px){.connection-dock[open].is-closing{animation:connection-dock-collapse .32s cubic-bezier(.4,0,.2,1) both}}
 @keyframes connection-dock-collapse{from{height:var(--connection-expanded-height);box-shadow:0 8px 28px rgba(15,23,42,.1)}to{height:var(--connection-summary-height);box-shadow:0 3px 12px rgba(15,23,42,.06)}}
 .connection-settings-group{min-width:0;padding:13px;border:1px solid var(--line);border-radius:15px;background:#fff}
@@ -161,7 +162,7 @@ button{border:0;border-radius:12px;padding:9px 13px;font-weight:650;cursor:point
  [data-minutes],[data-mag-field="minutes"]{width:78px!important}
  .connection-dock{top:6px;max-height:none;overflow:visible}
  .connection-dock[open]{position:fixed;top:auto;right:8px;bottom:max(8px,env(safe-area-inset-bottom));left:8px;z-index:120;max-height:calc(100dvh - 16px);margin:0;overflow:auto;overscroll-behavior:contain;border-radius:19px}
- .connection-dock[open]:not(.is-closing){animation:connection-sheet-in .3s cubic-bezier(.2,.78,.2,1) both}.connection-dock[open].is-closing{animation:connection-sheet-out .3s cubic-bezier(.4,0,.6,1) both}
+ .connection-dock[open]:not(.is-closing){animation:connection-sheet-in .38s cubic-bezier(.16,1,.3,1) both;will-change:opacity,transform}.connection-dock[open].is-closing{animation:connection-sheet-out .28s cubic-bezier(.4,0,.6,1) both}
  body.connection-sheet-open{overflow:hidden}
  .connection-dock[open] .connection-status-bar{position:sticky;top:0;z-index:2;background:rgba(255,255,255,.98);border-radius:18px 18px 0 0}
  .connection-status-bar{gap:8px;padding:8px 10px}
@@ -172,7 +173,7 @@ button{border:0;border-radius:12px;padding:9px 13px;font-weight:650;cursor:point
  .connection-settings-content,.connection-login-grid{grid-template-columns:1fr}
  .cloud-refresh-notice{align-items:stretch;flex-direction:column}.cloud-refresh-notice button{align-self:flex-end}
 }
-@keyframes connection-sheet-in{from{opacity:0;transform:translateY(24px) scale(.985)}to{opacity:1;transform:none}}@keyframes connection-sheet-out{from{opacity:1;transform:none}to{opacity:0;transform:translateY(36px) scale(.985)}}
+@keyframes connection-sheet-in{from{opacity:0;transform:translate3d(0,18px,0) scale(.992)}to{opacity:1;transform:translate3d(0,0,0) scale(1)}}@keyframes connection-sheet-out{from{opacity:1;transform:translate3d(0,0,0) scale(1)}to{opacity:0;transform:translate3d(0,28px,0) scale(.992)}}
 
 /* v171: larger daily closing notes area. */
 .notes-large { min-height: 120px; resize: vertical; }

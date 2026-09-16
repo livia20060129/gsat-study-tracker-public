@@ -588,8 +588,8 @@ var mathProgressIndex=new MathProgressIndex();
 var pendingDeferredTargets={};
 var deferredLimitPrompt=null;
 
-var SUPABASE_URL='https://xcpnxkkixsxzgbqsiuud.supabase.co';
-var SUPABASE_PUBLISHABLE_KEY='sb_publishable_du5gADgV0tojMVmoRkxyRg_NtmP9kvr';
+var SUPABASE_URL='https://arxbirgujbrtzhoficdf.supabase.co';
+var SUPABASE_PUBLISHABLE_KEY='sb_publishable_x8YXDSe-6rvX25o38jEl4w_OYn971PA';
 var cloudClient=null;
 var cloudRecordRepository=null;
 var cloudUser=null;
@@ -1238,9 +1238,16 @@ function naturalRecommendationByTopic(topic){
  return null;
 }
 function resolveCloudMathPlan(parsed){
- var selected=prioritizeCalendarPageRanges(parsed.startPage,parsed.endPage,[]);
- if(!selected.ranges.length)return null;
- var range=selected.ranges[0],out={unitPages:0,weekTarget:0};
+ var matches=[];
+ Object.keys(CALENDAR_MATH_PLAN||{}).sort().forEach(function(date){var p=CALENDAR_MATH_PLAN[date];if(p&&p.title===parsed.title)matches.push(p)});
+ var base=null,start=Number(parsed.startPage||0),end=Number(parsed.endPage||parsed.startPage||0),idx=Number(parsed.progressIndex||0)-1;
+ if(start>0)for(var mi=0;mi<matches.length;mi++)if(Number(matches[mi].start)===start&&Number(matches[mi].end)===end){base=matches[mi];break}
+ if(!base&&idx>=0&&idx<matches.length)base=matches[idx];
+ if(!base&&CALENDAR_MATH_PLAN[parsed.date]&&CALENDAR_MATH_PLAN[parsed.date].title===parsed.title)base=CALENDAR_MATH_PLAN[parsed.date];
+ if(!base&&matches.length)base=matches[0];
+ var selected=prioritizeCalendarPageRanges(parsed.startPage,parsed.endPage,base?[[base.start,base.end]]:[]);
+ if(!base&&!selected.ranges.length)return null;
+ var range=selected.ranges[0],out=cloneObj(base||{unitPages:0,weekTarget:0});
  out.title=parsed.title;if(parsed.material)out.material=parsed.material;if(parsed.book)out.book=parsed.book;
  if(parsed.standardNote&&(parsed.material||parsed.book))out.calendarMaterialSource='calendar';
  if(range){out.start=range[0];out.end=range[1];out.pages=range[1]-range[0]+1}
@@ -1249,6 +1256,10 @@ function resolveCloudMathPlan(parsed){
 function selectPrimaryCloudMathPlan(date,plans){
  var list=Array.isArray(plans)?plans.filter(Boolean):[];
  if(!list.length)return null;
+ var fallback=CALENDAR_MATH_PLAN&&CALENDAR_MATH_PLAN[date]?CALENDAR_MATH_PLAN[date]:null;
+ if(fallback&&fallback.title){
+  for(var i=0;i<list.length;i++)if(String(list[i].title||'')===String(fallback.title))return list[i];
+ }
  return list[0];
 }
 function resolveCloudGrammarPlan(parsed){
@@ -1535,7 +1546,7 @@ function calendarGrammarReview(date){
  return CALENDAR_GRAMMAR_PLAN[date]||null;
 }
 function calendarNaturalRecommended(date,item){
- if(!(calendarConnected&&calendarCacheLoaded))return null;
+ if(!(calendarConnected&&calendarCacheLoaded))return CALENDAR_NATURAL_RECOMMENDED_PAGES[date]||null;
  if(!item)return null;
  var keys=calendarEventKeysFromFields(item.f||{});
  var plans=(calendarParsedByDate[date]||[]).filter(function(p){return p.kind==='natural'&&keys.indexOf(p.eventKey)>=0}).map(function(p){return resolveNaturalCalendarPlan(p,naturalRecommendationByTopic(p.topic))}).filter(Boolean);
@@ -1676,7 +1687,7 @@ function calendarMathStudyDef(p,token,preserveSeparate){
  if(preserveSeparate)fields.calendarPreserveSeparate=true;
  return presetDef('cal_math_'+token,'mathStudy','數學講義：進度','Google Calendar API：'+p.title+(p.description?'｜'+p.description:''),true,fields);
 }
-function calendarDateHasBuiltInMathStudy(){return false}
+function calendarDateHasBuiltInMathStudy(date){var day=parseDate(date).getDay();return day>=1&&day<=6}
 function cloudCalendarDefsForDate(date){
  var parsed=calendarParsedByDate[date]||[],out=[];
  parsed.forEach(function(p){
@@ -1743,12 +1754,13 @@ function cloudCalendarDefsForDate(date){
  return out;
 }
 function calendarDefsForDate(date){
- return calendarConnected&&calendarCacheLoaded?cloudCalendarDefsForDate(date):[];
+ return calendarConnected&&calendarCacheLoaded?cloudCalendarDefsForDate(date):hardcodedCalendarDefsForDate(date);
 }
-function activeCalendarMathPlan(date){return calendarConnected&&calendarCacheLoaded?(cloudMathPlanByDate[date]||null):null}
+function activeCalendarMathPlan(date){return calendarConnected&&calendarCacheLoaded?(cloudMathPlanByDate[date]||null):(CALENDAR_MATH_PLAN[date]||null)}
 
 function calendarWeekMathTarget(date){
- return 0;
+ var mon=dateString(mondayOf(parseDate(date)));
+ return Number(CALENDAR_WEEK_MATH_TARGETS[mon]||0);
 }
 function applyCalendarMathPlan(rec,date){
  var p=activeCalendarMathPlan(date);if(!p||!rec||!Array.isArray(rec.items))return false;
@@ -1808,7 +1820,21 @@ function weekdayPresets(day){
 }
 
 function presetsForDate(date){
- return dedupePresetDefinitions(calendarDefsForDate(date));
+ var day=parseDate(date).getDay(),defs=weekdayPresets(day).slice(),i,a=[],hasFriMagazine=false;
+ if(day===6&&!fridayMockExistsForSaturday(date)){
+  for(i=0;i<defs.length;i++)if(defs[i].key!=='sat_mock_correction')a.push(defs[i]);defs=a;
+ }
+ if(mixedWritingDay(date)){
+  a=[];for(i=0;i<defs.length;i++)if(defs[i].key!=='fri_mock_timed')a.push(defs[i]);defs=a;
+  defs.push(presetDef('english_mixed_writing','englishMixedWriting','英文：混合題與作文練習','每三天一次；先處理優先修改錯誤，再記錄作文與混合題分數。',true));
+ }
+ /* 星期五英文雜誌為固定必做，避免任何條件排程或舊版本資料造成遺失。 */
+ if(day===5){
+  for(i=0;i<defs.length;i++)if(defs[i]&&defs[i].key==='fri_magazine'){hasFriMagazine=true;break}
+  if(!hasFriMagazine)defs.push(presetDef('fri_magazine','magazine','學測英文訓練：英文雜誌','閱讀文章、理解內容並整理字詞。',true));
+ }
+ var cal=calendarDefsForDate(date);for(i=0;i<cal.length;i++)defs.push(cal[i]);
+ return dedupePresetDefinitions(defs);
 }
 function makePresetItem(def,date){return{id:'preset-'+date+'-'+def.key,type:def.type,done:false,deferred:false,minutes:'',required:def.required,source:'preset',presetKey:def.key,templatePresetKey:def.key,title:def.title,description:def.description,f:cloneObj(def.f)}}
 function mondayDateOfWeek(date){
@@ -2006,7 +2032,6 @@ function ensureDailyPresets(rec,date){
    oldEventKeys.forEach(function(oldEventKey){if(!legacyCalendarByEventKey[oldEventKey]||x.done)legacyCalendarByEventKey[oldEventKey]=x});
    changed=true;continue
   }
-  if(x&&x.source==='preset'&&!/^cal_/.test(x.presetKey||'')&&!allowed[x.presetKey]){changed=true;continue}
   if(x&&x.source==='preset'&&managed[x.presetKey]&&!allowed[x.presetKey]){changed=true;continue}
   clean.push(x);
  }
@@ -2123,9 +2148,12 @@ function ensureDailyPresets(rec,date){
 }
 
 function dailyMessageForDate(date){
- return calendarDefsForDate(date).length
-  ?'已加入 Google Calendar 當日讀書排程。'
-  :'今日尚無可辨識的 Google Calendar 讀書排程；可從「新增讀書項目」手動追加。';
+ var day=parseDate(date).getDay();
+ if(day===5&&mixedWritingDay(date))return '星期五：今日以英文混合題與作文練習取代英文歷屆／模考限時作答。';
+ if(day===6&&!fridayMockExistsForSaturday(date))return '星期六：因昨天沒有英文歷屆／模考限時作答，今日不安排英文歷屆／模考批改與訂正。';
+ var base=['星期日：保留數學講義題目檢查與英文輕量閱讀。','星期一：保留原有固定項目。','星期二：保留原有固定項目。','星期三：保留原有固定項目。','星期四：保留原有固定項目。','星期五：保留原有固定項目。','星期六：保留原有固定項目與週整理。'][day];
+ return base+(calendarDefsForDate(date).length||activeCalendarMathPlan(date)?'｜已加入 Google Calendar 當日讀書排程。':'');
+
 }
 
 function newItem(type,source){return{id:uid('i'),type:type||'',done:false,minutes:'',required:false,source:source||'custom',title:'',description:'',f:{}}}
@@ -2158,7 +2186,7 @@ function calendarIntegrationChapterText(subject,ranges){
 function ensureCalendarNaturalIntegrationEntries(x,date){
  if(!x||!x.f)x.f={};
  if(!Array.isArray(x.f.calendarIntegrationEntries))x.f.calendarIntegrationEntries=[];
- var defs=calendarConnected&&calendarCacheLoaded?(cloudNaturalIntegrationItemsByDate[date]||null):null;
+ var defs=calendarConnected&&calendarCacheLoaded?(cloudNaturalIntegrationItemsByDate[date]||CALENDAR_NATURAL_INTEGRATION_ITEMS[date]||null):(CALENDAR_NATURAL_INTEGRATION_ITEMS[date]||null);
  if(!defs||!defs.length)return x.f.calendarIntegrationEntries;
  var old=x.f.calendarIntegrationEntries,by={},out=[];
  for(var i=0;i<old.length;i++)if(old[i]&&old[i].subject)by[old[i].subject]=old[i];
@@ -4119,7 +4147,38 @@ var connectionSettingsPanel=id('connectionSettings');
 var connectionSettingsSummary=connectionSettingsPanel.querySelector(':scope > summary');
 if(connectionSettingsSummary)connectionSettingsSummary.addEventListener('click',function(e){
  if(e.target&&e.target.closest&&e.target.closest('button,a,input,select,textarea'))return;
- if(!connectionSettingsPanel.open||connectionSettingsPanel.classList.contains('is-closing')||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+ var reduceConnectionMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+ var narrowConnectionViewport=window.matchMedia('(max-width: 720px)').matches;
+ if(connectionSettingsPanel.classList.contains('is-opening')||connectionSettingsPanel.classList.contains('is-closing')){e.preventDefault();return}
+ if(!connectionSettingsPanel.open&&!reduceConnectionMotion&&!narrowConnectionViewport){
+  e.preventDefault();
+  var openingSummaryHeight=connectionSettingsSummary.getBoundingClientRect().height;
+  connectionSettingsPanel.classList.add('is-opening');
+  connectionSettingsPanel.style.setProperty('--connection-summary-height',openingSummaryHeight+'px');
+  connectionSettingsPanel.style.height=openingSummaryHeight+'px';
+  connectionSettingsPanel.open=true;
+  var openingExpandedHeight=Math.max(openingSummaryHeight,connectionSettingsPanel.scrollHeight);
+  connectionSettingsPanel.style.setProperty('--connection-expanded-height',openingExpandedHeight+'px');
+  var opened=false;
+  function connectionSettingsOpenTransitionEnd(event){
+   if(event.target!==connectionSettingsPanel||event.propertyName!=='height')return;
+   finishConnectionSettingsOpen();
+  }
+  function finishConnectionSettingsOpen(){
+   if(opened)return;
+   opened=true;
+   connectionSettingsPanel.removeEventListener('transitionend',connectionSettingsOpenTransitionEnd);
+   connectionSettingsPanel.classList.remove('is-opening');
+   connectionSettingsPanel.style.removeProperty('height');
+   connectionSettingsPanel.style.removeProperty('--connection-expanded-height');
+   connectionSettingsPanel.style.removeProperty('--connection-summary-height');
+  }
+  connectionSettingsPanel.addEventListener('transitionend',connectionSettingsOpenTransitionEnd);
+  requestAnimationFrame(function(){requestAnimationFrame(function(){connectionSettingsPanel.style.height=openingExpandedHeight+'px'})});
+  setTimeout(finishConnectionSettingsOpen,520);
+  return;
+ }
+ if(!connectionSettingsPanel.open||reduceConnectionMotion)return;
  e.preventDefault();
  var expandedHeight=connectionSettingsPanel.getBoundingClientRect().height;
  var summaryHeight=connectionSettingsSummary.getBoundingClientRect().height;
@@ -4144,7 +4203,7 @@ if(connectionSettingsSummary)connectionSettingsSummary.addEventListener('click',
  setTimeout(finishConnectionSettingsClose,420);
 });
 connectionSettingsPanel.addEventListener('toggle',function(e){
- if(e.currentTarget.open){
+ if(e.currentTarget.open&&!e.currentTarget.classList.contains('is-opening')){
   e.currentTarget.classList.remove('is-closing');
   e.currentTarget.style.removeProperty('--connection-expanded-height');
   e.currentTarget.style.removeProperty('--connection-summary-height');

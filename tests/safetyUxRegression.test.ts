@@ -69,9 +69,14 @@ test('mobile settings use a bottom sheet and CI runs real browser tests', () => 
 });
 
 test('connection settings keep the details open until the retract animation finishes', () => {
+  assert.match(runtime, /classList\.add\('is-opening'\)/);
+  assert.match(runtime, /requestAnimationFrame\(function\(\)\{requestAnimationFrame/);
+  assert.match(runtime, /event\.propertyName!=='height'/);
   assert.match(runtime, /--connection-expanded-height/);
   assert.match(runtime, /event\.target!==connectionSettingsPanel/);
   assert.match(runtime, /connectionSettingsPanel\.open=false/);
+  assert.match(styles, /\.connection-dock\.is-opening\{height:var\(--connection-summary-height\);transition:height/);
+  assert.match(styles, /@keyframes connection-settings-in\{from\{opacity:0;transform:translate3d/);
   assert.match(styles, /@keyframes connection-dock-collapse/);
   assert.match(styles, /\.connection-dock\[open\]\.is-closing\{animation:connection-dock-collapse/);
   assert.match(styles, /\.connection-dock\[open\]\.is-closing\{animation:connection-sheet-out/);

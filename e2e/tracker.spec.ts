@@ -5,31 +5,6 @@ test.beforeEach(async ({ page }) => {
   await expect(page.getByRole('heading', { name: '每日讀書完成度紀錄卡' })).toBeVisible();
 });
 
-test('public edition starts without built-in schedule cards', async ({ page }) => {
-  await expect(page.locator('#dailyNotice')).toContainText('尚無可辨識的 Google Calendar');
-  await expect(page.locator('#dailyItemList [data-item]')).toHaveCount(0);
-  await expect(page.locator('#dailyItemList')).toContainText('今日沒有項目');
-});
-
-test('material progress only shows checked materials and keeps the selection', async ({ page }) => {
-  await page.goto('/material.progress.html');
-  await expect(page.getByRole('heading', { name: '我的教材' })).toBeVisible();
-  await expect(page.locator('#materialProgressList .material-row')).toHaveCount(0);
-
-  const firstMathMaterial = page.locator('#materialSelectionList input[type="checkbox"]').first();
-  await firstMathMaterial.check();
-  await expect(page.locator('#materialProgressList .material-row')).toHaveCount(1);
-  await expect(page.locator('#selectionSummary')).toContainText('已選 1');
-
-  await page.reload();
-  await expect(page.locator('#materialSelectionList input[type="checkbox"]').first()).toBeChecked();
-  await expect(page.locator('#materialProgressList .material-row')).toHaveCount(1);
-
-  await page.getByRole('tab', { name: '英文' }).click();
-  await expect(page.locator('#materialProgressList .material-row')).toHaveCount(0);
-  await expect(page.locator('#materialProgressList')).toContainText('請先在「我的教材」勾選');
-});
-
 test('whole-card deletion requires confirmation and small-row deletion can be undone', async ({ page }) => {
   await page.selectOption('#itemType', 'extra');
   await page.click('#addItemBtn');
@@ -79,8 +54,14 @@ test('expanded connection settings become a mobile bottom sheet', async ({ brows
 
 test('connection settings visibly retract before the details element closes', async ({ page }) => {
   const settings = page.locator('#connectionSettings');
+  const collapsedHeight = await settings.evaluate(node => node.getBoundingClientRect().height);
   await settings.locator(':scope > summary').click();
   await expect(settings).toHaveAttribute('open', '');
+  await expect(settings).toHaveClass(/is-opening/);
+  await page.waitForTimeout(120);
+  const openingHeight = await settings.evaluate(node => node.getBoundingClientRect().height);
+  expect(openingHeight).toBeGreaterThan(collapsedHeight + 8);
+  await expect(settings).not.toHaveClass(/is-opening/);
   const expandedHeight = await settings.evaluate(node => node.getBoundingClientRect().height);
 
   await settings.locator(':scope > summary').click();
