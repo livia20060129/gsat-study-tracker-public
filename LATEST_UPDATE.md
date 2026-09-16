@@ -1,6 +1,11 @@
 # 最新更新
 
-版本：公開版 v171.6.0-public.4
+版本：公開版 v171.6.0-public.5
+
+## Public Supabase 指向修復
+
+- 修復更新資料夾漏帶 `supabase/config.toml`，導致 GitHub `SUPABASE_PROJECT_ID` 與 repository 設定不一致。
+- 新增 Public 專案綁定測試，統一核對 Supabase CLI、前端、每小時 Calendar workflow 與 OAuth callback 文件。
 
 ## CI 混合版本修復
 
@@ -40,4 +45,4 @@
 
 ## Commit 建議
 
-`fix(public): restore calendar-only runtime after mixed-version upload`
+`fix(public): align Supabase project binding across deployment surfaces`
