@@ -1,6 +1,16 @@
 # 最新更新
 
-版本：公開版 v171.6.0-public.2
+版本：公開版 v171.6.0-public.4
+
+## CI 混合版本修復
+
+- 修復 GitHub 上 `package.json` 仍為 `public.2`、但 runtime 誤混入個人版固定排程邏輯的版本不一致問題。
+- 修復包同時收錄正確的 Public runtime、兩項最新功能及 Public 專屬防回歸測試，避免只覆蓋單一檔案後再次帶回內建排程。
+
+## 同步個人版最新功能
+
+- 學習總結的「身體不適／較疲累／外出」狀態色，會依當日學習時間調整透明度，並與完成率外圈分離。
+- Cloud／Calendar 設定面板新增平順的展開高度過渡；收合、手機底部面板與減少動態效果設定維持原有行為。
 
 ## 公開版 Supabase 分離
 
@@ -30,4 +40,4 @@
 
 ## Commit 建議
 
-`fix(public): point deployment and calendar sync to public Supabase project`
+`fix(public): restore calendar-only runtime after mixed-version upload`

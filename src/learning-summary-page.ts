@@ -98,6 +98,18 @@ function summaryMoodClass(mood: string): string {
   return '';
 }
 
+function summaryMoodOpacity(totalMinutes: number, maxMinutes: number): number {
+  if (totalMinutes <= 0 || maxMinutes <= 0) return 0.38;
+  return Number((0.45 + 0.55 * Math.min(1, totalMinutes / maxMinutes)).toFixed(3));
+}
+
+function summaryMoodColor(mood: string, opacity: number): string {
+  if (mood === '身體不適') return `rgb(255 117 117 / ${opacity})`;
+  if (mood === '較疲累' || mood === '較疲倦') return `rgb(255 199 142 / ${opacity})`;
+  if (mood === '外出') return `rgb(255 240 189 / ${opacity})`;
+  return '';
+}
+
 function subjectDonutMarkup(summary: LearningPeriodSummary): string {
   const arcs = subjectTimeDonutSlices(summary.subjectTime);
   const paths = arcs.map(slice => `<path class="summary-donut-slice" data-summary-subject-path="${slice.subject}" d="${subjectTimeArcPath(slice)}" fill="none" stroke="${slice.color}" tabindex="0" role="button" aria-label="${slice.subject} ${formatHours(slice.minutes)} 小時，占 ${slice.percent}%"></path>`).join('');
@@ -146,8 +158,10 @@ function renderCalendar(summary: LearningPeriodSummary): void {
     const timeColor = opaqueStudyTimeColor(intensity);
     const timeText = day.hasRecord ? formatMinutes(day.totalMinutes) : '尚無紀錄';
     const moodClass = summaryMoodClass(day.mood);
+    const moodOpacity = summaryMoodOpacity(day.totalMinutes, maxMinutes);
+    const coreColor = summaryMoodColor(day.mood, moodOpacity) || timeColor;
     const moodText = day.mood ? `，狀態 ${day.mood}` : '';
-    return `<article class="summary-day${day.hasRecord ? ' has-record' : ''}${day.completionPercent === 100 ? ' is-complete' : ''}${moodClass}" role="listitem" style="--day-completion:${day.completionPercent * 3.6}deg;--day-time-color:${timeColor}">
+    return `<article class="summary-day${day.hasRecord ? ' has-record' : ''}${day.completionPercent === 100 ? ' is-complete' : ''}${moodClass}" role="listitem" style="--day-completion:${day.completionPercent * 3.6}deg;--day-time-color:${timeColor};--day-core-color:${coreColor}">
       <button class="summary-day-button" type="button" data-summary-day aria-expanded="false" aria-label="${escapeHtml(formatDateLabel(day.date))}，${escapeHtml(timeText)}，完成率 ${day.completionPercent}%${escapeHtml(moodText)}">
         <span class="summary-day-week">${activeMode === 'week' ? `週${day.weekday}` : ''}</span>
         <span class="summary-day-ring"><span class="summary-day-core"><strong>${day.dayNumber}</strong></span></span>
