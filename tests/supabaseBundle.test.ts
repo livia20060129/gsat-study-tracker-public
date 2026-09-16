@@ -69,7 +69,7 @@ test('production release deploys Supabase before publishing the prepared Pages a
   assert.ok(pagesDeploy > smokeTest, 'Pages must deploy only after the backend smoke checks');
 });
 
-test('production release uses pinned tooling and fails safely on missing or mismatched configuration', () => {
+test('production release uses pinned tooling and one tested project configuration', () => {
   const workflow = readFileSync(new URL('.github/workflows/deploy.yml', projectUrl), 'utf8');
 
   assert.match(workflow, /SUPABASE_CLI_VERSION:\s*\d+\.\d+\.\d+/);
@@ -77,7 +77,9 @@ test('production release uses pinned tooling and fails safely on missing or mism
   assert.match(workflow, /supabase\/setup-cli@[0-9a-f]{40}/);
   assert.match(workflow, /SUPABASE_ACCESS_TOKEN:\s*\$\{\{ secrets\.SUPABASE_ACCESS_TOKEN \}\}/);
   assert.match(workflow, /SUPABASE_DB_PASSWORD:\s*\$\{\{ secrets\.SUPABASE_DB_PASSWORD \}\}/);
-  assert.match(workflow, /SUPABASE_PROJECT_ID does not match supabase\/config\.toml/);
+  assert.match(workflow, /supabase\/config\.toml must contain one valid 20-character project_id/);
+  assert.doesNotMatch(workflow, /SUPABASE_PROJECT_ID_OVERRIDE|vars\.SUPABASE_PROJECT_ID|secrets\.SUPABASE_PROJECT_ID/);
+  assert.match(workflow, /echo "SUPABASE_PROJECT_ID=\$\{project_id\}" >> "\$\{GITHUB_ENV\}"/);
   assert.match(workflow, /supabase link --project-ref/);
   assert.match(workflow, /supabase migration list/);
   assert.match(workflow, /github\.event_name != 'pull_request'/);

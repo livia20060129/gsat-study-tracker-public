@@ -135,12 +135,13 @@ SUPABASE_DB_PASSWORD
 CALENDAR_CRON_SECRET
 ```
 
-Actions variable 或 secret：
+Actions variable：
 
 ```text
-SUPABASE_PROJECT_ID=xcpnxkkixsxzgbqsiuud
 VITE_GOOGLE_CLIENT_ID
 ```
+
+Public Supabase Project Ref 只由已納入測試的 `supabase/config.toml` 提供，不需要也不應在 GitHub 重複建立 `SUPABASE_PROJECT_ID` Variable／Secret。
 
 推送到 `main` 後，流程會依序執行單元測試、Edge Function 型別檢查、真實瀏覽器 E2E、正式建置、Supabase migration／functions 部署，最後發布 GitHub Pages。
 

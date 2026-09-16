@@ -1,6 +1,11 @@
 # 最新更新
 
-版本：公開版 v171.6.0-public.5
+版本：公開版 v171.6.0-public.6
+
+## Supabase Project Ref 單一來源
+
+- 移除 GitHub Environment／Repository 中重複的 `SUPABASE_PROJECT_ID` override，避免舊 Variable 或 Secret 持續覆蓋正確設定。
+- 發布流程只從通過一致性測試的 `supabase/config.toml` 取得 Public Project Ref。
 
 ## Public Supabase 指向修復
 
@@ -45,4 +50,4 @@
 
 ## Commit 建議
 
-`fix(public): align Supabase project binding across deployment surfaces`
+`fix(public): use config.toml as the only Supabase project reference`

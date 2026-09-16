@@ -28,8 +28,8 @@ test('all public deployment surfaces use the same Supabase project', () => {
   assert.doesNotMatch(`${config}\n${runtime}\n${calendarWorkflow}\n${readme}`, /arxbirgujbrtzhoficdf/);
 });
 
-test('release workflow refuses a GitHub project override that differs from config.toml', () => {
-  assert.match(deployWorkflow, /SUPABASE_PROJECT_ID_OVERRIDE:/);
-  assert.match(deployWorkflow, /SUPABASE_PROJECT_ID_OVERRIDE[^\n]*!=[^\n]*project_id/);
-  assert.match(deployWorkflow, /SUPABASE_PROJECT_ID does not match supabase\/config\.toml/);
+test('release workflow derives the project only from tested config.toml', () => {
+  assert.doesNotMatch(deployWorkflow, /SUPABASE_PROJECT_ID_OVERRIDE|vars\.SUPABASE_PROJECT_ID|secrets\.SUPABASE_PROJECT_ID/);
+  assert.match(deployWorkflow, /project_id="\$\(sed[^\n]*supabase\/config\.toml/);
+  assert.match(deployWorkflow, /echo "SUPABASE_PROJECT_ID=\$\{project_id\}" >> "\$\{GITHUB_ENV\}"/);
 });
