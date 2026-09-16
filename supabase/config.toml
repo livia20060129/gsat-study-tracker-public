@@ -1,0 +1,7 @@
+project_id = "arxbirgujbrtzhoficdf"
+
+[functions.google-calendar]
+verify_jwt = false
+
+[functions.google-calendar-callback]
+verify_jwt = false

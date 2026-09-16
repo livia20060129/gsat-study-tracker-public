@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f5f8fc" />
+  <link rel="icon" type="image/png" href="./book.png" />
+  <link rel="apple-touch-icon" href="./book.png" />
+  <title>教材進度圖｜GSAT Study Tracker</title>
+</head>
+<body>
+  <main class="progress-page">
+    <header class="progress-page-header">
+      <div>
+        <h1>教材進度圖</h1>
+        <p>依 Tracker 已儲存的學習紀錄，按實際完成比例查看各教材進度。</p>
+      </div>
+      <a class="progress-back header-action-link" href="./index.html">回到 Tracker</a>
+    </header>
+
+    <section class="progress-panel" aria-labelledby="myMaterialsTitle">
+      <div class="progress-panel-head">
+        <div>
+          <h2 id="myMaterialsTitle">我的教材</h2>
+          <p id="recordSource">正在讀取本機紀錄…</p>
+        </div>
+        <button id="refreshProgress" type="button">重新讀取</button>
+      </div>
+
+      <div class="progress-panel-body">
+        <div class="subject-switch" id="subjectSwitch" role="tablist" aria-label="切換教材科目" data-active="2">
+          <span class="subject-switch-indicator" aria-hidden="true"></span>
+          <button type="button" role="tab" data-subject="chinese" aria-selected="false" tabindex="-1">國文</button>
+          <button type="button" role="tab" data-subject="english" aria-selected="false" tabindex="-1">英文</button>
+          <button type="button" role="tab" data-subject="math" aria-selected="true">數學</button>
+          <button type="button" role="tab" data-subject="natural" aria-selected="false" tabindex="-1">自然</button>
+        </div>
+
+        <div class="selection-heading">
+          <p>勾選要放入教材進度圖的教材。</p>
+          <strong id="selectionSummary"></strong>
+        </div>
+        <div id="materialSelectionList" class="material-selection-list" role="group" aria-label="選擇我的教材"></div>
+      </div>
+    </section>
+
+    <section class="progress-panel progress-results" aria-labelledby="progressTitle">
+      <div class="progress-panel-head">
+        <div>
+          <h2 id="progressTitle">教材進度</h2>
+          <p>只顯示已在「我的教材」勾選的項目。</p>
+        </div>
+      </div>
+
+      <div class="progress-panel-body">
+
+        <div class="progress-legend" aria-label="圖例">
+          <span><i class="legend-recorded" aria-hidden="true"></i>已完成比例</span>
+          <span><i class="legend-empty" aria-hidden="true"></i>尚未完成</span>
+          <strong id="subjectSummary"></strong>
+        </div>
+
+        <div id="materialProgressList" class="material-progress-list" role="tabpanel"></div>
+        <p class="progress-note">頁碼型數學教材必須同時具備實際填入並儲存的頁碼，以及已勾選完成，才會填色；單獨勾選 Calendar 建議項目不會直接增加頁數。回次、Unit 與其他分項仍依實際完成紀錄填色。滑鼠移到色塊上可查看完成百分比。</p>
+        <p id="progressError" class="progress-error" role="alert" hidden></p>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="/src/material-progress-page.ts"></script>
+</body>
+</html>

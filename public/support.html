@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="GSAT Study Tracker 使用者支援與 Google Calendar 連線說明。">
+  <title>使用者支援｜GSAT Study Tracker</title>
+  <link rel="stylesheet" href="./legal.css">
+</head>
+<body>
+  <header class="site-header"><div class="header-inner">
+    <a class="brand" href="./">GSAT Study Tracker</a>
+    <nav class="nav" aria-label="法律與支援頁面"><a href="./privacy.html">隱私權政策</a><a href="./terms.html">服務條款</a><a href="./support.html">使用者支援</a></nav>
+  </div></header>
+  <main class="document">
+    <h1>使用者支援</h1>
+    <p class="lead">Google Calendar 連線、同步與資料刪除說明。</p>
+
+    <h2>連接 Google Calendar</h2>
+    <ol><li>先登入 Tracker 帳號。</li><li>展開「連線設定」。</li><li>按「連接 Google Calendar」。</li><li>使用已加入測試使用者或已獲准使用的 Google 帳號完成授權。</li><li>授權完成後回到 Tracker，按「重新讀取雲端」或「重新同步」。</li></ol>
+
+    <h2>Calendar 同步失敗</h2>
+    <ul><li>確認 Google Calendar API 已在 Google Cloud 啟用。</li><li>確認 OAuth Client ID 與 Supabase callback URI 設定正確。</li><li>若授權網址已使用過或停留在錯誤頁，請回到 Tracker 重新開始連線。</li><li>若權限或 token 已失效，先解除連線，再重新授權。</li></ul>
+
+    <h2>解除連線與刪除 Calendar 同步資料</h2>
+    <p>在 Tracker 的「連線設定」按「解除 Google Calendar 連線」。系統會停止存取 Calendar，並刪除 Supabase 中保存的 Calendar connection、OAuth token 與同步快取。</p>
+    <p>Google Calendar 原始行程不會被刪除。先前保存為 Tracker 讀書紀錄的內容或瀏覽器本機資料可能仍存在；如需刪除雲端資料，請寄信提出要求。</p>
+
+    <h2>聯絡支援</h2>
+    <div class="contact"><strong>電子郵件</strong><br><a href="mailto:a8744895@gmail.com">a8744895@gmail.com</a><p>來信請附上問題發生時間、畫面顯示的錯誤訊息及使用的瀏覽器；請勿寄送密碼、access token 或 refresh token。</p></div>
+
+    <h2>政策與條款</h2>
+    <p><a href="./privacy.html">閱讀隱私權政策</a><br><a href="./terms.html">閱讀服務條款</a></p>
+  </main>
+  <footer class="site-footer">GSAT Study Tracker · 個人讀書紀錄工具</footer>
+</body>
+</html>

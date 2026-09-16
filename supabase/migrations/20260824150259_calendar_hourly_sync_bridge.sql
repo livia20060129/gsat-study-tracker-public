@@ -1,0 +1,7 @@
+-- Historical production migration marker.
+--
+-- The retired token-based GitHub Calendar bridge from this migration is not
+-- recreated on new projects. The active implementation is the authenticated
+-- google-calendar Edge Function and its schema is created by the next
+-- v171_storage_calendar migration. Keeping this marker aligns local and remote
+-- migration history without reviving unused credentials or RPC access.

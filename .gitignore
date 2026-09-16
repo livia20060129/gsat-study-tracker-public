@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.vite/
+.env
+.env.*
+!.env.example
+test-results/
+playwright-report/
+blob-report/
+.wrangler/
+.dev.vars*
+!.dev.vars.example

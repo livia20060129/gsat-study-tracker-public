@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f5f8fc" />
+  <link rel="icon" type="image/png" href="/book.png" />
+  <link rel="apple-touch-icon" href="/book.png" />
+  <title>每日讀書完成度紀錄卡 v171</title>
+</head>
+<body>
+<main>
+<header class="app-header">
+ <div class="app-heading"><h1>每日讀書完成度紀錄卡</h1><div class="subtitle">每日紀錄、完成度、頁數與每週匯出</div></div>
+ <div class="header-actions">
+  <a class="header-action-link" href="./gpt.prompt.html" target="_blank" rel="noopener noreferrer">排程建議prompt</a>
+  <a class="header-action-link" href="./summary.html">學習總結</a>
+  <a class="header-action-link" href="./material.progress.html">教材進度圖</a>
+ </div>
+</header>
+
+<details class="connection-dock" id="connectionSettings">
+ <summary class="connection-status-bar" aria-label="Cloud 與 Calendar 狀態；展開連線設定">
+  <span class="connection-statuses">
+   <span class="connection-status-item"><span class="connection-status-name">Cloud</span><span class="badge connection-badge" id="cloudStatusBadge" data-state="offline">本機模式</span></span>
+   <span class="connection-divider" aria-hidden="true"></span>
+   <span class="connection-status-item"><span class="connection-status-name">Calendar</span><span class="badge connection-badge" id="calendarStatusBadge" data-state="offline">需先登入</span></span>
+  </span>
+  <span class="connection-quick-actions">
+   <span class="active-timer-summary" id="activeTimerSummary" hidden aria-live="polite">
+    <span class="active-timer-title" id="activeTimerTitle"></span>
+    <strong id="activeTimerDisplay">00:00</strong>
+    <button class="secondary" type="button" data-action="timer-pause-active">暫停</button>
+   </span>
+   <span class="connection-save-feedback" id="status" aria-live="polite"></span>
+   <button id="saveBtn" class="primary connection-save" type="button">儲存紀錄</button>
+   <span class="connection-settings-toggle">連線設定<span class="connection-symbol" aria-hidden="true"></span></span>
+  </span>
+ </summary>
+ <div class="connection-settings-content">
+  <section class="connection-settings-group" id="cloudPanel" aria-labelledby="cloudSettingsTitle">
+   <h2 id="cloudSettingsTitle">Cloud 帳號與同步</h2>
+   <div id="cloudLoggedOut">
+    <div class="connection-login-grid">
+     <div class="field"><label for="cloudEmail">Email</label><input id="cloudEmail" type="email" autocomplete="email" placeholder="你的 Email"></div>
+     <div class="field"><label for="cloudPassword">密碼</label><input id="cloudPassword" type="password" autocomplete="current-password" minlength="6" placeholder="至少 6 碼"></div>
+     <div class="connection-actions"><button id="cloudSignInBtn" class="primary" type="button">登入</button><button id="cloudSignUpBtn" type="button">建立帳號</button><button id="cloudForgotPasswordBtn" class="text-action" type="button">忘記密碼</button><button id="cloudResendVerificationBtn" class="text-action" type="button">重寄驗證信</button></div>
+    </div>
+   </div>
+   <div id="cloudLoggedIn" hidden>
+    <div class="connection-account"><strong id="cloudUserEmail"></strong></div>
+    <div class="connection-actions">
+     <button id="cloudRefreshBtn" class="secondary" type="button">重新讀取雲端</button>
+     <button id="cloudSyncLocalBtn" type="button">補上本機舊資料</button>
+     <button id="cloudUndoConflictBtn" type="button" hidden>復原上次衝突處理</button>
+     <button id="cloudSignOutBtn" type="button">登出</button>
+    </div>
+   </div>
+   <div class="small connection-message" id="cloudMessage" aria-live="polite">未登入時仍可使用，本機資料會照常保留。</div>
+   <div class="cloud-refresh-notice" id="cloudRefreshNotice" hidden aria-live="polite">
+    <span>雲端有較新的資料；輸入完成後會安全合併並更新畫面。</span>
+    <button id="cloudApplyRefreshBtn" class="secondary" type="button">立即套用</button>
+   </div>
+   <div class="cloud-conflict-actions" id="cloudConflictActions" hidden>
+   <span id="cloudConflictText"></span>
+    <div class="cloud-conflict-details" id="cloudConflictDetails"></div>
+    <button id="cloudKeepLocalBtn" class="primary" type="button">完整保留本機版本</button>
+    <button id="cloudUseCloudBtn" class="secondary" type="button">完整採用雲端版本</button>
+   </div>
+  </section>
+
+  <section class="connection-settings-group" id="calendarPanel" aria-labelledby="calendarSettingsTitle">
+   <h2 id="calendarSettingsTitle">Google Calendar</h2>
+   <div class="connection-actions">
+    <button id="calendarConnectBtn" class="secondary" type="button">連接 Google Calendar</button>
+    <button id="calendarSyncBtn" type="button">立即同步</button>
+   </div>
+   <div class="small connection-message" id="calendarMessage" aria-live="polite">先登入 Study Tracker 帳號，再連接 Google Calendar。</div>
+   <div class="small connection-note">連接後由 Google Calendar API 讀取排程；完成 GitHub Actions 排程設定後，每小時會由伺服器同步，網站不必保持開啟。</div>
+   <div class="connection-danger-zone">
+    <button id="calendarDisconnectBtn" class="danger" type="button">解除 Google Calendar 連線</button>
+   </div>
+  </section>
+ </div>
+</details>
+
+<dialog class="account-recovery-dialog" id="passwordRecoveryDialog" aria-labelledby="passwordRecoveryTitle">
+ <form method="dialog" id="passwordRecoveryForm">
+  <h2 id="passwordRecoveryTitle">設定新密碼</h2>
+  <p class="small">請輸入至少 6 碼的新密碼。完成後即可用新密碼登入。</p>
+  <div class="field"><label for="cloudNewPassword">新密碼</label><input id="cloudNewPassword" type="password" autocomplete="new-password" minlength="6" required></div>
+  <div class="field"><label for="cloudNewPasswordConfirm">再次輸入新密碼</label><input id="cloudNewPasswordConfirm" type="password" autocomplete="new-password" minlength="6" required></div>
+  <div class="dialog-message small" id="passwordRecoveryMessage" aria-live="polite"></div>
+  <div class="connection-actions dialog-actions"><button id="cloudUpdatePasswordBtn" class="primary" type="submit">更新密碼</button><button id="cloudCancelPasswordBtn" type="button">取消</button></div>
+ </form>
+</dialog>
+
+<section class="storage-recovery" id="storageRecoveryPanel" hidden aria-live="assertive">
+ <div>
+  <strong>偵測到無法讀取的本機紀錄</strong>
+  <div class="small" id="storageRecoveryMessage"></div>
+ </div>
+ <div class="btns">
+  <button id="downloadStorageRecoveryBtn" class="secondary" type="button">下載原始備份</button>
+  <button id="repairStorageFromCloudBtn" class="primary" type="button">使用雲端版本修復</button>
+ </div>
+</section>
+
+<section class="panel">
+ <div class="panel-head"><h2>今日資訊</h2><span class="badge" id="weekdayText"></span></div>
+ <div class="content">
+  <div class="grid-3">
+   <div class="field"><label for="studyDate">日期</label><input id="studyDate" type="date"></div>
+   <div class="field"><label for="mood">今日狀態</label><select id="mood"><option value="">未填寫</option><option>精神良好</option><option>普通</option><option>較疲累</option><option>身體不適</option><option>外出</option></select></div>
+   <div class="field"><label>起床時間</label><div class="inline"><input id="wakeHour" type="number" min="0" max="23" step="1" inputmode="numeric" placeholder="小時"><span>時</span><input id="wakeMinute" type="number" min="0" max="59" step="1" inputmode="numeric" placeholder="分鐘"><span>分</span></div></div>
+  </div>
+  <div class="stats overview-stats" id="overviewStats" style="margin-top:12px">
+   <div class="stat overview-metric-stat" data-metric-view="minutes">
+    <div class="metric-segments" id="overviewMetricTabs" role="tablist" aria-label="學習成果統計" data-active="0">
+     <span class="metric-segment-indicator" aria-hidden="true"></span>
+     <button type="button" role="tab" aria-selected="true" aria-controls="metricMinutesPanel" data-overview-metric="minutes">今日完成時間</button>
+     <button type="button" role="tab" aria-selected="false" aria-controls="metricMathTodayPanel" data-overview-metric="mathToday" tabindex="-1">今日數學頁數</button>
+     <button type="button" role="tab" aria-selected="false" aria-controls="metricMathWeekPanel" data-overview-metric="mathWeek" tabindex="-1">本週數學頁數</button>
+    </div>
+    <div class="metric-panel-stage">
+     <div class="metric-panel metric-minutes-panel is-active" id="metricMinutesPanel" role="tabpanel" data-metric-panel="minutes" aria-hidden="false">
+      <div class="subject-time-donut" id="subjectTimeDonut" aria-live="polite"><div class="subject-time-chart is-empty"><div class="subject-time-center"><strong><span id="doneMinutes" data-subject-time-value>0</span></strong><span data-subject-time-caption>分鐘</span></div></div><div class="subject-time-empty">完成項目並填入時間後，這裡會顯示各科時間佔比。</div></div>
+     </div>
+     <div class="metric-panel" id="metricMathTodayPanel" role="tabpanel" data-metric-panel="mathToday" aria-hidden="true"><strong><span id="mathPagesTop">0</span> 頁</strong></div>
+     <div class="metric-panel" id="metricMathWeekPanel" role="tabpanel" data-metric-panel="mathWeek" aria-hidden="true"><strong><span id="weekMathPages">0</span> / <span id="weekMathTarget">60</span> 頁</strong><div class="progress"><div id="weekMathBar" style="width:0"></div></div><div class="small"><span id="weekMathPercent">0%</span></div></div>
+    </div>
+   </div>
+   <div class="stat completion-stat">
+    <div id="completionRatePanel">
+     <div class="completion-metric">
+      <div class="completion-metric-head"><span>原訂今日項目完成率</span><strong id="completionPercent">0%</strong></div>
+      <div class="progress"><div id="completionBar" style="width:0"></div></div>
+      <div class="small" id="completionText">0/0 項</div>
+     </div>
+     <div class="completion-metric">
+      <div class="completion-metric-head"><span>今日總項目完成率</span><strong id="workloadCompletionPercent">0%</strong></div>
+      <div class="progress workload-progress"><div id="workloadCompletionBar" style="width:0"></div></div>
+      <div class="small" id="workloadCompletionText">0/0 項工作量</div>
+     </div>
+     <div class="settlement-metrics" id="settlementMetrics" hidden>
+      <div class="settlement-row"><span id="settlementLabel">週五結算完成率</span><strong id="settlementPercent">0%</strong></div>
+      <div class="settlement-comparison" id="settlementComparison" hidden>相較週五結算 <strong id="settlementDelta">±0%</strong></div>
+     </div>
+    </div>
+   </div>
+  </div>
+ </div>
+</section>
+
+<section class="panel" id="studyItemsPanel">
+ <div class="panel-head">
+  <div class="study-items-segments" id="studyItemsViewTabs" role="tablist" aria-label="讀書項目範圍" data-active="0">
+   <span class="study-items-segment-indicator" aria-hidden="true"></span>
+   <button type="button" role="tab" aria-selected="true" aria-controls="dailyItemsView" data-study-items-view="today">今日項目</button>
+   <button type="button" role="tab" aria-selected="false" aria-controls="weeklyItemsView" data-study-items-view="week" tabindex="-1">本週項目</button>
+  </div>
+  <span class="badge view-badge" id="dailyPresetBadge">0 項</span>
+  <span class="badge view-badge" id="weeklyItemBadge" hidden>0 項</span>
+ </div>
+ <div class="view-pane" id="dailyItemsView"><div class="content"><div class="small" id="dailyNotice" style="margin-bottom:10px"></div><div id="dailyItemList"></div></div></div>
+ <div class="view-pane" id="weeklyItemsView" hidden><div class="content" id="weeklyItemList"></div></div>
+</section>
+
+<section class="panel" id="englishReviewPanel">
+ <div class="panel-head"><h2>英文訂正與搭配詞整理</h2><span class="badge" id="englishReviewBadge">0 項</span></div>
+ <div class="content">
+  <div class="btns" style="margin-bottom:10px"><button id="addEnglishReviewBtn" class="secondary" type="button">新增今日整理</button></div>
+  <div id="englishReviewList"></div>
+ </div>
+</section>
+
+<section class="panel">
+ <div class="panel-head"><h2>新增讀書項目</h2><span class="badge">需要時自行追加</span></div>
+ <div class="content">
+  <div class="add-grid"><div class="field"><label for="itemType">項目類型</label><select id="itemType"><option value="">請選擇</option><option value="mathLecture">數學</option><option value="scienceReview">自然</option><option value="extra">英文</option><option value="chineseReading">國文</option><option value="mock">歷屆／模考</option></select></div><button id="addItemBtn" class="primary" type="button">新增</button></div>
+  <div class="small" style="margin-top:10px">今日項目由系統依星期自動帶入；這裡可另外追加今日補做。補做會列入今日總項目完成率，但不改變原訂今日項目完成率。</div>
+ </div>
+</section>
+
+<section class="panel">
+ <div class="panel-head"><h2>自行新增項目</h2><span class="badge" id="itemCountBadge">0 項</span></div>
+ <div class="content" id="itemList"></div>
+</section>
+
+<section class="panel">
+ <div class="panel-head"><h2>每日收尾</h2><span class="badge">供週檢討使用</span></div>
+ <div class="content">
+  <div class="grid-2"><div class="field"><label for="biggestBlock">今天最大的卡點</label><textarea id="biggestBlock"></textarea></div><div class="field"><label for="firstThingTomorrow">明天第一件事</label><textarea id="firstThingTomorrow"></textarea></div></div>
+  <div class="field" style="margin-top:10px"><label for="notes">其他補充</label><textarea id="notes" class="notes-large" rows="6"></textarea></div>
+ </div>
+</section>
+
+<section class="panel">
+ <div class="panel-head"><h2>匯出與匯入</h2><span class="badge">匯出可供 AI 分析本週概況</span></div>
+ <div class="content">
+  <div class="btns"><button id="weekSummaryBtn" class="secondary">整理本週紀錄</button></div>
+  <div class="field" style="margin-top:12px">
+   <label for="importProgress">匯入進度</label>
+   <textarea id="importProgress" placeholder="貼上單日或多日 JSON 進度資料"></textarea>
+   <div class="small" style="margin-top:6px">貼上後先預覽，不會自動修改紀錄；Ctrl+Enter 可快速預覽。確認匯入前會保留一份可復原的本機備份。</div>
+   <div class="btns import-actions" style="margin-top:10px">
+    <button id="previewImportBtn" class="secondary" type="button">預覽匯入</button>
+    <button id="confirmImportBtn" class="primary" type="button" hidden disabled>確認匯入</button>
+    <button id="cancelImportBtn" type="button" hidden>取消</button>
+    <button id="undoImportBtn" type="button" hidden>復原上次匯入</button>
+   </div>
+   <div class="import-preview" id="importPreviewPanel" hidden aria-live="polite">
+    <strong id="importPreviewTitle">匯入預覽</strong>
+    <div class="small" id="importPreviewSummary"></div>
+    <ul id="importPreviewList"></ul>
+   </div>
+  </div>
+  <div id="exportBox" hidden style="margin-top:10px">
+   <div class="inline" style="justify-content:space-between;align-items:center;gap:10px">
+    <label for="weekSummary">本週可複製紀錄</label>
+    <button id="copyWeekBtn" class="secondary" type="button">複製</button>
+   </div>
+   <textarea id="weekSummary" readonly></textarea>
+  </div>
+ </div>
+</section>
+
+<footer class="app-legal-footer" aria-label="網站資訊">
+ <a href="/privacy">隱私權政策</a>
+ <span aria-hidden="true">／</span>
+ <a href="/terms">服務條款</a>
+ <span aria-hidden="true">／</span>
+ <a href="/support">使用者支援</a>
+</footer>
+</main>
+<div class="undo-toast" id="deleteUndoToast" role="status" aria-live="polite" hidden>
+ <span id="deleteUndoMessage">已刪除小項目。</span>
+ <button id="deleteUndoBtn" type="button">復原</button>
+</div>
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>

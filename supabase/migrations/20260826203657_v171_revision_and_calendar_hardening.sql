@@ -1,0 +1,3 @@
+-- Historical production migration marker.
+-- Its active RLS, grants, revision RPC, and Calendar table hardening are
+-- represented idempotently in the adjacent canonical migrations.

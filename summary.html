@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f5f8fc" />
+  <link rel="icon" type="image/png" href="./book.png" />
+  <link rel="apple-touch-icon" href="./book.png" />
+  <title>學習總結｜GSAT Study Tracker</title>
+</head>
+<body>
+  <main class="summary-page">
+    <header class="summary-header">
+      <div class="summary-heading">
+        <div><h1>學習總結</h1><p>回顧過去，調整下一步。</p></div>
+      </div>
+      <div class="summary-period-nav" aria-label="切換統計期間">
+        <button id="previousPeriod" type="button" aria-label="上一週">‹</button>
+        <strong id="periodLabel"></strong>
+        <button id="nextPeriod" type="button" aria-label="下一週">›</button>
+      </div>
+      <div class="summary-view-controls">
+        <a class="summary-back header-action-link" href="./index.html">回到 Tracker</a>
+        <div class="summary-mode-switch" id="summaryModeSwitch" role="tablist" aria-label="總結尺度" data-active="0">
+          <span aria-hidden="true"></span>
+          <button type="button" role="tab" data-summary-mode="week" aria-selected="true">週</button>
+          <button type="button" role="tab" data-summary-mode="month" aria-selected="false" tabindex="-1">月</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="summary-content" id="summaryContent">
+    <section class="summary-card summary-calendar-card" aria-labelledby="calendarTitle">
+      <div class="summary-section-head"><div><h2 id="calendarTitle">週曆</h2><p id="calendarCaption"></p></div></div>
+      <div class="summary-calendar-weekdays" aria-hidden="true" hidden>
+        <span>週一</span><span>週二</span><span>週三</span><span>週四</span><span>週五</span><span>週六</span><span>週日</span>
+      </div>
+      <div id="summaryCalendar" class="summary-calendar" role="list"></div>
+      <div class="summary-calendar-legend" aria-label="週曆與月曆圖例">
+        <span><i class="legend-time" aria-hidden="true"></i>圓內深淺＝當日學習時數</span>
+        <span><i class="legend-completion" aria-hidden="true"></i>外圍圓環＝當日完成率</span>
+        <span><i class="legend-complete" aria-hidden="true"></i>深綠完整圓環＝100% 完成</span>
+      </div>
+    </section>
+
+    <div class="summary-dashboard-grid">
+      <section class="summary-card summary-subject-card" aria-labelledby="subjectTitle">
+        <div class="summary-section-head">
+          <h2 id="subjectTitle">科目分配</h2>
+        </div>
+        <div id="summarySubjectDistribution" class="summary-subject-distribution"></div>
+      </section>
+
+      <section class="summary-card summary-trend-card" aria-labelledby="trendTitle">
+        <div class="summary-section-head summary-trend-head">
+          <h2 id="trendTitle">學習趨勢</h2>
+          <div class="summary-chart-legend"><span><i class="time-dot"></i>學習時間</span><span><i class="completion-dot"></i>完成率</span></div>
+        </div>
+        <div id="summaryTrend" class="summary-trend"></div>
+      </section>
+
+    </div>
+
+    <section class="summary-card summary-conclusion-card" aria-labelledby="conclusionTitle">
+      <div class="summary-section-head"><h2 id="conclusionTitle">本期小結</h2></div>
+      <div class="summary-conclusion-layout">
+        <div class="summary-conclusion-main">
+          <section class="summary-period-comparison" aria-labelledby="comparisonTitle">
+            <h3 id="comparisonTitle">與上期比較</h3>
+            <dl id="summaryComparison" class="summary-comparison"></dl>
+          </section>
+          <div id="summaryConclusion" class="summary-conclusion"></div>
+        </div>
+        <aside class="summary-conclusion-wake" aria-labelledby="wakeTitle">
+          <h3 id="wakeTitle">平均起床時間</h3>
+          <p id="wakePeriodLabel" class="summary-eyebrow"></p>
+          <strong id="averageWakeTime" class="summary-big-value">—</strong>
+          <p id="wakeComparisonLabel" class="summary-wake-comparison-label"></p>
+          <strong id="wakeComparisonValue" class="summary-wake-comparison-value">—</strong>
+        </aside>
+      </div>
+    </section>
+    <p id="summarySource" class="summary-source" aria-live="polite"></p>
+    <p id="summaryError" class="summary-error" role="alert" hidden></p>
+    </div>
+  </main>
+  <script type="module" src="/src/learning-summary-page.ts"></script>
+</body>
+</html>

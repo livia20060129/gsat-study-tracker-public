@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="GSAT Study Tracker 隱私權政策與 Google Calendar 資料使用說明。">
+  <title>隱私權政策｜GSAT Study Tracker</title>
+  <link rel="stylesheet" href="./legal.css">
+</head>
+<body>
+  <header class="site-header"><div class="header-inner">
+    <a class="brand" href="./">GSAT Study Tracker</a>
+    <nav class="nav" aria-label="法律與支援頁面"><a href="./privacy.html">隱私權政策</a><a href="./terms.html">服務條款</a><a href="./support.html">使用者支援</a></nav>
+  </div></header>
+  <main class="document">
+    <h1>隱私權政策</h1>
+    <p class="lead">本政策說明 GSAT Study Tracker 如何處理讀書紀錄、帳號資料與 Google Calendar 資料。</p>
+    <p class="meta">生效日期：2026 年 8 月 28 日</p>
+
+    <h2>一、適用範圍</h2>
+    <p>本政策適用於 GSAT Study Tracker（以下稱「本網站」）的讀書紀錄、雲端同步及 Google Calendar 連線功能。營運者為 GSAT Study Tracker 個人專案營運者，聯絡信箱為 <a href="mailto:a8744895@gmail.com">a8744895@gmail.com</a>。</p>
+    <p>若使用者不同意提供 Calendar 相關資料，仍可使用不需要 Google Calendar 的 Tracker 功能，但無法使用 Calendar 同步。</p>
+
+    <h2>二、蒐集及處理的資料</h2>
+    <h3>帳號與讀書紀錄</h3>
+    <ul><li>登入電子郵件、Supabase 使用者識別碼、登入與同步狀態。</li><li>每日讀書項目、完成狀態、完成率、讀書時間、學習進度及使用者自行輸入的備註。</li></ul>
+    <h3>Google Calendar 資料</h3>
+    <p>使用者主動授權後，本網站以 <code>calendar.readonly</code> 唯讀權限讀取主要 Calendar 中指定期間內的資料。目前同步範圍約為過去 60 天至未來 240 天，可能包含：</p>
+    <ul><li>行程標題、說明及地點。</li><li>開始與結束日期、時間及全天行程狀態。</li><li>事件識別碼、更新時間、重複行程資訊及 Calendar 行程連結。</li></ul>
+    <p>本網站不會透過 Calendar API 新增、修改或刪除 Google Calendar 內的原始行程。</p>
+    <h3>OAuth 與技術資料</h3>
+    <p>為維持 Calendar 連線，Supabase 會保存 OAuth Client ID、access token、refresh token、到期時間、授權範圍、同步時間與錯誤資訊。服務供應商也可能處理維持安全及排錯所需的 IP 位址、瀏覽器類型、請求時間與系統紀錄。</p>
+
+    <h2>三、資料使用目的</h2>
+    <ul><li>提供每日讀書紀錄、完成率與進度統計。</li><li>從 Google Calendar 建立及更新 Tracker 排程。</li><li>保存與同步使用者自己的讀書紀錄。</li><li>維護帳號、授權、資料安全與處理支援要求。</li></ul>
+    <p>Calendar 資料會在初次連線、使用者手動要求同步，以及未來確實啟用並公告的排程同步功能執行時讀取。</p>
+    <div class="notice">本網站不會將 Google Calendar 資料用於廣告、精準行銷、出售資料、訓練一般用途 AI 模型、分析其他使用者作為營運者的升學成果，或其他與 Tracker 功能無關的用途。</div>
+    <p>本網站遵守 <a href="https://developers.google.com/terms/api-services-user-data-policy" rel="noopener noreferrer">Google API Services User Data Policy</a>，包括 Limited Use 要求。</p>
+
+    <h2>四、升學成果之自主分享</h2>
+    <p>使用者可以自行選擇將本人於 Tracker 產生的讀書成果摘要，以截圖、PDF 或其他文件形式，透過招生學校指定管道提交。本網站不會自動將資料傳送給學校或公開發布升學成果。</p>
+    <p>分享內容由使用者自行決定。提交前應移除 OAuth 憑證、Google 帳號技術識別資訊、與升學成果無關的 Calendar 私人行程，以及其他不希望提供的個人資訊。資料提交至招生單位後，其保存及刪除方式依該單位規定辦理。</p>
+
+    <h2>五、儲存、服務供應商與分享</h2>
+    <p>資料可能由使用者瀏覽器、Supabase、Google OAuth、Google Calendar API 與 GitHub Pages 等必要服務處理。部分服務供應商的伺服器可能位於臺灣以外地區。</p>
+    <p>本網站不出售或出租個人資料。資料僅會在維持服務所必需、使用者主動要求或同意、法律依法要求，或保護使用者與系統安全所必要時提供。</p>
+
+    <h2>六、保存、解除連線與刪除</h2>
+    <p>使用者可隨時在 Tracker 中解除 Google Calendar 連線。解除後，本網站會停止使用保存的憑證、刪除 Supabase 中的 Calendar connection、OAuth token 與 Calendar 同步快取；Google Calendar 原始行程不受影響。</p>
+    <p>先前已保存為 Tracker 讀書紀錄的內容及瀏覽器本機資料，可能不會隨解除連線自動刪除。使用者可自行清除瀏覽器網站資料，或透過聯絡信箱要求刪除相關雲端資料，也可在 Google 帳號中撤銷第三方應用程式授權。</p>
+
+    <h2>七、使用者權利</h2>
+    <p>在適用法律允許的範圍內，使用者可要求查詢、閱覽、取得副本、補充、更正、停止蒐集或利用，以及刪除個人資料。為避免冒用，本網站可能要求合理的身分確認。</p>
+
+    <h2>八、資料安全</h2>
+    <p>本網站採取合理的帳號驗證、資料存取控制及伺服器端憑證保存措施。任何網路服務均無法保證絕對安全；如發生依法需要通知的重大安全事件，將依適用法律處理。</p>
+
+    <h2>九、政策變更與聯絡方式</h2>
+    <p>本政策可能因功能、服務供應商或法規變更而更新，重大變更將於網站公告並更新生效日期。</p>
+    <div class="contact"><strong>隱私權、資料查詢或刪除聯絡信箱</strong><br><a href="mailto:a8744895@gmail.com">a8744895@gmail.com</a></div>
+  </main>
+  <footer class="site-footer">GSAT Study Tracker · 個人讀書紀錄工具</footer>
+</body>
+</html>

@@ -1,0 +1,90 @@
+name: Hourly Google Calendar Sync
+
+on:
+  schedule:
+    # GitHub schedules use UTC. Minute 7 avoids the busiest top-of-hour window.
+    - cron: '7 * * * *'
+  workflow_dispatch:
+
+# This workflow only makes an outbound HTTPS request and does not need a token.
+permissions: {}
+
+concurrency:
+  group: hourly-google-calendar-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Sync connected calendars
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CALENDAR_SYNC_URL: https://arxbirgujbrtzhoficdf.supabase.co/functions/v1/google-calendar
+      CALENDAR_CRON_SECRET: ${{ secrets.CALENDAR_CRON_SECRET }}
+
+    steps:
+      - name: Validate scheduler configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${CALENDAR_CRON_SECRET}" ]]; then
+            echo "::error::Missing Actions secret CALENDAR_CRON_SECRET. Add the same high-entropy value to GitHub Actions and the Supabase Edge Function."
+            exit 1
+          fi
+
+          if (( ${#CALENDAR_CRON_SECRET} < 32 )); then
+            echo "::error::CALENDAR_CRON_SECRET must contain at least 32 characters."
+            exit 1
+          fi
+
+          echo "::add-mask::${CALENDAR_CRON_SECRET}"
+
+      - name: Run Calendar sync
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          response_file="$(mktemp)"
+          trap 'rm -f "${response_file}"' EXIT
+
+          if ! http_status="$(
+            curl \
+              --silent \
+              --show-error \
+              --connect-timeout 30 \
+              --max-time 540 \
+              --retry 2 \
+              --retry-all-errors \
+              --retry-delay 5 \
+              --output "${response_file}" \
+              --write-out '%{http_code}' \
+              --request POST \
+              --header 'Content-Type: application/json' \
+              --header "x-cron-secret: ${CALENDAR_CRON_SECRET}" \
+              --data '{"action":"sync-all"}' \
+              "${CALENDAR_SYNC_URL}"
+          )"; then
+            echo "::error::Unable to reach the Calendar sync function."
+            exit 1
+          fi
+
+          if [[ ! "${http_status}" =~ ^2[0-9]{2}$ ]]; then
+            echo "::error::Calendar sync request failed (HTTP ${http_status}). Inspect the private Supabase Edge Function logs for details."
+            exit 1
+          fi
+
+          if ! jq -e '.ok == true and (.results | type == "array")' "${response_file}" >/dev/null; then
+            echo "::error::Calendar sync function returned an unexpected response."
+            exit 1
+          fi
+
+          total_count="$(jq '.results | length' "${response_file}")"
+          failure_count="$(jq '[.results[] | select(has("error"))] | length' "${response_file}")"
+
+          if (( failure_count > 0 )); then
+            echo "::error::Calendar sync failed for ${failure_count} of ${total_count} connected account(s)."
+            exit 1
+          fi
+
+          echo "Calendar sync completed for ${total_count} connected account(s)."

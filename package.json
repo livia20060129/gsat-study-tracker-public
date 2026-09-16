@@ -1,0 +1,25 @@
+{
+  "name": "gsat-study-tracker-public",
+  "private": true,
+  "version": "171.6.0-public.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --configLoader runner",
+    "build": "tsc --noEmit && vite build --configLoader runner",
+    "preview": "vite preview --configLoader runner",
+    "deploy:cloudflare": "npm run build && wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "typecheck:edge": "deno check --config supabase/functions/google-calendar/deno.json --frozen supabase/functions/google-calendar/index.ts && deno check --config supabase/functions/google-calendar-callback/deno.json --frozen supabase/functions/google-calendar-callback/index.ts",
+    "test": "node --experimental-strip-types --test tests/materialSelection.test.ts tests/publicEdition.test.ts tests/cloudflareDeploy.test.ts tests/completionCheckedOn.test.ts tests/azarGrammar.test.ts tests/bookPageMaps.test.ts tests/googleCalendarConfig.test.ts tests/syncWatermark.test.ts tests/latestTaskQueue.test.ts tests/crossTabLock.test.ts tests/recordMerge.test.ts tests/completionMetrics.test.ts tests/completionCelebration.test.ts tests/calendarBridge.test.ts tests/calendarClassification.test.ts tests/calendarMathRuntime.test.ts tests/calendarPagePriority.test.ts tests/scheduleSummary.test.ts tests/calendarSyncDiff.test.ts tests/functionResponse.test.ts tests/keysetPagination.test.ts tests/makeup.test.ts tests/presetDedup.test.ts tests/dailyWorkGroup.test.ts tests/defer.test.ts tests/subjectOrder.test.ts tests/subjectTime.test.ts tests/mathProgress.test.ts tests/materialProgress.test.ts tests/sourceDate.test.ts tests/studyTimer.test.ts tests/studyRecordCodec.test.ts tests/studyRecordRoundTrip.test.ts tests/studyRecordRepositories.test.ts tests/calendarTaskReader.test.ts tests/calendarStudyTaskService.test.ts tests/studyItemTypes.test.ts tests/calendarNaturalCompletion.test.ts tests/magazineDefaults.test.ts tests/overviewMetricView.test.ts tests/studyItemsView.test.ts tests/completionTrend.test.ts tests/progressImport.test.ts tests/supabaseBundle.test.ts tests/legacyCardRegression.test.ts tests/calendarNaturalPlan.test.ts tests/hourlyCalendarWorkflow.test.ts tests/safetyUxRegression.test.ts tests/learningSummary.test.ts",
+    "test:e2e": "npm run build && playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.3",
+    "wrangler": "4.132.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.114.0"
+  }
+}
