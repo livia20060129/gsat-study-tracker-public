@@ -1,6 +1,12 @@
 # 最新更新
 
-版本：公開版 v171.6.0-public.1
+版本：公開版 v171.6.0-public.2
+
+## 公開版 Supabase 分離
+
+- 公開版已改用獨立 Supabase 專案 `xcpnxkkixsxzgbqsiuud`。
+- 前端 API、Supabase CLI、每小時 Calendar 同步與 OAuth callback 文件已統一指向公開版專案。
+- 部署 workflow 會比對 GitHub `SUPABASE_PROJECT_ID` 與 `supabase/config.toml`，避免誤部署到自用版後端。
 
 ## 公開版分流
 
@@ -24,4 +30,4 @@
 
 ## Commit 建議
 
-`feat(public): create calendar-only tracker with selectable materials`
+`fix(public): point deployment and calendar sync to public Supabase project`

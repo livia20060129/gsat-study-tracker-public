@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      CALENDAR_SYNC_URL: https://arxbirgujbrtzhoficdf.supabase.co/functions/v1/google-calendar
+      CALENDAR_SYNC_URL: https://xcpnxkkixsxzgbqsiuud.supabase.co/functions/v1/google-calendar
       CALENDAR_CRON_SECRET: ${{ secrets.CALENDAR_CRON_SECRET }}
 
     steps:

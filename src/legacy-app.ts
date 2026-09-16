@@ -588,8 +588,8 @@ var mathProgressIndex=new MathProgressIndex();
 var pendingDeferredTargets={};
 var deferredLimitPrompt=null;
 
-var SUPABASE_URL='https://arxbirgujbrtzhoficdf.supabase.co';
-var SUPABASE_PUBLISHABLE_KEY='sb_publishable_x8YXDSe-6rvX25o38jEl4w_OYn971PA';
+var SUPABASE_URL='https://xcpnxkkixsxzgbqsiuud.supabase.co';
+var SUPABASE_PUBLISHABLE_KEY='sb_publishable_du5gADgV0tojMVmoRkxyRg_NtmP9kvr';
 var cloudClient=null;
 var cloudRecordRepository=null;
 var cloudUser=null;

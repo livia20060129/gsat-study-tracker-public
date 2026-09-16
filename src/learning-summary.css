@@ -14,7 +14,7 @@ button:focus-visible,a:focus-visible{outline:3px solid rgba(142,174,161,.3);outl
 .summary-donut-shell.is-empty{background:transparent}
 .summary-day-ring{--day-ring-width:6px;position:relative;background:transparent}
 .summary-day-ring::before{content:"";position:absolute;inset:0;border-radius:50%;background:conic-gradient(var(--day-accent) 0 var(--day-completion),#e5eaf0 var(--day-completion) 360deg);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - var(--day-ring-width)),#000 0);mask:radial-gradient(farthest-side,transparent calc(100% - var(--day-ring-width)),#000 0);pointer-events:none}.summary-day-core{position:relative;z-index:1;background:color-mix(in srgb,var(--day-mood-color,var(--day-time-color)) var(--day-mood-strength,0%),var(--day-time-color))}
-.summary-day.is-mood-unwell{--day-mood-color:#FF7575}.summary-day.is-mood-tired{--day-mood-color:#FFC78E}.summary-day.is-mood-out{--day-mood-color:#FFF0BD}
+.summary-day.is-mood-unwell{--day-mood-color:#FF7575;--day-mood-strength:34%}.summary-day.is-mood-tired{--day-mood-color:#FFC78E;--day-mood-strength:34%}.summary-day.is-mood-out{--day-mood-color:#FFF0BD;--day-mood-strength:34%}
 .summary-calendar.is-month .summary-day-ring{--day-ring-width:4px}
 .summary-donut-slice.is-detail{cursor:pointer;pointer-events:stroke}
 .summary-donut-ring[data-summary-back]{cursor:pointer}.summary-day.is-complete{--day-accent:#70DE43}.legend-complete{border-color:#70DE43}

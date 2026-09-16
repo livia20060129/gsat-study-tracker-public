@@ -85,7 +85,7 @@
 1. 啟用 Google Calendar API。
 2. 建立 OAuth 2.0 Web application。
 3. OAuth redirect URI 設為：
-   `https://arxbirgujbrtzhoficdf.supabase.co/functions/v1/google-calendar-callback`
+   `https://xcpnxkkixsxzgbqsiuud.supabase.co/functions/v1/google-calendar-callback`
 4. OAuth consent screen 使用唯讀 Calendar scope。
 
 #### B. Vite 前端環境變數
@@ -103,7 +103,7 @@ Client ID 是公開識別碼，不是密碼；仍不可把個人專案值直接�
 ```text
 GOOGLE_CLIENT_ID=同一個 Google OAuth Client ID
 GOOGLE_CLIENT_SECRET=Google OAuth Client Secret
-GOOGLE_REDIRECT_URI=https://arxbirgujbrtzhoficdf.supabase.co/functions/v1/google-calendar-callback
+GOOGLE_REDIRECT_URI=https://xcpnxkkixsxzgbqsiuud.supabase.co/functions/v1/google-calendar-callback
 GOOGLE_STATE_SECRET=高熵隨機字串
 APP_RETURN_URL=https://livia20060129.github.io/gsat-study-tracker/
 CALENDAR_CRON_SECRET=32 字元以上隨機字串
@@ -137,7 +137,7 @@ CALENDAR_CRON_SECRET
 Actions variable 或 secret：
 
 ```text
-SUPABASE_PROJECT_ID=arxbirgujbrtzhoficdf
+SUPABASE_PROJECT_ID=xcpnxkkixsxzgbqsiuud
 VITE_GOOGLE_CLIENT_ID
 ```
 
