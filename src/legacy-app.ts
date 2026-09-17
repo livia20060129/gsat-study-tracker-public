@@ -2399,8 +2399,11 @@ function manualOptionGroup(label,values,current,labelFor){
  if(!values.length)return'';
  return'<optgroup label="'+esc(label)+'">'+values.map(function(value){return'<option value="'+esc(value)+'"'+selected(value,current)+'>'+esc(labelFor?labelFor(value):value)+'</option>'}).join('')+'</optgroup>';
 }
+function manualOptions(values,current,labelFor){
+ return values.map(function(value){return'<option value="'+esc(value)+'"'+selected(value,current)+'>'+esc(labelFor?labelFor(value):value)+'</option>'}).join('');
+}
 function mathMaterialOptions(v){
- return'<option value="">請選擇</option>'+manualOptionGroup('新增講義',[MATH_GRAND_SLAM_MATERIAL],v,function(){return MATH_GRAND_SLAM_MATERIAL+'（數學A）'})+manualOptionGroup('其他講義',['教學講義','智慧型','新關鍵','複習週記'],v);
+ return'<option value="">請選擇</option>'+manualOptionGroup('分冊講義',['教學講義'],v)+manualOptionGroup('複習講義',['智慧型','新關鍵',MATH_GRAND_SLAM_MATERIAL,'複習週記'],v,function(value){return value===MATH_GRAND_SLAM_MATERIAL?value+'（數學A）':value});
 }
 function isCalendarMathMaterialLocked(x){
  return !!(x&&x.f&&x.f.material&&x.f.calendarMathMaterialLocked===true&&(x.type==='mathStudy'||x.type==='mathLecture'||x.type==='mathPractice'));
@@ -2456,8 +2459,8 @@ function scienceMaterialOptions(subject,v){
  else if(subject==='化學'){added=[CHEMISTRY_NAVIGATOR_MATERIAL];a=['好考點','新關鍵','大滿貫','123日的淬鍊']}
  else if(subject==='生物'||subject==='地科')a=['新關鍵','大滿貫','123日的淬鍊'];
  else a=['新關鍵','大滿貫','123日的淬鍊'];
- var hint=!subject?'<optgroup label="新增講義（請先選科目）"><option disabled>化學｜'+CHEMISTRY_NAVIGATOR_MATERIAL+'</option><option disabled>物理｜'+PHYSICS_ADVANTAGE_MATERIAL+'</option><option disabled>物理｜'+PHYSICS_COMEBACK_MATERIAL+'</option></optgroup>':'';
- return'<option value="">請選擇</option>'+manualOptionGroup('新增講義',added,v)+hint+manualOptionGroup(subject==='混合'?'講義':'其他講義',a,v);
+ if(!subject)return'<option value="">請先選擇科目</option>';
+ return'<option value="">請選擇</option>'+manualOptions(added.concat(a),v);
 }
 function normalizeScience(f){
  if(!f)return;

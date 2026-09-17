@@ -177,11 +177,15 @@ test('manual added-item selectors expose all newly mapped lectures', () => {
     MATH_GRAND_SLAM_MATERIAL: '新大滿貫',
     manualOptionGroup,
   });
+  const manualOptions = runtimeFunction<(values: string[], current: string, labelFor?: (value: string) => string) => string>(
+    'manualOptions',
+    { selected, esc },
+  );
   const scienceOptions = runtimeFunction<(subject: string, current: string) => string>('scienceMaterialOptions', {
     CHEMISTRY_NAVIGATOR_MATERIAL: '領航',
     PHYSICS_ADVANTAGE_MATERIAL: '優勢',
     PHYSICS_COMEBACK_MATERIAL: '逆轉勝',
-    manualOptionGroup,
+    manualOptions,
   });
   const readingOptions = runtimeFunction<(current: string) => string>('readingOptions', {
     ENGLISH_WEEKLY_PLAN_BOOK: '學測週計畫',
@@ -190,12 +194,15 @@ test('manual added-item selectors expose all newly mapped lectures', () => {
     manualOptionGroup,
   });
 
-  assert.match(mathOptions(''), /新增講義/);
+  assert.match(mathOptions(''), /<optgroup label="分冊講義"><option value="教學講義"/);
+  assert.match(mathOptions(''), /<optgroup label="複習講義">/);
   assert.match(mathOptions(''), /新大滿貫（數學A）/);
-  assert.match(scienceOptions('化學', ''), /<optgroup label="新增講義"><option value="領航"/);
+  assert.doesNotMatch(mathOptions(''), /新增講義|其他講義/);
+  assert.match(scienceOptions('化學', ''), /<option value="領航"/);
   assert.match(scienceOptions('物理', ''), /<option value="優勢"/);
   assert.match(scienceOptions('物理', ''), /<option value="逆轉勝"/);
-  assert.match(scienceOptions('', ''), /新增講義（請先選科目）/);
+  assert.doesNotMatch(scienceOptions('物理', ''), /<optgroup|新增講義|其他講義/);
+  assert.match(scienceOptions('', ''), /請先選擇科目/);
   assert.match(readingOptions(''), /<option value="學測週計畫"/);
   assert.match(readingOptions(''), /<option value="混合題30篇實戰演練"/);
 });
