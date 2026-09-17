@@ -191,7 +191,14 @@ test('manual added-item selectors expose all newly mapped lectures', () => {
     ENGLISH_WEEKLY_PLAN_BOOK: '學測週計畫',
     ENGLISH_MIXED_30_BOOK: '混合題30篇實戰演練',
     EXTRA_READING_TITLES: ['雜誌', '學測週計畫', '混合題30篇實戰演練'],
-    manualOptionGroup,
+    manualOptions,
+  });
+  const reviewEnglishOptions = runtimeFunction<(current: string) => string>('reviewEnglishOptions', {
+    ENGLISH_WEEKLY_PLAN_BOOK: '學測週計畫',
+    ENGLISH_MIXED_30_BOOK: '混合題30篇實戰演練',
+    LISTENING_TEST_BOOK_TITLE: '大考英聽A攻略',
+    AZAR_GRAMMAR_BOOK_TITLE: 'Azar英文文法（中階）',
+    manualOptions,
   });
 
   assert.match(mathOptions(''), /<optgroup label="分冊講義"><option value="教學講義"/);
@@ -205,6 +212,10 @@ test('manual added-item selectors expose all newly mapped lectures', () => {
   assert.match(scienceOptions('', ''), /請先選擇科目/);
   assert.match(readingOptions(''), /<option value="學測週計畫"/);
   assert.match(readingOptions(''), /<option value="混合題30篇實戰演練"/);
+  assert.doesNotMatch(readingOptions(''), /<optgroup|新增講義|其他英文項目/);
+  assert.match(reviewEnglishOptions(''), /<option value="大考英聽A攻略"/);
+  assert.match(reviewEnglishOptions(''), /<option value="Azar英文文法（中階）"/);
+  assert.doesNotMatch(reviewEnglishOptions(''), /<optgroup|新增講義|其他英文項目/);
 });
 
 test('manual natural lecture is cleared when the subject no longer matches', () => {

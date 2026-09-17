@@ -2721,11 +2721,11 @@ function applyChineseItemSelection(item,value){
 }
 function readingOptions(v){
  var added=[ENGLISH_WEEKLY_PLAN_BOOK,ENGLISH_MIXED_30_BOOK],other=EXTRA_READING_TITLES.filter(function(title){return added.indexOf(title)<0});
- return'<option value="">請選擇</option>'+manualOptionGroup('新增講義',added,v)+manualOptionGroup('其他英文項目',other,v);
+ return'<option value="">請選擇</option>'+manualOptions(added.concat(other),v);
 }
 function reviewEnglishOptions(v){
  var added=[ENGLISH_WEEKLY_PLAN_BOOK,ENGLISH_MIXED_30_BOOK],other=['ACE Reading',LISTENING_TEST_BOOK_TITLE,AZAR_GRAMMAR_BOOK_TITLE,'英文寫作測驗','英文文法總複習講義','Prism Reading'];
- return'<option value="">請選擇</option>'+manualOptionGroup('新增講義',added,v)+manualOptionGroup('其他英文項目',other,v);
+ return'<option value="">請選擇</option>'+manualOptions(added.concat(other),v);
 }
 function prismLevel(f){if(f.level)return String(f.level);var m=String(f.title||'').match(/^Prism Reading ([234])$/);return m?m[1]:''}
 function prismCefr(v){return String(v)==='2'?'B1':String(v)==='3'?'B2':String(v)==='4'?'C1':'尚未選擇'}
