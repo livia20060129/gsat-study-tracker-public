@@ -13,7 +13,13 @@ test('public edition starts without built-in schedule cards', async ({ page }) =
 
 test('material progress only shows checked materials and keeps the selection', async ({ page }) => {
   await page.goto('/material.progress.html');
+  await expect(page).toHaveTitle('每日讀書完成度紀錄卡');
   await expect(page.getByRole('heading', { name: '我的教材' })).toBeVisible();
+  const materialsPanel = page.locator('#materialsPanel');
+  await materialsPanel.locator('summary').click();
+  await expect(materialsPanel).not.toHaveAttribute('open', '');
+  await materialsPanel.locator('summary').click();
+  await expect(materialsPanel).toHaveAttribute('open', '');
   await expect(page.locator('#materialProgressList .material-row')).toHaveCount(0);
 
   const firstMathMaterial = page.locator('#materialSelectionList input[type="checkbox"]').first();
@@ -28,6 +34,15 @@ test('material progress only shows checked materials and keeps the selection', a
   await page.getByRole('tab', { name: '英文' }).click();
   await expect(page.locator('#materialProgressList .material-row')).toHaveCount(0);
   await expect(page.locator('#materialProgressList')).toContainText('請先在「我的教材」勾選');
+
+  await page.getByRole('tab', { name: '自然' }).click();
+  await expect(page.locator('#materialSelectionList .material-selection-group > h3')).toHaveText(['物理', '化學', '地科', '生物']);
+  const physicsGroup = page.locator('[data-natural-subject="物理"]');
+  await expect(physicsGroup).toContainText('123日的淬鍊');
+  await expect(physicsGroup).toContainText('好考點');
+  await expect(physicsGroup).toContainText('優勢');
+  await expect(physicsGroup).toContainText('逆轉勝');
+  await expect(physicsGroup).not.toContainText('自然｜物理');
 });
 
 test('whole-card deletion requires confirmation and small-row deletion can be undone', async ({ page }) => {

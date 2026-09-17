@@ -20,6 +20,8 @@ const SUBJECT_LABELS: Record<MaterialProgressSubject, string> = {
   natural: '自然',
 };
 
+const NATURAL_SUBJECT_ORDER = ['物理', '化學', '地科', '生物'] as const;
+
 let activeSubject = normalizedProgressSubject(location.hash.replace(/^#/, ''));
 let rows: MaterialProgressRow[] = [];
 let activeRecordPrefix = 'study-v11:guest:';
@@ -74,7 +76,13 @@ function renderRow(row: MaterialProgressRow): HTMLElement {
 }
 
 function materialLabel(row: MaterialProgressRow): string {
+  const parts = row.title.split('｜');
+  if (row.subject === 'natural' && parts.length >= 3) return parts.slice(2).join('｜');
   return row.title.replace(/^(?:國文|英文|數學|自然)｜/, '');
+}
+
+function naturalSubject(row: MaterialProgressRow): string {
+  return row.id.split(':')[1] ?? '';
 }
 
 function renderMaterialOption(row: MaterialProgressRow): HTMLElement {
@@ -90,6 +98,62 @@ function renderMaterialOption(row: MaterialProgressRow): HTMLElement {
   return label;
 }
 
+function renderMaterialOptions(availableRows: MaterialProgressRow[]): HTMLElement[] {
+  if (activeSubject !== 'natural') return availableRows.map(renderMaterialOption);
+  return NATURAL_SUBJECT_ORDER.flatMap(subject => {
+    const subjectRows = availableRows.filter(row => naturalSubject(row) === subject);
+    if (!subjectRows.length) return [];
+    const group = document.createElement('section');
+    group.className = 'material-selection-group';
+    group.dataset.naturalSubject = subject;
+    const title = document.createElement('h3');
+    title.textContent = subject;
+    const options = document.createElement('div');
+    options.className = 'material-selection-sublist';
+    options.replaceChildren(...subjectRows.map(renderMaterialOption));
+    group.append(title, options);
+    return [group];
+  });
+}
+
+function setupAnimatedMaterialsPanel(): void {
+  const panel = element<HTMLDetailsElement>('materialsPanel');
+  const summary = panel.querySelector<HTMLElement>(':scope > summary');
+  if (!summary) return;
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  summary.addEventListener('click', event => {
+    if (reducedMotion.matches || panel.classList.contains('is-opening') || panel.classList.contains('is-closing')) return;
+    event.preventDefault();
+    const summaryHeight = summary.getBoundingClientRect().height;
+    if (!panel.open) {
+      panel.classList.add('is-opening');
+      panel.style.height = `${summaryHeight}px`;
+      panel.open = true;
+      const expandedHeight = panel.scrollHeight;
+      const finishOpening = (transitionEvent: TransitionEvent) => {
+        if (transitionEvent.target !== panel || transitionEvent.propertyName !== 'height') return;
+        panel.removeEventListener('transitionend', finishOpening);
+        panel.classList.remove('is-opening');
+        panel.style.removeProperty('height');
+      };
+      panel.addEventListener('transitionend', finishOpening);
+      requestAnimationFrame(() => requestAnimationFrame(() => { panel.style.height = `${expandedHeight}px`; }));
+      return;
+    }
+    panel.classList.add('is-closing');
+    panel.style.height = `${panel.getBoundingClientRect().height}px`;
+    const finishClosing = (transitionEvent: TransitionEvent) => {
+      if (transitionEvent.target !== panel || transitionEvent.propertyName !== 'height') return;
+      panel.removeEventListener('transitionend', finishClosing);
+      panel.open = false;
+      panel.classList.remove('is-closing');
+      panel.style.removeProperty('height');
+    };
+    panel.addEventListener('transitionend', finishClosing);
+    requestAnimationFrame(() => requestAnimationFrame(() => { panel.style.height = `${summaryHeight}px`; }));
+  });
+}
+
 function render(): void {
   document.body.dataset.subject = activeSubject;
   const switcher = element<HTMLDivElement>('subjectSwitch');
@@ -102,7 +166,7 @@ function render(): void {
 
   const availableRows = rows.filter(row => row.subject === activeSubject);
   const subjectRows = availableRows.filter(row => selectedMaterialIds.has(row.id));
-  element<HTMLDivElement>('materialSelectionList').replaceChildren(...availableRows.map(renderMaterialOption));
+  element<HTMLDivElement>('materialSelectionList').replaceChildren(...renderMaterialOptions(availableRows));
   element<HTMLElement>('selectionSummary').textContent = `${SUBJECT_LABELS[activeSubject]}已選 ${subjectRows.length}／${availableRows.length} 本`;
   const completedWeight = subjectRows.reduce(
     (sum, row) => sum + row.segments.reduce(
@@ -193,4 +257,5 @@ window.addEventListener('hashchange', () => {
   render();
 });
 
+setupAnimatedMaterialsPanel();
 load();

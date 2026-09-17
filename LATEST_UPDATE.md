@@ -1,6 +1,15 @@
 # 最新更新
 
-版本：公開版 v171.6.0-public.8
+版本：公開版 v171.6.0-public.9
+
+## 我的教材收合與自然分組
+
+- 「我的教材」面板可點擊標題收合或展開，並加入與連線設定一致的高度、透明度與位移過渡。
+- 自然教材依「物理、化學、地科、生物」顯示小標與各自教材。
+- 自然教材選項只顯示書名，不再重複「自然｜科目」。
+- 既有教材 ID 與儲存鍵未變更，原本勾選的教材會繼續保留。
+- 教材進度頁的瀏覽器分頁名稱改為「每日讀書完成度紀錄卡」。
+- 新增 Playwright 驗收，檢查收合完成時機、四科順序及物理教材內容。
 
 ## 公開版 Google OAuth 設定對齊
 
@@ -10,6 +19,14 @@
 - README 全面改用公開網域 `gsat-study-tracker.liviayeh.dev`，並補上 Cloudflare 建置變數設定。
 - 新增公開版 OAuth scope 與正式網域防回歸測試。
 
+## 線上 OAuth 設定套用
+
+- Google Cloud 公開版專案已建立獨立 Web OAuth Client。
+- Google OAuth 應用程式名稱已統一為「每日讀書完成度紀錄卡」，服務條款已改用公開版 `/terms`。
+- Supabase Edge Function 已更新 `GOOGLE_CLIENT_ID` 與 `GOOGLE_CLIENT_SECRET`。
+- GitHub Actions 與 Cloudflare Builds 已改用同一組公開版 `VITE_GOOGLE_CLIENT_ID`。
+- Cloudflare 已重新建置並成功部署；公開網址已可正常顯示「連接 Google Calendar」。
+
 ## GitHub Pages 重新部署修復
 
 - Pages artifact 改用 GitHub 官方固定名稱 `github-pages`，不再把名稱綁定 `github.run_attempt`。
@@ -18,7 +35,7 @@
 
 ## Supabase Project Ref 單一來源
 
-- 移除 GitHub Environment／Repository 中重複的 `SUPABASE_PROJECT_ID` override，避免舊 Variable 或 Secret 持續覆蓋正確設定。
+- GitHub Environment／Repository 兩處 `SUPABASE_PROJECT_ID` 已統一為公開版 Project Ref，避免舊的自用版設定被誤用。
 - 發布流程只從通過一致性測試的 `supabase/config.toml` 取得 Public Project Ref。
 
 ## Public Supabase 指向修復
@@ -64,4 +81,4 @@
 
 ## Commit 建議
 
-`fix(oauth): align the public Calendar scope and production URLs`
+`feat(materials): add collapsible selection and natural subject groups`

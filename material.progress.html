@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f5f8fc" />
   <link rel="icon" type="image/png" href="./book.png" />
   <link rel="apple-touch-icon" href="./book.png" />
-  <title>教材進度圖｜GSAT Study Tracker</title>
+  <title>每日讀書完成度紀錄卡</title>
 </head>
 <body>
   <main class="progress-page">
@@ -18,31 +18,37 @@
       <a class="progress-back header-action-link" href="./index.html">回到 Tracker</a>
     </header>
 
-    <section class="progress-panel" aria-labelledby="myMaterialsTitle">
-      <div class="progress-panel-head">
+    <details class="progress-panel materials-panel" id="materialsPanel" open>
+      <summary class="progress-panel-head materials-panel-summary">
         <div>
           <h2 id="myMaterialsTitle">我的教材</h2>
           <p id="recordSource">正在讀取本機紀錄…</p>
         </div>
-        <button id="refreshProgress" type="button">重新讀取</button>
-      </div>
+        <span class="materials-panel-toggle" aria-hidden="true"></span>
+      </summary>
 
-      <div class="progress-panel-body">
-        <div class="subject-switch" id="subjectSwitch" role="tablist" aria-label="切換教材科目" data-active="2">
-          <span class="subject-switch-indicator" aria-hidden="true"></span>
-          <button type="button" role="tab" data-subject="chinese" aria-selected="false" tabindex="-1">國文</button>
-          <button type="button" role="tab" data-subject="english" aria-selected="false" tabindex="-1">英文</button>
-          <button type="button" role="tab" data-subject="math" aria-selected="true">數學</button>
-          <button type="button" role="tab" data-subject="natural" aria-selected="false" tabindex="-1">自然</button>
-        </div>
+      <div class="materials-panel-content">
+        <div class="progress-panel-body">
+          <div class="materials-panel-toolbar">
+            <button id="refreshProgress" type="button">重新讀取</button>
+          </div>
 
-        <div class="selection-heading">
-          <p>勾選要放入教材進度圖的教材。</p>
-          <strong id="selectionSummary"></strong>
+          <div class="subject-switch" id="subjectSwitch" role="tablist" aria-label="切換教材科目" data-active="2">
+            <span class="subject-switch-indicator" aria-hidden="true"></span>
+            <button type="button" role="tab" data-subject="chinese" aria-selected="false" tabindex="-1">國文</button>
+            <button type="button" role="tab" data-subject="english" aria-selected="false" tabindex="-1">英文</button>
+            <button type="button" role="tab" data-subject="math" aria-selected="true">數學</button>
+            <button type="button" role="tab" data-subject="natural" aria-selected="false" tabindex="-1">自然</button>
+          </div>
+
+          <div class="selection-heading">
+            <p>勾選要放入教材進度圖的教材。</p>
+            <strong id="selectionSummary"></strong>
+          </div>
+          <div id="materialSelectionList" class="material-selection-list" role="group" aria-label="選擇我的教材"></div>
         </div>
-        <div id="materialSelectionList" class="material-selection-list" role="group" aria-label="選擇我的教材"></div>
       </div>
-    </section>
+    </details>
 
     <section class="progress-panel progress-results" aria-labelledby="progressTitle">
       <div class="progress-panel-head">
