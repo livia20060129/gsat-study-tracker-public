@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
+  await expect(page).toHaveTitle('每日讀書完成度紀錄卡');
   await expect(page.getByRole('heading', { name: '每日讀書完成度紀錄卡' })).toBeVisible();
 });
 

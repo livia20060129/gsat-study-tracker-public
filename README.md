@@ -1,6 +1,6 @@
 # GSAT Study Tracker
 
-目前版本：**公開版 v171.6.0-public.9**
+目前版本：**公開版 v171.6.0-public.10**
 
 公開版學測讀書追蹤器，整合 Google Calendar 唯讀排程、手動新增項目、Supabase 跨裝置同步、計時、完成率、教材進度與學習總結。
 
@@ -176,6 +176,7 @@ Public Supabase Project Ref 只由已納入測試的 `supabase/config.toml` 提�
 
 ## V. 此版本重要更新（v171.x.xx）
 
+- **v171.6.0-public.10**：移除主頁瀏覽器分頁名稱殘留的「v171」，主頁與教材進度頁統一顯示「每日讀書完成度紀錄卡」，並加入瀏覽器驗收避免版本字樣再次出現。
 - **v171.6.0-public.9**：「我的教材」改為預設收合、可平順展開的面板；自然教材依物理、化學、地科、生物分組顯示小標，教材名稱不再重複科目；教材進度頁的瀏覽器分頁名稱統一為「每日讀書完成度紀錄卡」。
 - **v171.6.0-public.8**：公開版 Google Calendar OAuth 改用權限較小的 `calendar.events.readonly`，同步更新隱私權政策、Supabase 預設值與公開網域設定說明，並補上 OAuth 設定一致性測試。
 - **v171.6.0-public.7**：GitHub Pages artifact 改用官方固定名稱 `github-pages`，避免只重新執行失敗的部署 job 時，`github.run_attempt` 已增加但 build artifact 仍沿用前一次名稱，造成部署找不到成品。
