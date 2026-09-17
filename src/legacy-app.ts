@@ -2726,7 +2726,7 @@ function applyChineseItemSelection(item,value){
  apply(item);return{kind:item.f.kind,book:item.f.book}
 }
 function englishMaterialOptionGroups(values,v){
- var examTitles=[ENGLISH_WEEKLY_PLAN_BOOK,ENGLISH_MIXED_30_BOOK,'ACE Reading',LISTENING_TEST_BOOK_TITLE,ENGLISH_TOPIC_READING_BOOK,ENGLISH_TOPIC_CLOZE_BOOK,'英文文法總複習講義','英文字彙王: 核心單字2001~ 4000','英文字彙王: 核心單字4001~ 6000'];
+ var examTitles=[ENGLISH_WEEKLY_PLAN_BOOK,ENGLISH_MIXED_30_BOOK,'ACE Reading',LISTENING_TEST_BOOK_TITLE,ENGLISH_TOPIC_READING_BOOK,ENGLISH_TOPIC_CLOZE_BOOK,'英文寫作測驗','英文文法總複習講義','英文字彙王: 核心單字2001~ 4000','英文字彙王: 核心單字4001~ 6000'];
  var exam=values.filter(function(title){return examTitles.indexOf(title)>=0});
  var supplemental=values.filter(function(title){return examTitles.indexOf(title)<0});
  return manualOptionGroup('學測',exam,v)+manualOptionGroup('課外補充',supplemental,v);

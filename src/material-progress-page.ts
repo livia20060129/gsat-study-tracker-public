@@ -28,6 +28,7 @@ const ENGLISH_EXAM_MATERIAL_IDS = new Set([
   'book:混合題30篇實戰演練',
   'book:主題百匯：篇章結構·閱讀測驗',
   'book:主題百匯：克漏字',
+  'english:writing',
   'english:grammar',
   'english:vocabulary-2001-4000',
   'english:vocabulary-4001-6000',
