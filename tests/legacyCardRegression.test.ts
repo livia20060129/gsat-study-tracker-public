@@ -205,6 +205,7 @@ test('manual added-item selectors expose all newly mapped lectures', () => {
       '大考英聽A攻略',
       '主題百匯：篇章結構·閱讀測驗',
       '主題百匯：克漏字',
+      '英文文法總複習講義',
       '英文字彙王: 核心單字2001~ 4000',
       '英文字彙王: 核心單字4001~ 6000',
     ],
@@ -243,11 +244,15 @@ test('manual added-item selectors expose all newly mapped lectures', () => {
   assert.match(readingOptions(''), /<optgroup label="課外補充">/);
   assert.match(readingOptions(''), /<option value="主題百匯：篇章結構·閱讀測驗"/);
   assert.match(readingOptions(''), /<option value="英文字彙王: 核心單字4001~ 6000"/);
+  const readingExamGroup = readingOptions('').match(/<optgroup label="學測">([\s\S]*?)<\/optgroup>/)?.[1] ?? '';
+  assert.match(readingExamGroup, /<option value="英文文法總複習講義"/);
   assert.doesNotMatch(readingOptions(''), /新增講義|其他英文項目/);
   assert.match(reviewEnglishOptions(''), /<option value="大考英聽A攻略"/);
   assert.match(reviewEnglishOptions(''), /<option value="Azar英文文法（中階）"/);
   assert.match(reviewEnglishOptions(''), /<optgroup label="學測">/);
   assert.match(reviewEnglishOptions(''), /<optgroup label="課外補充">/);
+  const reviewExamGroup = reviewEnglishOptions('').match(/<optgroup label="學測">([\s\S]*?)<\/optgroup>/)?.[1] ?? '';
+  assert.match(reviewExamGroup, /<option value="英文文法總複習講義"/);
   assert.doesNotMatch(reviewEnglishOptions(''), /新增講義|其他英文項目/);
 });
 

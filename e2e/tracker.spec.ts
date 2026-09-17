@@ -44,6 +44,8 @@ test('material progress only shows checked materials and keeps the selection', a
   await expect(page.locator('#materialSelectionList .material-selection-group > h3')).toHaveText(['學測', '其他']);
   await expect(page.locator('[data-material-group="english-exam"]')).toContainText('學測週計畫');
   await expect(page.locator('[data-material-group="english-exam"]')).toContainText('混合題30篇實戰演練');
+  await expect(page.locator('[data-material-group="english-exam"]')).toContainText('英文文法總複習講義');
+  await expect(page.locator('[data-material-group="english-other"]')).not.toContainText('英文文法總複習講義');
   await expect(page.locator('[data-material-group="english-other"]')).toContainText('Essential Grammar in Use');
 
   await page.getByRole('tab', { name: '自然' }).click();
