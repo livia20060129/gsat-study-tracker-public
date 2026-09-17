@@ -199,7 +199,7 @@ function canonicalMathBook(value: string): string {
 
 function canonicalMathMaterial(value: string): string {
   const text = normalized(value).replace(/\s+/g, '');
-  return ['新大滿貫', '教學講義', '智慧型', '新關鍵', '複習週記'].find(material => text.includes(material)) ?? normalized(value);
+  return ['對話式複習講義', '對話式', '新大滿貫', '教學講義', '智慧型', '新關鍵', '複習週記'].find(material => text.includes(material)) ?? normalized(value);
 }
 
 function mathHeading(title: string, description: string): { title: string; book: string } | null {
@@ -488,7 +488,7 @@ export function parseCalendarTask(row: CalendarTaskRow): ParsedCalendarTask {
   const structuredMathBook = canonicalMathBook(note.book || (identifiedLecture?.kind === 'math' ? identifiedLecture.book : ''));
   const structuredMathNote = note.hasStandardFields
     && Boolean(structuredMathBook)
-    && ['教學講義', '智慧型', '新關鍵', '新大滿貫', '複習週記'].includes(structuredMathMaterial);
+    && ['對話式', '對話式複習講義', '教學講義', '智慧型', '新關鍵', '新大滿貫', '複習週記'].includes(structuredMathMaterial);
   if (row.category === 'math' || parsedMathHeading || structuredMathNote || identifiedLecture?.kind === 'math') {
     const legacyProgress = description.match(/(?:【|\[)?\s*單元進度\s*(?:】|\])?\s*[:：]?\s*(\d+)\s*\/\s*(\d+)/);
     const [structuredProgress, structuredTotal] = note.pageRange

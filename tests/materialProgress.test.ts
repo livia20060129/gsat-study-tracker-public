@@ -7,6 +7,10 @@ import {
   readMaterialProgressRecords,
 } from '../src/study/materialProgress.ts';
 import { PHYSICS_COMEBACK_PAGE_MAP } from '../src/data/lecturePageMaps.ts';
+import {
+  DIALOGUE_REVIEW_12_PAGE_MAP,
+  DIALOGUE_REVIEW_34_PAGE_MAP,
+} from '../src/data/mathMaterialPageMaps.ts';
 import type { StudyItem, StudyRecord } from '../src/types.ts';
 
 function item(overrides: Partial<StudyItem> = {}): StudyItem {
@@ -48,6 +52,51 @@ test('reads a recorded math range from a grouped child without filling untouched
   assert.equal(math.recorded, 1);
   assert.match(math.segments.find(segment => segment.recorded)?.label ?? '', /多項式及其運算/);
   assert.equal(math.segments.find(segment => segment.recorded)?.completionPercent, 71);
+});
+
+test('adds all four Dialogue split books and the two review books to material progress', () => {
+  const rows = materialProgressRows([]);
+  assert.deepEqual(
+    rows.filter(row => row.id.startsWith('math:對話式:')).map(row => row.id),
+    ['math:對話式:1', 'math:對話式:2', 'math:對話式:3A', 'math:對話式:4A'],
+  );
+  assert.ok(rows.some(row => row.id === 'math:對話式複習講義:1~2'));
+  assert.ok(rows.some(row => row.id === 'math:對話式複習講義:3A~4A'));
+});
+
+test('uses the scanned Dialogue review contents through the final textbook pages', () => {
+  assert.deepEqual(DIALOGUE_REVIEW_12_PAGE_MAP, [
+    [1, 20, '數與式'],
+    [21, 45, '直線與圓'],
+    [46, 72, '多項式'],
+    [73, 107, '數列級數與數據分析'],
+    [108, 139, '排列組合與機率'],
+    [140, 164, '三角比的定義及其性質'],
+  ]);
+  assert.deepEqual(DIALOGUE_REVIEW_34_PAGE_MAP, [
+    [1, 25, '三角函數'],
+    [26, 52, '指數函數與對數函數'],
+    [53, 85, '平面向量'],
+    [86, 112, '空間向量'],
+    [113, 136, '空間中的平面與直線'],
+    [137, 155, '條件機率'],
+    [156, 188, '矩陣'],
+  ]);
+});
+
+test('records Dialogue review pages against the correct unit boundary', () => {
+  const mathItem = item({
+    id: 'dialogue-review-boundary',
+    type: 'mathLecture',
+    done: true,
+    f: { material: '對話式複習講義', book: '1～2冊', start: '20', end: '21' },
+  });
+  const row = materialProgressRows([record([mathItem])]).find(entry => entry.id === 'math:對話式複習講義:1~2');
+  assert.ok(row);
+  assert.deepEqual(row.segments.filter(segment => segment.recorded).map(segment => segment.label), [
+    '數與式（p.1–20）',
+    '直線與圓（p.21–45）',
+  ]);
 });
 
 test('uses the printed New Key books 1-2 page boundaries through the final p.191', () => {

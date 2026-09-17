@@ -16,7 +16,12 @@ import {
   AZAR_GRAMMAR_SECTIONS,
   isAzarGrammarBookTitle,
 } from '../data/azarGrammar.ts';
-import { NEWKEY_12_PAGE_MAP, NEWKEY_34_PAGE_MAP } from '../data/mathMaterialPageMaps.ts';
+import {
+  DIALOGUE_REVIEW_12_PAGE_MAP,
+  DIALOGUE_REVIEW_34_PAGE_MAP,
+  NEWKEY_12_PAGE_MAP,
+  NEWKEY_34_PAGE_MAP,
+} from '../data/mathMaterialPageMaps.ts';
 import {
   CHEMISTRY_NAVIGATOR_PAGE_MAP,
   MATH_GRAND_SLAM_PAGE_MAP,
@@ -246,6 +251,9 @@ const MATERIAL_DEFINITIONS: MaterialDefinition[] = [
   bookDefinition(ENGLISH_WEEKLY_PLAN_BOOK),
   bookDefinition(ENGLISH_MIXED_30_BOOK),
   ...Object.entries(TEACHING_MATH_PAGE_MAP).map(([book, rows]) => mathDefinition('教學講義', book, rows)),
+  ...Object.entries(TEACHING_MATH_PAGE_MAP).map(([book, rows]) => mathDefinition('對話式', book, rows)),
+  mathDefinition('對話式複習講義', '1~2', DIALOGUE_REVIEW_12_PAGE_MAP),
+  mathDefinition('對話式複習講義', '3A~4A', DIALOGUE_REVIEW_34_PAGE_MAP),
   mathDefinition('複習週記', '', REVIEW_WEEKLY_PAGE_MAP),
   mathDefinition('智慧型', '1~2', SMART_12_PAGE_MAP),
   mathDefinition('智慧型', '3A~4A', SMART_34_PAGE_MAP),
@@ -284,6 +292,8 @@ function hasRecordedActivity(item: StudyItem): boolean {
 
 function normalizeMathMaterial(value: unknown): string {
   const text = String(value ?? '').replace(/\s+/g, '');
+  if (text.includes('對話式複習講義')) return '對話式複習講義';
+  if (text.includes('對話式')) return '對話式';
   if (text.includes('教學講義')) return '教學講義';
   if (text.includes('複習週記')) return '複習週記';
   if (text.includes('智慧型')) return '智慧型';

@@ -21,6 +21,16 @@ const SUBJECT_LABELS: Record<MaterialProgressSubject, string> = {
 };
 
 const NATURAL_SUBJECT_ORDER = ['物理', '化學', '地科', '生物'] as const;
+const ENGLISH_EXAM_MATERIAL_IDS = new Set([
+  'english:ace',
+  'english:listening',
+  'book:學測週計畫',
+  'book:混合題30篇實戰演練',
+  'book:主題百匯：篇章結構·閱讀測驗',
+  'book:主題百匯：克漏字',
+  'english:vocabulary-2001-4000',
+  'english:vocabulary-4001-6000',
+]);
 
 let activeSubject = normalizedProgressSubject(location.hash.replace(/^#/, ''));
 let rows: MaterialProgressRow[] = [];
@@ -98,22 +108,47 @@ function renderMaterialOption(row: MaterialProgressRow): HTMLElement {
   return label;
 }
 
+function renderMaterialGroup(label: string, groupRows: MaterialProgressRow[], dataKey?: string): HTMLElement[] {
+  if (!groupRows.length) return [];
+  const group = document.createElement('section');
+  group.className = 'material-selection-group';
+  group.dataset.materialGroup = dataKey ?? label;
+  const title = document.createElement('h3');
+  title.textContent = label;
+  const options = document.createElement('div');
+  options.className = 'material-selection-sublist';
+  options.replaceChildren(...groupRows.map(renderMaterialOption));
+  group.append(title, options);
+  return [group];
+}
+
 function renderMaterialOptions(availableRows: MaterialProgressRow[]): HTMLElement[] {
-  if (activeSubject !== 'natural') return availableRows.map(renderMaterialOption);
-  return NATURAL_SUBJECT_ORDER.flatMap(subject => {
-    const subjectRows = availableRows.filter(row => naturalSubject(row) === subject);
-    if (!subjectRows.length) return [];
-    const group = document.createElement('section');
-    group.className = 'material-selection-group';
-    group.dataset.naturalSubject = subject;
-    const title = document.createElement('h3');
-    title.textContent = subject;
-    const options = document.createElement('div');
-    options.className = 'material-selection-sublist';
-    options.replaceChildren(...subjectRows.map(renderMaterialOption));
-    group.append(title, options);
-    return [group];
-  });
+  if (activeSubject === 'math') {
+    const split = availableRows.filter(row => /^math:(?:對話式|教學講義):/.test(row.id));
+    const review = availableRows.filter(row => !split.includes(row));
+    return [
+      ...renderMaterialGroup('分冊講義', split, 'math-split'),
+      ...renderMaterialGroup('複習講義', review, 'math-review'),
+    ];
+  }
+  if (activeSubject === 'english') {
+    const exam = availableRows.filter(row => ENGLISH_EXAM_MATERIAL_IDS.has(row.id));
+    const other = availableRows.filter(row => !ENGLISH_EXAM_MATERIAL_IDS.has(row.id));
+    return [
+      ...renderMaterialGroup('學測', exam, 'english-exam'),
+      ...renderMaterialGroup('其他', other, 'english-other'),
+    ];
+  }
+  if (activeSubject === 'natural') {
+    return NATURAL_SUBJECT_ORDER.flatMap(subject => {
+      const subjectRows = availableRows.filter(row => naturalSubject(row) === subject);
+      return renderMaterialGroup(subject, subjectRows, `natural-${subject}`).map(group => {
+        group.dataset.naturalSubject = subject;
+        return group;
+      });
+    });
+  }
+  return availableRows.map(renderMaterialOption);
 }
 
 function setupAnimatedMaterialsPanel(): void {

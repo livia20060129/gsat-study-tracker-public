@@ -41,7 +41,12 @@ import { LatestTaskQueue } from './storage/latestTaskQueue';
 import { withCrossTabLock } from './storage/crossTabLock';
 import { CURRENT_STUDY_RECORD_SCHEMA_VERSION } from './storage/studyRecordCodec';
 import { CALENDAR_MATH_PLAN, CALENDAR_WEEK_MATH_TARGETS } from './data/mathCalendar';
-import { NEWKEY_12_PAGE_MAP, NEWKEY_34_PAGE_MAP } from './data/mathMaterialPageMaps';
+import {
+  DIALOGUE_REVIEW_12_PAGE_MAP,
+  DIALOGUE_REVIEW_34_PAGE_MAP,
+  NEWKEY_12_PAGE_MAP,
+  NEWKEY_34_PAGE_MAP,
+} from './data/mathMaterialPageMaps';
 import {
   CHEMISTRY_NAVIGATOR_MATERIAL,
   MATH_GRAND_SLAM_MATERIAL,
@@ -2403,18 +2408,19 @@ function manualOptions(values,current,labelFor){
  return values.map(function(value){return'<option value="'+esc(value)+'"'+selected(value,current)+'>'+esc(labelFor?labelFor(value):value)+'</option>'}).join('');
 }
 function mathMaterialOptions(v){
- return'<option value="">請選擇</option>'+manualOptionGroup('分冊講義',['教學講義'],v)+manualOptionGroup('複習講義',['智慧型','新關鍵',MATH_GRAND_SLAM_MATERIAL,'複習週記'],v,function(value){return value===MATH_GRAND_SLAM_MATERIAL?value+'（數學A）':value});
+ return'<option value="">請選擇</option>'+manualOptionGroup('分冊講義',['對話式','教學講義'],v)+manualOptionGroup('複習講義',['對話式複習講義','智慧型','新關鍵',MATH_GRAND_SLAM_MATERIAL,'複習週記'],v,function(value){return value===MATH_GRAND_SLAM_MATERIAL?value+'（數學A）':value});
 }
 function isCalendarMathMaterialLocked(x){
  return !!(x&&x.f&&x.f.material&&x.f.calendarMathMaterialLocked===true&&(x.type==='mathStudy'||x.type==='mathLecture'||x.type==='mathPractice'));
 }
 function mathBookOptions(material,v){
- var a=material==='教學講義'?['1','2','3A','4A']:((material==='智慧型'||material==='新關鍵')?['1~2','3A~4A']:(material==='新大滿貫'?['A']:[]));
+ var a=(material==='教學講義'||material==='對話式')?['1','2','3A','4A']:((material==='智慧型'||material==='新關鍵'||material==='對話式複習講義')?['1~2','3A~4A']:(material==='新大滿貫'?['A']:[]));
  return'<option value="">請選擇</option>'+a.map(function(x){return'<option value="'+x+'"'+selected(x,v)+'>'+(x==='1~2'?'1～2':x==='3A~4A'?'3A～4A':x==='A'?'數學A':x)+'</option>'}).join('');
 }
 function mathAutoSections(f){
  if(!f||!f.material)return[];
- if(f.material==='教學講義'&&TEACHING_MATH_PAGE_MAP[f.book])return ranges(TEACHING_MATH_PAGE_MAP[f.book],f.start,f.end);
+ if((f.material==='教學講義'||f.material==='對話式')&&TEACHING_MATH_PAGE_MAP[f.book])return ranges(TEACHING_MATH_PAGE_MAP[f.book],f.start,f.end);
+ if(f.material==='對話式複習講義')return ranges(f.book==='1~2'?DIALOGUE_REVIEW_12_PAGE_MAP:(f.book==='3A~4A'?DIALOGUE_REVIEW_34_PAGE_MAP:[]),f.start,f.end);
  if(f.material==='複習週記')return ranges(REVIEW_WEEKLY_PAGE_MAP,f.start,f.end);
  if(f.material==='智慧型')return ranges(f.book==='1~2'?SMART_12_PAGE_MAP:(f.book==='3A~4A'?SMART_34_PAGE_MAP:[]),f.start,f.end);
  if(f.material==='新關鍵')return ranges(f.book==='1~2'?NEWKEY_12_PAGE_MAP:(f.book==='3A~4A'?NEWKEY_34_PAGE_MAP:[]),f.start,f.end);
@@ -2423,13 +2429,13 @@ function mathAutoSections(f){
 }
 function applyMathAuto(f){
  var a=mathAutoSections(f);if(!f)return;
- if(f.material==='教學講義'){f.unit=unique(a.map(function(z){return z.row[2]})).join('／');f.chapter=unique(a.map(function(z){return z.row[3]})).join('／')}
+ if(f.material==='教學講義'||f.material==='對話式'){f.unit=unique(a.map(function(z){return z.row[2]})).join('／');f.chapter=unique(a.map(function(z){return z.row[3]})).join('／')}
  else if(f.material==='複習週記'){f.unit='';f.chapter=unique(a.map(function(z){return z.row[2]})).join('／')}
- else if(f.material==='智慧型'||f.material==='新關鍵'||f.material==='新大滿貫'){f.unit=unique(a.map(function(z){return z.row[2]})).join('／');f.chapter=''}
+ else if(f.material==='對話式複習講義'||f.material==='智慧型'||f.material==='新關鍵'||f.material==='新大滿貫'){f.unit=unique(a.map(function(z){return z.row[2]})).join('／');f.chapter=''}
 }
 function mathAutoText(f){
  var a=mathAutoSections(f);
- if(f.material==='教學講義')return rangeText(a,function(r){return r[2]+'：'+r[3]});
+ if(f.material==='教學講義'||f.material==='對話式')return rangeText(a,function(r){return r[2]+'：'+r[3]});
  return rangeText(a,function(r){return r[2]});
 }
 function renderMathFields(x,reviewMode){
@@ -2719,13 +2725,18 @@ function applyChineseItemSelection(item,value){
  }
  apply(item);return{kind:item.f.kind,book:item.f.book}
 }
+function englishMaterialOptionGroups(values,v){
+ var examTitles=[ENGLISH_WEEKLY_PLAN_BOOK,ENGLISH_MIXED_30_BOOK,'ACE Reading',LISTENING_TEST_BOOK_TITLE,ENGLISH_TOPIC_READING_BOOK,ENGLISH_TOPIC_CLOZE_BOOK,'英文字彙王: 核心單字2001~ 4000','英文字彙王: 核心單字4001~ 6000'];
+ var exam=values.filter(function(title){return examTitles.indexOf(title)>=0});
+ var supplemental=values.filter(function(title){return examTitles.indexOf(title)<0});
+ return manualOptionGroup('學測',exam,v)+manualOptionGroup('課外補充',supplemental,v);
+}
 function readingOptions(v){
- var added=[ENGLISH_WEEKLY_PLAN_BOOK,ENGLISH_MIXED_30_BOOK],other=EXTRA_READING_TITLES.filter(function(title){return added.indexOf(title)<0});
- return'<option value="">請選擇</option>'+manualOptions(added.concat(other),v);
+ return'<option value="">請選擇</option>'+englishMaterialOptionGroups(EXTRA_READING_TITLES,v);
 }
 function reviewEnglishOptions(v){
- var added=[ENGLISH_WEEKLY_PLAN_BOOK,ENGLISH_MIXED_30_BOOK],other=['ACE Reading',LISTENING_TEST_BOOK_TITLE,AZAR_GRAMMAR_BOOK_TITLE,'英文寫作測驗','英文文法總複習講義','Prism Reading'];
- return'<option value="">請選擇</option>'+manualOptions(added.concat(other),v);
+ var values=[ENGLISH_WEEKLY_PLAN_BOOK,ENGLISH_MIXED_30_BOOK,'ACE Reading',LISTENING_TEST_BOOK_TITLE,AZAR_GRAMMAR_BOOK_TITLE,'英文寫作測驗','英文文法總複習講義','Prism Reading'];
+ return'<option value="">請選擇</option>'+englishMaterialOptionGroups(values,v);
 }
 function prismLevel(f){if(f.level)return String(f.level);var m=String(f.title||'').match(/^Prism Reading ([234])$/);return m?m[1]:''}
 function prismCefr(v){return String(v)==='2'?'B1':String(v)==='3'?'B2':String(v)==='4'?'C1':'尚未選擇'}

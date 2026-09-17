@@ -177,6 +177,7 @@ test('manual added-item selectors expose all newly mapped lectures', () => {
     MATH_GRAND_SLAM_MATERIAL: '新大滿貫',
     manualOptionGroup,
   });
+  const mathBookOptions = runtimeFunction<(material: string, current: string) => string>('mathBookOptions', { selected });
   const manualOptions = runtimeFunction<(values: string[], current: string, labelFor?: (value: string) => string) => string>(
     'manualOptions',
     { selected, esc },
@@ -187,24 +188,50 @@ test('manual added-item selectors expose all newly mapped lectures', () => {
     PHYSICS_COMEBACK_MATERIAL: '逆轉勝',
     manualOptions,
   });
-  const readingOptions = runtimeFunction<(current: string) => string>('readingOptions', {
+  const englishMaterialOptionGroups = runtimeFunction<(values: string[], current: string) => string>('englishMaterialOptionGroups', {
     ENGLISH_WEEKLY_PLAN_BOOK: '學測週計畫',
     ENGLISH_MIXED_30_BOOK: '混合題30篇實戰演練',
-    EXTRA_READING_TITLES: ['雜誌', '學測週計畫', '混合題30篇實戰演練'],
-    manualOptions,
+    LISTENING_TEST_BOOK_TITLE: '大考英聽A攻略',
+    ENGLISH_TOPIC_READING_BOOK: '主題百匯：篇章結構·閱讀測驗',
+    ENGLISH_TOPIC_CLOZE_BOOK: '主題百匯：克漏字',
+    manualOptionGroup,
+  });
+  const readingOptions = runtimeFunction<(current: string) => string>('readingOptions', {
+    EXTRA_READING_TITLES: [
+      '雜誌',
+      '學測週計畫',
+      '混合題30篇實戰演練',
+      'ACE Reading',
+      '大考英聽A攻略',
+      '主題百匯：篇章結構·閱讀測驗',
+      '主題百匯：克漏字',
+      '英文字彙王: 核心單字2001~ 4000',
+      '英文字彙王: 核心單字4001~ 6000',
+    ],
+    englishMaterialOptionGroups,
   });
   const reviewEnglishOptions = runtimeFunction<(current: string) => string>('reviewEnglishOptions', {
     ENGLISH_WEEKLY_PLAN_BOOK: '學測週計畫',
     ENGLISH_MIXED_30_BOOK: '混合題30篇實戰演練',
     LISTENING_TEST_BOOK_TITLE: '大考英聽A攻略',
     AZAR_GRAMMAR_BOOK_TITLE: 'Azar英文文法（中階）',
-    manualOptions,
+    englishMaterialOptionGroups,
   });
 
-  assert.match(mathOptions(''), /<optgroup label="分冊講義"><option value="教學講義"/);
+  assert.match(mathOptions(''), /<optgroup label="分冊講義"><option value="對話式"/);
+  assert.match(mathOptions(''), /<option value="教學講義"/);
   assert.match(mathOptions(''), /<optgroup label="複習講義">/);
+  assert.match(mathOptions(''), /<option value="對話式複習講義"/);
   assert.match(mathOptions(''), /新大滿貫（數學A）/);
   assert.doesNotMatch(mathOptions(''), /新增講義|其他講義/);
+  assert.deepEqual(
+    [...mathBookOptions('對話式', '').matchAll(/<option value="([^"]+)"/g)].map(match => match[1]).filter(Boolean),
+    ['1', '2', '3A', '4A'],
+  );
+  assert.deepEqual(
+    [...mathBookOptions('對話式複習講義', '').matchAll(/<option value="([^"]+)"/g)].map(match => match[1]).filter(Boolean),
+    ['1~2', '3A~4A'],
+  );
   assert.match(scienceOptions('化學', ''), /<option value="領航"/);
   assert.match(scienceOptions('物理', ''), /<option value="優勢"/);
   assert.match(scienceOptions('物理', ''), /<option value="逆轉勝"/);
@@ -212,10 +239,16 @@ test('manual added-item selectors expose all newly mapped lectures', () => {
   assert.match(scienceOptions('', ''), /請先選擇科目/);
   assert.match(readingOptions(''), /<option value="學測週計畫"/);
   assert.match(readingOptions(''), /<option value="混合題30篇實戰演練"/);
-  assert.doesNotMatch(readingOptions(''), /<optgroup|新增講義|其他英文項目/);
+  assert.match(readingOptions(''), /<optgroup label="學測">/);
+  assert.match(readingOptions(''), /<optgroup label="課外補充">/);
+  assert.match(readingOptions(''), /<option value="主題百匯：篇章結構·閱讀測驗"/);
+  assert.match(readingOptions(''), /<option value="英文字彙王: 核心單字4001~ 6000"/);
+  assert.doesNotMatch(readingOptions(''), /新增講義|其他英文項目/);
   assert.match(reviewEnglishOptions(''), /<option value="大考英聽A攻略"/);
   assert.match(reviewEnglishOptions(''), /<option value="Azar英文文法（中階）"/);
-  assert.doesNotMatch(reviewEnglishOptions(''), /<optgroup|新增講義|其他英文項目/);
+  assert.match(reviewEnglishOptions(''), /<optgroup label="學測">/);
+  assert.match(reviewEnglishOptions(''), /<optgroup label="課外補充">/);
+  assert.doesNotMatch(reviewEnglishOptions(''), /新增講義|其他英文項目/);
 });
 
 test('manual natural lecture is cleared when the subject no longer matches', () => {

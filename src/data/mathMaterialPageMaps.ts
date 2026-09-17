@@ -36,3 +36,34 @@ export const NEWKEY_34_PAGE_MAP = [
   [141, 153, '條件機率與貝氏定理'],
   [154, 187, '矩陣'],
 ] as const satisfies readonly MathMaterialPageMapRow[];
+
+/**
+ * 對話式高中數學 1～2 冊學測複習講義。
+ *
+ * Unit starts and the final p.164 are taken from the scanned table of contents
+ * and the last page before the separate after-class exercise book.
+ */
+export const DIALOGUE_REVIEW_12_PAGE_MAP = [
+  [1, 20, '數與式'],
+  [21, 45, '直線與圓'],
+  [46, 72, '多項式'],
+  [73, 107, '數列級數與數據分析'],
+  [108, 139, '排列組合與機率'],
+  [140, 164, '三角比的定義及其性質'],
+] as const satisfies readonly MathMaterialPageMapRow[];
+
+/**
+ * 對話式高中數學 3A～4A 冊學測複習講義。
+ *
+ * Unit starts and the final p.188 are taken from the scanned table of contents
+ * and the last page before the separate after-class exercise book.
+ */
+export const DIALOGUE_REVIEW_34_PAGE_MAP = [
+  [1, 25, '三角函數'],
+  [26, 52, '指數函數與對數函數'],
+  [53, 85, '平面向量'],
+  [86, 112, '空間向量'],
+  [113, 136, '空間中的平面與直線'],
+  [137, 155, '條件機率'],
+  [156, 188, '矩陣'],
+] as const satisfies readonly MathMaterialPageMapRow[];

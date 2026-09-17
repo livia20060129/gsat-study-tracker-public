@@ -26,6 +26,32 @@ test('parses an Essential Grammar unit range into individual units', () => {
   if (parsed.kind === 'essentialGrammar') assert.deepEqual(parsed.units, [12, 13, 14]);
 });
 
+test('recognizes Dialogue split and review lecture versions from standard Calendar notes', () => {
+  const split = parseCalendarTask(row(
+    '數學｜對話式第1冊',
+    '【講義版本】對話式\n【冊別】1\n【頁碼範圍】77-98',
+    'math',
+  ));
+  const review = parseCalendarTask(row(
+    '數學｜對話式複習講義',
+    '【講義版本】對話式複習講義\n【冊別】3A～4A\n【頁碼範圍】156-188',
+    'math',
+  ));
+
+  assert.equal(split.kind, 'math');
+  if (split.kind === 'math') {
+    assert.equal(split.material, '對話式');
+    assert.equal(split.book, '1');
+    assert.deepEqual([split.startPage, split.endPage], [77, 98]);
+  }
+  assert.equal(review.kind, 'math');
+  if (review.kind === 'math') {
+    assert.equal(review.material, '對話式複習講義');
+    assert.equal(review.book, '3A~4A');
+    assert.deepEqual([review.startPage, review.endPage], [156, 188]);
+  }
+});
+
 test('parses 大考英聽A攻略 Test 1-10 as the ACE-style test template', () => {
   const single = parseCalendarTask(row('大考英聽A攻略｜Test 3'));
   const range = parseCalendarTask(row('英文｜大考英聽A攻略｜Test 8-12'));
