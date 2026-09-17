@@ -1,6 +1,6 @@
 # GSAT Study Tracker
 
-目前版本：**公開版 v171.6.0-public.7**
+目前版本：**公開版 v171.6.0-public.8**
 
 公開版學測讀書追蹤器，整合 Google Calendar 唯讀排程、手動新增項目、Supabase 跨裝置同步、計時、完成率、教材進度與學習總結。
 
@@ -40,7 +40,7 @@
 
 ### 3. Google Calendar 唯讀整合
 
-- 使用 `calendar.readonly` 讀取行程，不會修改或刪除 Google Calendar 原始資料。
+- 使用權限較小的 `calendar.events.readonly` 讀取行程，不會修改或刪除 Google Calendar 原始資料。
 - 已知模板依原有欄位建立；其他行程只有在能辨識國文、英文、數學、自然細科或社會科目時才加入 Tracker，完全無法判斷科目的行程會忽略。`本週項目｜名稱` 加入本週項目，Calendar 補做仍加入今日項目。
 - 同步包含新增、修改與刪除，避免已刪除的 Calendar 行程留在 Tracker。
 - GitHub Actions 可每小時呼叫後端同步，網站不必保持開啟。
@@ -87,11 +87,15 @@
 2. 建立 OAuth 2.0 Web application。
 3. OAuth redirect URI 設為：
    `https://xcpnxkkixsxzgbqsiuud.supabase.co/functions/v1/google-calendar-callback`
-4. OAuth consent screen 使用唯讀 Calendar scope。
+4. OAuth consent screen 使用 `https://www.googleapis.com/auth/calendar.events.readonly`。
+5. OAuth 品牌設定統一使用：
+   - 首頁：`https://gsat-study-tracker.liviayeh.dev/`
+   - 隱私權政策：`https://gsat-study-tracker.liviayeh.dev/privacy`
+   - 服務條款：`https://gsat-study-tracker.liviayeh.dev/terms`
 
 #### B. Vite 前端環境變數
 
-在 GitHub repository 的 **Settings → Secrets and variables → Actions → Variables** 新增：
+在 GitHub repository 的 **Settings → Secrets and variables → Actions → Variables** 與 Cloudflare Workers Builds 的 **Settings → Builds → Variables and secrets** 都新增：
 
 ```text
 VITE_GOOGLE_CLIENT_ID=你的 Google OAuth Web Client ID
@@ -106,7 +110,7 @@ GOOGLE_CLIENT_ID=同一個 Google OAuth Client ID
 GOOGLE_CLIENT_SECRET=Google OAuth Client Secret
 GOOGLE_REDIRECT_URI=https://xcpnxkkixsxzgbqsiuud.supabase.co/functions/v1/google-calendar-callback
 GOOGLE_STATE_SECRET=高熵隨機字串
-APP_RETURN_URL=https://livia20060129.github.io/gsat-study-tracker/
+APP_RETURN_URL=https://gsat-study-tracker.liviayeh.dev/
 CALENDAR_CRON_SECRET=32 字元以上隨機字串
 ```
 
@@ -116,11 +120,11 @@ CALENDAR_CRON_SECRET=32 字元以上隨機字串
 
 ```text
 Site URL
-https://livia20060129.github.io/gsat-study-tracker/
+https://gsat-study-tracker.liviayeh.dev/
 
 Redirect URLs
-https://livia20060129.github.io/gsat-study-tracker/
-https://livia20060129.github.io/gsat-study-tracker/**
+https://gsat-study-tracker.liviayeh.dev/
+https://gsat-study-tracker.liviayeh.dev/**
 ```
 
 忘記密碼與 Email 驗證都會回到上述正式網址。
@@ -172,6 +176,7 @@ Public Supabase Project Ref 只由已納入測試的 `supabase/config.toml` 提�
 
 ## V. 此版本重要更新（v171.x.xx）
 
+- **v171.6.0-public.8**：公開版 Google Calendar OAuth 改用權限較小的 `calendar.events.readonly`，同步更新隱私權政策、Supabase 預設值與公開網域設定說明，並補上 OAuth 設定一致性測試。
 - **v171.6.0-public.7**：GitHub Pages artifact 改用官方固定名稱 `github-pages`，避免只重新執行失敗的部署 job 時，`github.run_attempt` 已增加但 build artifact 仍沿用前一次名稱，造成部署找不到成品。
 - **v171.6.0-public.1**：建立與自用版分離的公開版；移除所有內建日期／星期排程與硬編碼 Calendar fallback，只保留 Google Calendar 實際同步及手動新增項目。教材進度頁新增「我的教材」科目滑塊與勾選管理，進度圖只顯示已選教材。
 - **v171.5.14**：補上 Cloudflare Workers 靜態資產部署設定，固定 Node 22 與 Wrangler 版本，直接部署 Vite 產生的 `dist`，不再讓 Wrangler 在 CI 中嘗試自動改寫 Vite 設定而失敗。

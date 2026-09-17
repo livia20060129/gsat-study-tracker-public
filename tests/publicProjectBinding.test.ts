@@ -8,6 +8,8 @@ const runtime = readFileSync(new URL('../src/legacy-app.ts', import.meta.url), '
 const calendarWorkflow = readFileSync(new URL('../.github/workflows/calendar-sync.yml', import.meta.url), 'utf8');
 const deployWorkflow = readFileSync(new URL('../.github/workflows/deploy.yml', import.meta.url), 'utf8');
 const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8');
+const calendarRuntime = readFileSync(new URL('../supabase/functions/_shared/googleCalendar.ts', import.meta.url), 'utf8');
+const privacyPolicy = readFileSync(new URL('../public/privacy.html', import.meta.url), 'utf8');
 
 function capture(source: string, pattern: RegExp, label: string): string {
   const value = source.match(pattern)?.[1];
@@ -39,4 +41,19 @@ test('Pages artifact keeps the official stable name across failed-job reruns', (
   assert.match(deployWorkflow, /uses: actions\/deploy-pages@v4/);
   assert.doesNotMatch(deployWorkflow, /github-pages-\$\{\{\s*github\.run_attempt\s*\}\}/);
   assert.doesNotMatch(deployWorkflow, /artifact_name:/);
+});
+
+test('public OAuth documentation and runtime use the same least-privilege Calendar scope', () => {
+  const expectedScope = 'https://www.googleapis.com/auth/calendar.events.readonly';
+  assert.match(calendarRuntime, new RegExp(`CALENDAR_SCOPE = '${expectedScope.replaceAll('.', '\\.')}'`));
+  assert.match(privacyPolicy, /calendar\.events\.readonly/);
+  assert.match(readme, /calendar\.events\.readonly/);
+  assert.doesNotMatch(`${calendarRuntime}\n${privacyPolicy}`, /auth\/calendar\.readonly|<code>calendar\.readonly<\/code>/);
+});
+
+test('public OAuth documentation points back to the public custom domain', () => {
+  assert.match(readme, /APP_RETURN_URL=https:\/\/gsat-study-tracker\.liviayeh\.dev\//);
+  assert.match(readme, /Site URL\s+https:\/\/gsat-study-tracker\.liviayeh\.dev\//);
+  assert.match(readme, /https:\/\/gsat-study-tracker\.liviayeh\.dev\/terms/);
+  assert.doesNotMatch(readme, /livia20060129\.github\.io\/gsat-study-tracker\//);
 });

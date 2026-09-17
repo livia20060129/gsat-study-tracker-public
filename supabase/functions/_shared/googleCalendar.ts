@@ -4,7 +4,7 @@ import { readableErrorMessage } from './functionResponse.ts';
 import { chunksOf, collectStringKeysetPages } from './keysetPagination.ts';
 import { classifyCalendarEvent } from './calendarClassification.ts';
 
-export const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
+export const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events.readonly';
 export const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',

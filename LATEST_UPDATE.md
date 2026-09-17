@@ -1,6 +1,14 @@
 # 最新更新
 
-版本：公開版 v171.6.0-public.7
+版本：公開版 v171.6.0-public.8
+
+## 公開版 Google OAuth 設定對齊
+
+- Calendar OAuth 改用權限較小的 `calendar.events.readonly`，與 Google Cloud 公開版專案設定一致。
+- 隱私權政策同步說明實際申請的權限與讀取內容。
+- Supabase 新連線的 scope 預設值改為 `calendar.events.readonly`。
+- README 全面改用公開網域 `gsat-study-tracker.liviayeh.dev`，並補上 Cloudflare 建置變數設定。
+- 新增公開版 OAuth scope 與正式網域防回歸測試。
 
 ## GitHub Pages 重新部署修復
 
@@ -56,4 +64,4 @@
 
 ## Commit 建議
 
-`fix(ci): keep the Pages artifact name stable across reruns`
+`fix(oauth): align the public Calendar scope and production URLs`
