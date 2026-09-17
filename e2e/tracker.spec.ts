@@ -16,10 +16,11 @@ test('material progress only shows checked materials and keeps the selection', a
   await expect(page).toHaveTitle('每日讀書完成度紀錄卡');
   await expect(page.getByRole('heading', { name: '我的教材' })).toBeVisible();
   const materialsPanel = page.locator('#materialsPanel');
-  await materialsPanel.locator('summary').click();
   await expect(materialsPanel).not.toHaveAttribute('open', '');
+  await expect(page.locator('#materialSelectionList')).toBeHidden();
   await materialsPanel.locator('summary').click();
   await expect(materialsPanel).toHaveAttribute('open', '');
+  await expect(page.locator('#materialSelectionList')).toBeVisible();
   await expect(page.locator('#materialProgressList .material-row')).toHaveCount(0);
 
   const firstMathMaterial = page.locator('#materialSelectionList input[type="checkbox"]').first();
@@ -30,6 +31,8 @@ test('material progress only shows checked materials and keeps the selection', a
   await page.reload();
   await expect(page.locator('#materialSelectionList input[type="checkbox"]').first()).toBeChecked();
   await expect(page.locator('#materialProgressList .material-row')).toHaveCount(1);
+  await materialsPanel.locator('summary').click();
+  await expect(materialsPanel).toHaveAttribute('open', '');
 
   await page.getByRole('tab', { name: '英文' }).click();
   await expect(page.locator('#materialProgressList .material-row')).toHaveCount(0);
