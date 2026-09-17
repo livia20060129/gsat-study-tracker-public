@@ -33,3 +33,10 @@ test('release workflow derives the project only from tested config.toml', () => 
   assert.match(deployWorkflow, /project_id="\$\(sed[^\n]*supabase\/config\.toml/);
   assert.match(deployWorkflow, /echo "SUPABASE_PROJECT_ID=\$\{project_id\}" >> "\$\{GITHUB_ENV\}"/);
 });
+
+test('Pages artifact keeps the official stable name across failed-job reruns', () => {
+  assert.match(deployWorkflow, /uses: actions\/upload-pages-artifact@v4/);
+  assert.match(deployWorkflow, /uses: actions\/deploy-pages@v4/);
+  assert.doesNotMatch(deployWorkflow, /github-pages-\$\{\{\s*github\.run_attempt\s*\}\}/);
+  assert.doesNotMatch(deployWorkflow, /artifact_name:/);
+});

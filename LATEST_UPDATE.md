@@ -1,6 +1,12 @@
 # 最新更新
 
-版本：公開版 v171.6.0-public.6
+版本：公開版 v171.6.0-public.7
+
+## GitHub Pages 重新部署修復
+
+- Pages artifact 改用 GitHub 官方固定名稱 `github-pages`，不再把名稱綁定 `github.run_attempt`。
+- 修正按「Re-run failed jobs」後，部署步驟找不到先前成功 build 所上傳 artifact 的問題。
+- Node 20 與 `punycode` 訊息皆為 Action 相依套件警告，不是本次部署失敗原因。
 
 ## Supabase Project Ref 單一來源
 
@@ -50,4 +56,4 @@
 
 ## Commit 建議
 
-`fix(public): use config.toml as the only Supabase project reference`
+`fix(ci): keep the Pages artifact name stable across reruns`

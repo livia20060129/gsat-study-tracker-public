@@ -1,6 +1,6 @@
 # GSAT Study Tracker
 
-目前版本：**公開版 v171.6.0-public.1**
+目前版本：**公開版 v171.6.0-public.7**
 
 公開版學測讀書追蹤器，整合 Google Calendar 唯讀排程、手動新增項目、Supabase 跨裝置同步、計時、完成率、教材進度與學習總結。
 
@@ -172,6 +172,7 @@ Public Supabase Project Ref 只由已納入測試的 `supabase/config.toml` 提�
 
 ## V. 此版本重要更新（v171.x.xx）
 
+- **v171.6.0-public.7**：GitHub Pages artifact 改用官方固定名稱 `github-pages`，避免只重新執行失敗的部署 job 時，`github.run_attempt` 已增加但 build artifact 仍沿用前一次名稱，造成部署找不到成品。
 - **v171.6.0-public.1**：建立與自用版分離的公開版；移除所有內建日期／星期排程與硬編碼 Calendar fallback，只保留 Google Calendar 實際同步及手動新增項目。教材進度頁新增「我的教材」科目滑塊與勾選管理，進度圖只顯示已選教材。
 - **v171.5.14**：補上 Cloudflare Workers 靜態資產部署設定，固定 Node 22 與 Wrangler 版本，直接部署 Vite 產生的 `dist`，不再讓 Wrangler 在 CI 中嘗試自動改寫 Vite 設定而失敗。
 - **v171.5.13**：完成勾選加入日期判斷。未延期的過期項目會記錄實際勾選日，未來項目不會提前留下日期；延期項目完成時會記錄延期完成日並同步原日期來源，排程重建後仍保留完成的延期卡。
