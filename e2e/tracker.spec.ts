@@ -229,6 +229,10 @@ test('learning summary uses one week/month control for the complete page', async
         { id: 'summary-english-writing', type: 'englishPractice', title: '英文寫作', done: true, minutes: '15', required: true, source: 'preset', f: { subject: '英文' } },
         { id: 'summary-english-grammar', type: 'englishPractice', title: '英文文法', done: true, minutes: '15', required: true, source: 'preset', f: { subject: '英文' } },
         { id: 'summary-english-vocabulary', type: 'englishPractice', title: '英文單字', done: true, minutes: '15', required: true, source: 'preset', f: { subject: '英文' } },
+        { id: 'summary-physics', type: 'scienceReview', title: '物理｜運動', done: true, minutes: '15', required: true, source: 'preset', f: { subject: '物理' } },
+        { id: 'summary-chemistry', type: 'scienceReview', title: '化學｜反應', done: true, minutes: '15', required: true, source: 'preset', f: { subject: '化學' } },
+        { id: 'summary-biology', type: 'scienceReview', title: '生物｜細胞', done: true, minutes: '15', required: true, source: 'preset', f: { subject: '生物' } },
+        { id: 'summary-earth', type: 'scienceReview', title: '地科｜地質', done: true, minutes: '15', required: true, source: 'preset', f: { subject: '地科' } },
       ],
     }));
   });
@@ -238,12 +242,21 @@ test('learning summary uses one week/month control for the complete page', async
   await expect(page.locator('#summaryCalendar .summary-day')).toHaveCount(7);
   await expect(page.locator('#calendarTitle')).toHaveText('週曆');
   await expect(page.locator('#wakePeriodLabel')).toHaveText('本週平均');
-  await expect(page.locator('#summarySubjectDistribution .summary-donut-center strong')).toHaveText('2.0');
+  await expect(page.locator('#summarySubjectDistribution .summary-donut-center strong')).toHaveText('3.0');
   await expect(page.locator('#summarySubjectDistribution .summary-donut-center span')).toHaveText('hr');
+  await expect(page.locator('[data-summary-subject="自然"]')).toHaveCount(1);
+  await expect(page.locator('[data-summary-subject="物理"], [data-summary-subject="化學"], [data-summary-subject="生物"], [data-summary-subject="地科"]')).toHaveCount(0);
   await page.locator('#summaryCalendar .summary-day.has-record [data-summary-day]').click();
   await expect(page.locator('#summaryCalendar .summary-day.is-tooltip-open .summary-day-tooltip')).toContainText('學習時間');
   await expect(page.locator('#summaryCalendar .summary-day.is-tooltip-open .summary-day-tooltip')).toContainText('完成率');
   await expect.poll(() => page.locator('#summaryCalendar .summary-day.is-tooltip-open .summary-day-tooltip').evaluate(node => getComputedStyle(node).opacity)).toBe('1');
+  await page.locator('[data-summary-subject="自然"]').click();
+  await expect(page.locator('#subjectTitle')).toHaveText('科目分配｜自然');
+  await expect(page.locator('#summarySubjectDistribution .summary-donut-detail-label')).toHaveText(['物', '化', '生', '地']);
+  await expect(page.locator('#summarySubjectDistribution .summary-natural-subject-name')).toHaveText(['物理', '化學', '生物', '地科']);
+  await expect(page.locator('#summarySubjectDistribution .summary-natural-item-name')).toHaveCount(4);
+  await page.locator('#summarySubjectDistribution [data-summary-back]').first().click();
+  await expect(page.locator('#subjectTitle')).toHaveText('科目分配');
   await page.locator('[data-summary-subject="英文"]').click();
   await expect(page.locator('#subjectTitle')).toHaveText('科目分配｜英文');
   await expect(page.locator('#summarySubjectDistribution .summary-subject-detail-name')).toHaveCount(5);

@@ -14,10 +14,14 @@ import {
   type SummaryMode,
 } from './study/learningSummary.ts';
 import {
+  NATURAL_SCIENCE_SUBJECTS,
   SUBJECT_TIME_COLORS,
   SUBJECT_TIME_SHORT_LABELS,
+  mergeNaturalScienceSubjectTime,
+  summarizeSubjectTime,
   subjectTimeArcPath,
   subjectTimeDonutSlices,
+  type SubjectTimeSummary,
   type SubjectTimeSubject,
 } from './study/subjectTime.ts';
 import type { StudyRecord } from './types.ts';
@@ -110,8 +114,8 @@ function summaryMoodColor(mood: string, opacity: number): string {
   return '';
 }
 
-function subjectDonutMarkup(summary: LearningPeriodSummary): string {
-  const arcs = subjectTimeDonutSlices(summary.subjectTime);
+function subjectDonutMarkup(subjectTime: SubjectTimeSummary): string {
+  const arcs = subjectTimeDonutSlices(subjectTime);
   const paths = arcs.map(slice => `<path class="summary-donut-slice" data-summary-subject-path="${slice.subject}" d="${subjectTimeArcPath(slice)}" fill="none" stroke="${slice.color}" tabindex="0" role="button" aria-label="${slice.subject} ${formatHours(slice.minutes)} 小時，占 ${slice.percent}%"></path>`).join('');
   const labels = arcs.map(slice => {
     const fontSize = slice.endPercent - slice.startPercent < 6 ? 9.5 : 13;
@@ -122,26 +126,68 @@ function subjectDonutMarkup(summary: LearningPeriodSummary): string {
       <circle class="summary-donut-track" cx="80" cy="80" r="56" fill="none"></circle>${paths}
     </svg>
     ${labels}
-    <div class="summary-donut-center"><strong>${formatHours(summary.subjectTime.totalMinutes)}</strong><span>hr</span></div>
+    <div class="summary-donut-center"><strong>${formatHours(subjectTime.totalMinutes)}</strong><span>hr</span></div>
   </div>`;
 }
 
 function detailDonutMarkup(
   totalMinutes: number,
-  slices: Array<{ label: string; minutes: number; percent: number; color: string }>,
+  slices: Array<{ label: string; minutes: number; percent: number; color: string; ringLabel?: string }>,
 ): string {
   let cursor = 0;
+  const labels: string[] = [];
   const paths = slices.map((slice, index) => {
     const startPercent = cursor;
     cursor = index === slices.length - 1 ? 100 : Math.min(100, cursor + slice.percent);
+    if (slice.ringLabel) {
+      const angle = ((startPercent + cursor) / 2) / 100 * Math.PI * 2 - Math.PI / 2;
+      const left = 50 + Math.cos(angle) * 35;
+      const top = 50 + Math.sin(angle) * 35;
+      labels.push(`<span class="summary-donut-detail-label" style="left:${left}%;top:${top}%">${escapeHtml(slice.ringLabel)}</span>`);
+    }
     return `<path class="summary-donut-slice is-detail" d="${subjectTimeArcPath({ startPercent, endPercent: cursor })}" fill="none" stroke="${slice.color}"><title>${escapeHtml(slice.label)}：${formatHours(slice.minutes)} 小時，占 ${slice.percent}%；點擊返回全部科目</title></path>`;
   }).join('');
   return `<div class="summary-donut-shell is-detail">
     <svg class="summary-donut-ring" data-summary-back viewBox="0 0 160 160" tabindex="0" role="button" aria-label="返回全部科目">
       <circle class="summary-donut-track" cx="80" cy="80" r="56" fill="none"></circle>${paths}
     </svg>
+    ${labels.join('')}
     <div class="summary-donut-center"><strong>${formatHours(totalMinutes)}</strong><span>hr</span></div>
   </div>`;
+}
+
+function naturalScienceDetail(summary: LearningPeriodSummary): {
+  totalMinutes: number;
+  donutSlices: Array<{ label: string; minutes: number; percent: number; color: string; ringLabel: string }>;
+  list: string;
+  itemCount: number;
+} {
+  const acceptedSubjects = new Set<SubjectTimeSubject>([...NATURAL_SCIENCE_SUBJECTS, '自然']);
+  const entries = summary.timeEntries.filter(entry => acceptedSubjects.has(entry.subject));
+  const subjectTime = summarizeSubjectTime(entries);
+  const donutSlices = subjectTime.slices.map(slice => ({
+    label: slice.subject,
+    minutes: slice.minutes,
+    percent: slice.percent,
+    color: slice.color,
+    ringLabel: SUBJECT_TIME_SHORT_LABELS[slice.subject],
+  }));
+  const items = subjectTime.slices.flatMap(subjectSlice => {
+    const detail = summarizeStudyItemTime(entries, subjectSlice.subject);
+    return detail.slices.map(slice => ({
+      subject: subjectSlice.subject,
+      label: slice.label,
+      minutes: slice.minutes,
+      percent: Math.round(slice.minutes / Math.max(1, subjectTime.totalMinutes) * 1000) / 10,
+      color: subjectSlice.color,
+    }));
+  });
+  const list = items.map(item => `<li>
+    <i style="background:${item.color}"></i>
+    <span class="summary-subject-detail-name"><strong class="summary-natural-subject-name">${escapeHtml(item.subject)}</strong><span class="summary-natural-item-name">${escapeHtml(item.label)}</span></span>
+    <span class="summary-subject-detail-value">${item.percent}%｜${formatHours(item.minutes)} hr</span>
+  </li>`).join('');
+  return { totalMinutes: subjectTime.totalMinutes, donutSlices, list, itemCount: items.length };
 }
 
 function renderCalendar(summary: LearningPeriodSummary): void {
@@ -189,7 +235,9 @@ function renderSubjectDistribution(summary: LearningPeriodSummary): void {
     target.dataset.view = 'detail';
     target.classList.toggle('animate-detail-entry', shouldAnimateEntry);
     target.classList.remove('is-detail-ready');
+    const isNaturalScience = selectedSubject === '自然';
     const detail = summarizeStudyItemTime(summary.timeEntries, selectedSubject);
+    const naturalDetail = isNaturalScience ? naturalScienceDetail(summary) : null;
     title.textContent = `科目分配｜${selectedSubject}`;
     const baseColor = SUBJECT_TIME_COLORS[selectedSubject];
     const maxPercent = Math.max(1, ...detail.slices.map(slice => slice.percent));
@@ -197,10 +245,15 @@ function renderSubjectDistribution(summary: LearningPeriodSummary): void {
       ...slice,
       color: tintHex(baseColor, 0.58 * (1 - slice.percent / maxPercent)),
     }));
-    const detailRows = Math.max(1, Math.min(4, slices.length));
+    const displayedCount = naturalDetail?.itemCount ?? slices.length;
+    const detailRows = Math.max(1, Math.min(4, displayedCount));
     const list = slices.map(slice => `<li><i style="background:${slice.color}"></i><span class="summary-subject-detail-name">${escapeHtml(slice.label)}</span><span class="summary-subject-detail-value">${slice.percent}%｜${formatHours(slice.minutes)} hr</span></li>`).join('');
-    target.innerHTML = slices.length
-      ? `${detailDonutMarkup(detail.totalMinutes, slices)}<ul class="summary-subject-detail-list" style="--summary-detail-rows:${detailRows}">${list}</ul>`
+    const hasDetail = naturalDetail ? naturalDetail.donutSlices.length > 0 : slices.length > 0;
+    const donut = naturalDetail
+      ? detailDonutMarkup(naturalDetail.totalMinutes, naturalDetail.donutSlices)
+      : detailDonutMarkup(detail.totalMinutes, slices);
+    target.innerHTML = hasDetail
+      ? `${donut}<ul class="summary-subject-detail-list" style="--summary-detail-rows:${detailRows}">${naturalDetail?.list ?? list}</ul>`
       : `<div class="summary-donut-shell is-empty"><div class="summary-donut-center"><strong>0.0</strong><span>hr</span></div></div><p class="summary-empty">本期尚無此科目的完成時間紀錄。</p>`;
     if (shouldAnimateEntry && entryOrigin) {
       target.getBoundingClientRect();
@@ -228,12 +281,13 @@ function renderSubjectDistribution(summary: LearningPeriodSummary): void {
   title.textContent = '科目分配';
   target.dataset.view = 'subjects';
   target.classList.remove('animate-detail-entry', 'is-detail-ready');
-  const slices = summary.subjectTime.slices;
+  const overviewSubjectTime = mergeNaturalScienceSubjectTime(summary.subjectTime);
+  const slices = overviewSubjectTime.slices;
   if (!slices.length) {
     target.innerHTML = `<div class="summary-donut-shell is-empty"><svg class="summary-donut-ring" viewBox="0 0 160 160" aria-hidden="true"><circle class="summary-donut-track" cx="80" cy="80" r="56" fill="none"></circle></svg><div class="summary-donut-center"><strong>0.0</strong><span>hr</span></div></div><p class="summary-empty">本期尚無完成時間紀錄。</p>`;
     return;
   }
-  target.innerHTML = subjectDonutMarkup(summary);
+  target.innerHTML = subjectDonutMarkup(overviewSubjectTime);
 }
 
 function returnToSubjectOverview(): void {

@@ -1,5 +1,7 @@
 export const SUBJECT_TIME_SUBJECTS = ['數學', '國文', '英文', '物理', '化學', '生物', '地科', '自然', '其他'] as const;
 
+export const NATURAL_SCIENCE_SUBJECTS = ['物理', '化學', '生物', '地科'] as const;
+
 export type SubjectTimeSubject = typeof SUBJECT_TIME_SUBJECTS[number];
 
 export const SUBJECT_TIME_COLORS: Record<SubjectTimeSubject, string> = {
@@ -51,6 +53,8 @@ export interface SubjectTimeDonutSlice extends SubjectTimeSlice {
   labelX: number;
   labelY: number;
 }
+
+const SUBJECT_OVERVIEW_ORDER: SubjectTimeSubject[] = ['數學', '國文', '英文', '自然', '其他'];
 
 function pointOnCircle(percent: number, radius: number, center: number): [number, number] {
   const angle = (percent / 100) * Math.PI * 2 - Math.PI / 2;
@@ -112,6 +116,36 @@ export function summarizeSubjectTime(entries: SubjectTimeEntry[]): SubjectTimeSu
         percent: roundOne(((totals.get(subject) || 0) / total) * 100),
         color: SUBJECT_TIME_COLORS[subject],
       })),
+  };
+}
+
+/**
+ * Keeps the stored fine-grained science subjects intact while presenting one
+ * Natural Science slice in the top-level subject distribution.
+ */
+export function mergeNaturalScienceSubjectTime(summary: SubjectTimeSummary): SubjectTimeSummary {
+  if (!summary.slices.length || summary.totalMinutes <= 0) return summary;
+  const totals = new Map<SubjectTimeSubject, number>();
+  for (const slice of summary.slices) {
+    const subject = NATURAL_SCIENCE_SUBJECTS.includes(slice.subject as typeof NATURAL_SCIENCE_SUBJECTS[number])
+      || slice.subject === '自然'
+      ? '自然'
+      : slice.subject;
+    totals.set(subject, (totals.get(subject) ?? 0) + slice.minutes);
+  }
+  return {
+    totalMinutes: summary.totalMinutes,
+    slices: SUBJECT_OVERVIEW_ORDER
+      .filter(subject => (totals.get(subject) ?? 0) > 0)
+      .map(subject => {
+        const minutes = roundOne(totals.get(subject) ?? 0);
+        return {
+          subject,
+          minutes,
+          percent: roundOne(minutes / summary.totalMinutes * 100),
+          color: SUBJECT_TIME_COLORS[subject],
+        };
+      }),
   };
 }
 

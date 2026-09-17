@@ -4,11 +4,31 @@ import test from 'node:test';
 
 import {
   SUBJECT_TIME_SHORT_LABELS,
+  mergeNaturalScienceSubjectTime,
   subjectTimeArcPath,
   subjectTimeConicGradient,
   subjectTimeDonutSlices,
   summarizeSubjectTime,
 } from '../src/study/subjectTime.ts';
+
+test('subject overview merges all four natural sciences without changing the total', () => {
+  const detailed = summarizeSubjectTime([
+    { subject: '數學', minutes: 60 },
+    { subject: '物理', minutes: 10 },
+    { subject: '化學', minutes: 20 },
+    { subject: '生物', minutes: 30 },
+    { subject: '地科', minutes: 40 },
+    { subject: '自然', minutes: 5 },
+  ]);
+  const overview = mergeNaturalScienceSubjectTime(detailed);
+
+  assert.equal(overview.totalMinutes, 165);
+  assert.deepEqual(overview.slices.map(slice => [slice.subject, slice.minutes]), [
+    ['數學', 60],
+    ['自然', 105],
+  ]);
+  assert.equal(detailed.slices.some(slice => slice.subject === '物理'), true);
+});
 
 test('summarizes minute inputs by subject with one-decimal shares', () => {
   const summary = summarizeSubjectTime([

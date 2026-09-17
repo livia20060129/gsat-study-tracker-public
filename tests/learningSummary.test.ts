@@ -219,7 +219,10 @@ test('summary page has one global week/month switch and no separate total-hours 
   assert.doesNotMatch(html, /summary-heading-icon/);
   assert.doesNotMatch(html, /總時數/);
   assert.match(html, /圓內深淺＝當日學習時數/);
-  assert.match(html, /深綠完整圓環＝100% 完成/);
+  assert.match(html, /亮綠完整圓環＝100% 完成/);
+  assert.match(html, /紅色圓心＝身體不適/);
+  assert.match(html, /橘色圓心＝疲倦（較疲累）/);
+  assert.match(html, /黃色圓心＝外出/);
   assert.doesNotMatch(html, /id="subjectBack"|返回全部科目<\/button>/);
   const runtime = readFileSync(new URL('../src/learning-summary-page.ts', import.meta.url), 'utf8');
   const styles = readFileSync(new URL('../src/learning-summary.css', import.meta.url), 'utf8');
@@ -259,7 +262,10 @@ test('summary page has one global week/month switch and no separate total-hours 
   assert.match(runtime, /小時 \$\{wakeDifference % 60\} 分鐘/);
   assert.match(styles, /summary-subject-detail-list\{grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
   assert.match(styles, /summary-subject-detail-list\{display:grid;grid-template-columns:none;grid-template-rows:repeat\(var\(--summary-detail-rows,1\),auto\);grid-auto-flow:column/);
-  assert.match(runtime, /const detailRows = Math\.max\(1, Math\.min\(4, slices\.length\)\)/);
+  assert.match(runtime, /mergeNaturalScienceSubjectTime\(summary\.subjectTime\)/);
+  assert.match(runtime, /const isNaturalScience = selectedSubject === '自然'/);
+  assert.match(runtime, /summary-natural-subject-name/);
+  assert.match(runtime, /const detailRows = Math\.max\(1, Math\.min\(4, displayedCount\)\)/);
   assert.match(runtime, /--summary-detail-rows:\$\{detailRows\}/);
   assert.match(runtime, /pendingSubjectEntryOrigin/);
   assert.match(runtime, /entryOrigin\.left \+ entryOrigin\.width \/ 2/);
