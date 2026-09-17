@@ -6,6 +6,7 @@ import {
   materialProgressRows,
   readMaterialProgressRecords,
 } from '../src/study/materialProgress.ts';
+import { PHYSICS_COMEBACK_PAGE_MAP } from '../src/data/lecturePageMaps.ts';
 import type { StudyItem, StudyRecord } from '../src/types.ts';
 
 function item(overrides: Partial<StudyItem> = {}): StudyItem {
@@ -183,7 +184,7 @@ test('adds the supplied New Grand Slam Math A map through p.353', () => {
   assert.equal(math.segments[14].label, '114學年度學科能力測驗（數學A考科）（p.349–353）');
 });
 
-test('adds Navigator, Advantage and Comeback lecture ranges without inventing Comeback unit pages', () => {
+test('adds the supplied Navigator, Advantage and Comeback lecture page maps', () => {
   const rows = materialProgressRows([]);
   const chemistry = rows.find(row => row.id === 'natural:化學:領航');
   const physics = rows.find(row => row.id === 'natural:物理:優勢');
@@ -191,9 +192,14 @@ test('adds Navigator, Advantage and Comeback lecture ranges without inventing Co
   assert.ok(chemistry && physics && comeback);
   assert.equal(chemistry.segments.at(-1)?.label, '第4章 生活中的化學｜4-4 化學的現代應用（p.265–290）');
   assert.equal(physics.segments.at(-1)?.label, '第6章 量子現象｜6-2 原子光譜（p.230–244）');
-  assert.deepEqual(comeback.segments.map(segment => segment.label), [
-    '16週複習計畫｜來源未提供各單元頁界（p.1–255）',
-  ]);
+  assert.equal(comeback.segments.length, 37);
+  assert.equal(comeback.segments[0].label, '單元1 科學的態度與方法｜主題1 科學的態度與方法（p.3）');
+  assert.equal(comeback.segments[17].label, '單元7 波動與光學｜主題1 波動的基本性質（p.120–129）');
+  assert.equal(comeback.segments[35].label, '素養導向進階試題｜題型1 探究實作（p.243–249）');
+  assert.equal(comeback.segments[36].label, '素養導向進階試題｜題型2 跨科整合（p.250–255）');
+  for (let index = 1; index < PHYSICS_COMEBACK_PAGE_MAP.length; index += 1) {
+    assert.equal(PHYSICS_COMEBACK_PAGE_MAP[index][0], PHYSICS_COMEBACK_PAGE_MAP[index - 1][1] + 1);
+  }
 });
 
 test('records actual pages for the newly mapped math and natural lectures', () => {

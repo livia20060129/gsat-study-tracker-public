@@ -262,7 +262,7 @@ const MATERIAL_DEFINITIONS: MaterialDefinition[] = [
   })),
   { id: 'natural:化學:領航', subject: 'natural', title: '自然｜化學｜領航', unitLabel: '分項', segments: mappedSegments(CHEMISTRY_NAVIGATOR_PAGE_MAP) },
   { id: 'natural:物理:優勢', subject: 'natural', title: '自然｜物理｜優勢', unitLabel: '分項', segments: mappedSegments(PHYSICS_ADVANTAGE_PAGE_MAP) },
-  { id: 'natural:物理:逆轉勝', subject: 'natural', title: '自然｜物理｜逆轉勝', unitLabel: '全書', segments: mappedSegments(PHYSICS_COMEBACK_PAGE_MAP) },
+  { id: 'natural:物理:逆轉勝', subject: 'natural', title: '自然｜物理｜逆轉勝', unitLabel: '主題', segments: mappedSegments(PHYSICS_COMEBACK_PAGE_MAP) },
 ];
 
 const definitionById = new Map(MATERIAL_DEFINITIONS.map(definition => [definition.id, definition]));

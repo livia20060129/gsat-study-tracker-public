@@ -2525,9 +2525,7 @@ function lectureNaturalText(subject,material,start,end){
  var map=lectureNaturalPageMap(subject,material),a=ranges(map,start,end);
  if(!map.length)return'尚未建立此講義的頁碼對照。';
  if(!a.length)return'頁碼不在已建立的教材本文範圍內。';
- var text=rangeText(a,function(r){return r[2]+(r[3]?'｜'+r[3]:'')});
- if(material===PHYSICS_COMEBACK_MATERIAL)text+='；來源照片未提供各單元頁界，需補目錄後才能細分。';
- return text;
+ return rangeText(a,function(r){return r[2]+(r[3]?'｜'+r[3]:'')});
 }
 function applyLectureNatural(f){
  var a=ranges(lectureNaturalPageMap(f.subject,f.material),f.start,f.end);
