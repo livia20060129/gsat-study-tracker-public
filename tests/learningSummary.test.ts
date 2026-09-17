@@ -8,6 +8,7 @@ import {
   completedSubjectTimeForRecord,
   fixedPeriodRemarks,
   formatClockMinutes,
+  includesCompletionInPeriod,
   shiftSummaryAnchor,
   summarizeLearningPeriod,
   summarizeStudyItemTime,
@@ -109,6 +110,27 @@ test('summary days preserve mood for calendar status colors', () => {
   assert.equal(summary.days[1].mood, '較疲累');
   assert.equal(summary.days[2].mood, '外出');
   assert.equal(summary.days[3].mood, '');
+});
+
+test('outside and unwell days keep daily progress but are excluded from week and month completion', () => {
+  const ordinary = record('2026-09-14', [
+    item('ordinary-done', true, '30', '數學'),
+    item('ordinary-open', false, '20', '英文'),
+  ]);
+  const unwell = record('2026-09-15', [item('unwell-open', false, '15', '英文')]);
+  unwell.mood = '身體不適';
+  const outside = record('2026-09-16', [item('outside-done', true, '25', '自然')]);
+  outside.mood = '外出';
+
+  assert.equal(includesCompletionInPeriod(ordinary), true);
+  assert.equal(includesCompletionInPeriod(unwell), false);
+  assert.equal(includesCompletionInPeriod(outside), false);
+
+  const summary = summarizeLearningPeriod([ordinary, unwell, outside], summaryPeriod('2026-09-14', 'week'));
+  assert.deepEqual(summary.days.slice(0, 3).map(day => day.completionPercent), [50, 0, 100]);
+  assert.deepEqual(summary.days.slice(0, 3).map(day => day.completionIncludedInPeriod), [true, false, false]);
+  assert.equal(summary.completion.settlementPercent, 50);
+  assert.equal(summary.subjectTime.totalMinutes, 55);
 });
 
 test('completed time deduplicates deferred copies and item drilldown totals', () => {

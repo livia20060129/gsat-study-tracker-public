@@ -34,6 +34,7 @@ export interface LearningSummaryDay {
   mood: string;
   totalMinutes: number;
   completionPercent: number;
+  completionIncludedInPeriod: boolean;
   wakeMinutes: number | null;
 }
 
@@ -156,7 +157,13 @@ function isWeeklyCalendarItem(item: StudyItem): boolean {
 
 function visibleItems(record: StudyRecord): StudyItem[] {
   const items = Array.isArray(record.items) ? record.items : [];
-  return items.filter(item => !(record.mood === '外出' && item?.source === 'preset'));
+  return items;
+}
+
+/** Rest or unavailable days keep their daily progress but do not affect period completion. */
+export function includesCompletionInPeriod(record: StudyRecord): boolean {
+  const mood = String(record.mood ?? '').trim();
+  return mood !== '外出' && mood !== '身體不適';
 }
 
 function isSaturdayMakeup(item: StudyItem): boolean {
@@ -500,7 +507,9 @@ export function wakeTimeMinutes(value: unknown): number | null {
 export function summarizeLearningPeriod(records: StudyRecord[], period: SummaryPeriod): LearningPeriodSummary {
   const byDate = new Map(records.map(record => [record.date, record]));
   const periodRecords = period.dates.map(date => byDate.get(date)).filter(Boolean) as StudyRecord[];
-  const allUnits = periodRecords.flatMap(summaryCompletionUnitsForRecord);
+  const allUnits = periodRecords
+    .filter(includesCompletionInPeriod)
+    .flatMap(summaryCompletionUnitsForRecord);
   const timeEntries = completedStudyTimeEntries(periodRecords);
   const timeEntriesByDate = new Map<string, CompletedStudyTimeEntry[]>();
   timeEntries.forEach(entry => timeEntriesByDate.set(entry.date, [...(timeEntriesByDate.get(entry.date) ?? []), entry]));
@@ -510,7 +519,8 @@ export function summarizeLearningPeriod(records: StudyRecord[], period: SummaryP
     if (!record) {
       return {
         date, dayNumber: parseDate(date).getDate(), weekday: ['日', '一', '二', '三', '四', '五', '六'][parseDate(date).getDay()],
-        hasRecord: false, mood: '', totalMinutes: 0, completionPercent: 0, wakeMinutes: null,
+        hasRecord: false, mood: '', totalMinutes: 0, completionPercent: 0,
+        completionIncludedInPeriod: true, wakeMinutes: null,
       };
     }
     const completion = summarizeCompletionUnits(summaryCompletionUnitsForRecord(record));
@@ -520,7 +530,8 @@ export function summarizeLearningPeriod(records: StudyRecord[], period: SummaryP
     return {
       date, dayNumber: parseDate(date).getDate(), weekday: ['日', '一', '二', '三', '四', '五', '六'][parseDate(date).getDay()],
       hasRecord: true, mood: String(record.mood ?? '').trim(), totalMinutes: subjectTime.totalMinutes,
-      completionPercent: completion.settlementPercent, wakeMinutes,
+      completionPercent: completion.settlementPercent,
+      completionIncludedInPeriod: includesCompletionInPeriod(record), wakeMinutes,
     };
   });
   return {

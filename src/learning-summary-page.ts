@@ -161,8 +161,9 @@ function renderCalendar(summary: LearningPeriodSummary): void {
     const moodOpacity = summaryMoodOpacity(day.totalMinutes, maxMinutes);
     const coreColor = summaryMoodColor(day.mood, moodOpacity) || timeColor;
     const moodText = day.mood ? `，狀態 ${day.mood}` : '';
+    const periodCompletionText = day.completionIncludedInPeriod ? '' : '，不列入本期完成率';
     return `<article class="summary-day${day.hasRecord ? ' has-record' : ''}${day.completionPercent === 100 ? ' is-complete' : ''}${moodClass}" role="listitem" style="--day-completion:${day.completionPercent * 3.6}deg;--day-time-color:${timeColor};--day-core-color:${coreColor}">
-      <button class="summary-day-button" type="button" data-summary-day aria-expanded="false" aria-label="${escapeHtml(formatDateLabel(day.date))}，${escapeHtml(timeText)}，完成率 ${day.completionPercent}%${escapeHtml(moodText)}">
+      <button class="summary-day-button" type="button" data-summary-day aria-expanded="false" aria-label="${escapeHtml(formatDateLabel(day.date))}，${escapeHtml(timeText)}，完成率 ${day.completionPercent}%${escapeHtml(moodText)}${escapeHtml(periodCompletionText)}">
         <span class="summary-day-week">${activeMode === 'week' ? `週${day.weekday}` : ''}</span>
         <span class="summary-day-ring"><span class="summary-day-core"><strong>${day.dayNumber}</strong></span></span>
       </button>
@@ -171,6 +172,7 @@ function renderCalendar(summary: LearningPeriodSummary): void {
         <span>學習時間：${escapeHtml(timeText)}</span>
         <span>完成率：${day.completionPercent}%</span>
         ${day.mood ? `<span>狀態：${escapeHtml(day.mood)}</span>` : ''}
+        ${day.completionIncludedInPeriod ? '' : '<span>本日完成率不列入週／月統計</span>'}
       </span>
     </article>`;
   });
