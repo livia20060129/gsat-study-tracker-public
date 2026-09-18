@@ -427,7 +427,11 @@ function focusText(title: string, description: string): string {
   return field(description, '重點');
 }
 
-function integrationPageItems(description: string) {
+function integrationPageItems(description: string): Array<{
+  subject: '物理' | '化學' | '生物' | '地科';
+  start: number;
+  end: number;
+}> {
   const section = bracketSection(description, '講義／頁碼') || description;
   const items: Array<{ subject: '物理' | '化學' | '生物' | '地科'; start: number; end: number }> = [];
   const regex = /(物理|化學|生物|地科)(?:《123日的淬鍊》)?\s*p\.?\s*(\d+)\s*[–—~-]\s*(\d+)/g;
@@ -462,11 +466,12 @@ export function parseCalendarTask(row: CalendarTaskRow): ParsedCalendarTask {
     || /補做(?:項目)?\s*(?:\d|[｜:：]|$)/.test(title)
     || /(?:^|[｜＋+])\s*補(?:做)?\s*\d{1,2}\s*\/\s*\d{1,2}/.test(title)
     || deferredSource;
-  const route: 'today' | 'week' | undefined = makeup
-    ? 'today'
-    : routed
-    ? (/^(本週|本周)/.test(routed[1]) ? 'week' : 'today')
-    : undefined;
+  let route: 'today' | 'week' | undefined;
+  if (makeup) {
+    route = 'today';
+  } else if (routed) {
+    route = /^(本週|本周)/.test(routed[1]) ? 'week' : 'today';
+  }
   const base: ParsedBase = {
     eventKey: row.event_key,
     sourceEventId: row.source_event_id,
@@ -491,6 +496,12 @@ export function parseCalendarTask(row: CalendarTaskRow): ParsedCalendarTask {
     && ['對話式', '對話式複習講義', '教學講義', '智慧型', '新關鍵', '新大滿貫', '複習週記'].includes(structuredMathMaterial);
   if (row.category === 'math' || parsedMathHeading || structuredMathNote || identifiedLecture?.kind === 'math') {
     const legacyProgress = description.match(/(?:【|\[)?\s*單元進度\s*(?:】|\])?\s*[:：]?\s*(\d+)\s*\/\s*(\d+)/);
+    let legacyProgressIndex: number | null = null;
+    let legacyProgressTotal: number | null = null;
+    if (!note.hasStandardFields && legacyProgress) {
+      legacyProgressIndex = Number(legacyProgress[1]);
+      legacyProgressTotal = Number(legacyProgress[2]);
+    }
     const [structuredProgress, structuredTotal] = note.pageRange
       ? [null, null]
       : progressFraction(note.unitProgress);
@@ -504,8 +515,8 @@ export function parseCalendarTask(row: CalendarTaskRow): ParsedCalendarTask {
       kind: 'math',
       material: structuredMathMaterial || (note.hasStandardFields ? '' : canonicalMathMaterial(field(description, '講義版本'))),
       book: structuredMathBook || canonicalMathBook(parsedMathHeading?.book || normalized(bookMatch?.[1] ?? title.split('｜')[0] ?? '')),
-      progressIndex: structuredProgress ?? (note.hasStandardFields ? null : (legacyProgress ? Number(legacyProgress[1]) : null)),
-      progressTotal: structuredTotal ?? (note.hasStandardFields ? null : (legacyProgress ? Number(legacyProgress[2]) : null)),
+      progressIndex: structuredProgress ?? legacyProgressIndex,
+      progressTotal: structuredTotal ?? legacyProgressTotal,
       startPage,
       endPage,
     };

@@ -21,7 +21,7 @@ const SUBJECT_LABELS: Record<MaterialProgressSubject, string> = {
 };
 
 const NATURAL_SUBJECT_ORDER = ['物理', '化學', '地科', '生物'] as const;
-const ENGLISH_EXAM_MATERIAL_IDS = new Set([
+const ENGLISH_EXAM_MATERIAL_IDS: ReadonlySet<string> = new Set([
   'english:ace',
   'english:listening',
   'book:學測週計畫',
@@ -33,6 +33,10 @@ const ENGLISH_EXAM_MATERIAL_IDS = new Set([
   'english:vocabulary-2001-4000',
   'english:vocabulary-4001-6000',
 ]);
+
+function isEnglishExamMaterial(row: MaterialProgressRow): boolean {
+  return ENGLISH_EXAM_MATERIAL_IDS.has(row.id);
+}
 
 let activeSubject = normalizedProgressSubject(location.hash.replace(/^#/, ''));
 let rows: MaterialProgressRow[] = [];
@@ -134,8 +138,8 @@ function renderMaterialOptions(availableRows: MaterialProgressRow[]): HTMLElemen
     ];
   }
   if (activeSubject === 'english') {
-    const exam = availableRows.filter(row => ENGLISH_EXAM_MATERIAL_IDS.has(row.id));
-    const other = availableRows.filter(row => !ENGLISH_EXAM_MATERIAL_IDS.has(row.id));
+    const exam = availableRows.filter(isEnglishExamMaterial);
+    const other = availableRows.filter(row => !isEnglishExamMaterial(row));
     return [
       ...renderMaterialGroup('學測', exam, 'english-exam'),
       ...renderMaterialGroup('其他', other, 'english-other'),

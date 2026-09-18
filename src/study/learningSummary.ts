@@ -457,10 +457,20 @@ export function summarizeStudyItemTime(
 
 export function classifyPeriodChange(current: number, previous: number): PeriodChangeState {
   if (!Number.isFinite(current) || !Number.isFinite(previous)) return 'stable';
-  if (previous === 0) return current > 0 ? 'increase' : current < 0 ? 'decrease' : 'stable';
+  if (previous === 0) {
+    if (current > 0) return 'increase';
+    if (current < 0) return 'decrease';
+    return 'stable';
+  }
   const percentChange = ((current - previous) / Math.abs(previous)) * 100;
   if (percentChange >= 5) return 'increase';
   if (percentChange <= -5) return 'decrease';
+  return 'stable';
+}
+
+function classifyPercentagePointChange(delta: number): PeriodChangeState {
+  if (delta >= 5) return 'increase';
+  if (delta <= -5) return 'decrease';
   return 'stable';
 }
 
@@ -473,11 +483,7 @@ export function fixedPeriodRemarks(
   const timeState = classifyPeriodChange(currentMinutes, previousMinutes);
   // Completion is already a percentage, so compare percentage-point change.
   const completionDelta = currentCompletion - previousCompletion;
-  const completionState: PeriodChangeState = completionDelta >= 5
-    ? 'increase'
-    : completionDelta <= -5
-      ? 'decrease'
-      : 'stable';
+  const completionState = classifyPercentagePointChange(completionDelta);
   const timeRemarks: Record<PeriodChangeState, string> = {
     increase: '本期學習時數增加，建議維持目前節奏，同時留意休息與負荷。',
     stable: '本期學習時數大致穩定，可以繼續觀察目前安排是否適合。',

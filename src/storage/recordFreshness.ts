@@ -1,4 +1,4 @@
-import type { StudyRecord } from '../types';
+import type { StudyRecord } from '../types.ts';
 
 export type RecordSyncDecision =
   | 'use-local'

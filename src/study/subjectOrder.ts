@@ -22,15 +22,21 @@ export function studyItemSubject(item: StudyItem): string {
 
 export function studyItemSubjectClass(item: StudyItem): string {
   const subject = studyItemSubject(item);
-  const tone = subject === '數學'
-    ? 'math'
-    : subject === '國文'
-      ? 'chinese'
-      : subject === '英文'
-        ? 'english'
-        : subject === '自然'
-          ? 'natural'
-          : 'other';
+  let tone = 'other';
+  switch (subject) {
+    case '數學':
+      tone = 'math';
+      break;
+    case '國文':
+      tone = 'chinese';
+      break;
+    case '英文':
+      tone = 'english';
+      break;
+    case '自然':
+      tone = 'natural';
+      break;
+  }
   return `subject-card subject-${tone}`;
 }
 

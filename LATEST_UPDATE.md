@@ -1,6 +1,17 @@
 # 最新更新
 
-版本：公開版 v171.6.0-public.19
+版本：公開版 v171.6.0-public.20
+
+## 全專案程式碼檢查與可讀性整理
+
+- 檢查 `src`、Supabase Edge Functions、單元測試與瀏覽器測試，共 120 個 TypeScript 檔案、20,310 行。
+- 將 typed code 的相對 ES module 匯入統一補上 `.ts` 副檔名，避免解析規則因執行環境而異。
+- 移除巢狀三元運算與無效重複條件，改用具名輔助函式、`if/else` 或 `switch`，維持原本輸出與判斷順序。
+- 補齊所有頂層函式的明確回傳型別；typed code 沒有 `any`、`@ts-ignore` 或 `@ts-expect-error`。
+- 整理教材頁碼標籤、實際頁碼邊界、英文訂正列、週期比較與 Google Calendar 同步結果等重複邏輯。
+- `legacy-app.ts` 仍保留既有 `@ts-nocheck` 相容層，這次只統一匯入規格，不進行可能改變執行順序的大規模拆寫。
+- 本版不修改資料格式、Supabase schema、Calendar 判斷、畫面功能或使用者紀錄。
+- 驗證結果：TypeScript typecheck、正式建置、372 項單元測試與 10 項 Chromium 瀏覽器測試全部通過。
 
 ## Calendar Prompt 的物理「逆轉勝」頁碼
 

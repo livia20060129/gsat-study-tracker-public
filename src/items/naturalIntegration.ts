@@ -1,4 +1,4 @@
-import type { CalendarNaturalIntegrationEntry } from '../types';
+import type { CalendarNaturalIntegrationEntry } from '../types.ts';
 
 export function rangeText(ranges: Array<[number, number]> = []): string {
   if (!ranges.length) return '—';

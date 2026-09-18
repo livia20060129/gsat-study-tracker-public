@@ -1,4 +1,4 @@
-import type { StudyItem } from '../types';
+import type { StudyItem } from '../types.ts';
 import { contiguousRangeClusters, numericPageRange } from './rangeMerge.ts';
 
 export interface MakeupCloneOptions {

@@ -1,5 +1,5 @@
-import type { StudyRecord } from '../types';
-import { countDeferredToDay, DEFERRED_TARGET_LIMIT } from './deferDays';
+import type { StudyRecord } from '../types.ts';
+import { countDeferredToDay, DEFERRED_TARGET_LIMIT } from './deferDays.ts';
 
 export function countDeferredToTarget(records: StudyRecord[], targetDay: number): number {
   return countDeferredToDay(records.flatMap(record => record.items), targetDay);

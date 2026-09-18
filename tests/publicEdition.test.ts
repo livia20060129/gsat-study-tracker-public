@@ -23,7 +23,8 @@ test('public edition removes legacy built-in preset items while retaining custom
 });
 
 test('Calendar prompt includes the verified Physics Comeback page map', () => {
-  assert.match(calendarPrompt, /物理《逆轉勝》<\/td><td><code>GSAT-PHYS-NIZHUANSHENG<\/code><\/td><td><span class="tag">頁碼地圖已建立/);
+  const statusMarkup = '物理《逆轉勝》</td><td><code>GSAT-PHYS-NIZHUANSHENG</code></td><td><span class="tag">頁碼地圖已建立';
+  assert.ok(calendarPrompt.includes(statusMarkup));
   assert.doesNotMatch(calendarPrompt, /目前只有 p\.1–255 全書範圍|目前只確認全書 p\.1–255|不得建立或猜測單元頁碼界線/);
   for (const [start, end, unit, detail] of PHYSICS_COMEBACK_PAGE_MAP) {
     assert.ok(calendarPrompt.includes(`${detail ?? unit} p.${start}–${end}`), `${detail ?? unit} p.${start}–${end}`);

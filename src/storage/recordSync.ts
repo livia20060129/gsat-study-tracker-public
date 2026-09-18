@@ -1,4 +1,4 @@
-import type { StudyRecord, StudyRecordSyncConflict } from '../types';
+import type { StudyRecord, StudyRecordSyncConflict } from '../types.ts';
 import { ensureEnglishReviewWordEntryIds } from '../study/englishReview.ts';
 
 export interface CloudStudyRecordRow {

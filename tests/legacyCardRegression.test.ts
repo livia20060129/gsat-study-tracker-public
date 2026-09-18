@@ -39,6 +39,11 @@ function item(overrides: Partial<StudyItem> = {}): StudyItem {
   return { id: 'test-item', type: 'extra', title: '英文', required: true, source: 'preset', done: false, minutes: '', f: {}, ...overrides };
 }
 
+function optionGroupContents(markup: string, label: string): string {
+  const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return markup.match(new RegExp(`<optgroup label="${escapedLabel}">([\\s\\S]*?)<\\/optgroup>`))?.[1] ?? '';
+}
+
 const recordUnits = runtimeFunction<(record: StudyRecord, date: string) => completion.CompletionUnit[]>(
   'completionUnitsForRecord',
   {
@@ -239,24 +244,27 @@ test('manual added-item selectors expose all newly mapped lectures', () => {
   assert.match(scienceOptions('物理', ''), /<option value="逆轉勝"/);
   assert.doesNotMatch(scienceOptions('物理', ''), /<optgroup|新增講義|其他講義/);
   assert.match(scienceOptions('', ''), /請先選擇科目/);
-  assert.match(readingOptions(''), /<option value="學測週計畫"/);
-  assert.match(readingOptions(''), /<option value="混合題30篇實戰演練"/);
-  assert.match(readingOptions(''), /<optgroup label="學測">/);
-  assert.match(readingOptions(''), /<optgroup label="課外補充">/);
-  assert.match(readingOptions(''), /<option value="主題百匯：篇章結構·閱讀測驗"/);
-  assert.match(readingOptions(''), /<option value="英文字彙王: 核心單字4001~ 6000"/);
-  const readingExamGroup = readingOptions('').match(/<optgroup label="學測">([\s\S]*?)<\/optgroup>/)?.[1] ?? '';
+  const readingMarkup = readingOptions('');
+  assert.match(readingMarkup, /<option value="學測週計畫"/);
+  assert.match(readingMarkup, /<option value="混合題30篇實戰演練"/);
+  assert.match(readingMarkup, /<optgroup label="學測">/);
+  assert.match(readingMarkup, /<optgroup label="課外補充">/);
+  assert.match(readingMarkup, /<option value="主題百匯：篇章結構·閱讀測驗"/);
+  assert.match(readingMarkup, /<option value="英文字彙王: 核心單字4001~ 6000"/);
+  const readingExamGroup = optionGroupContents(readingMarkup, '學測');
   assert.match(readingExamGroup, /<option value="英文寫作測驗"/);
   assert.match(readingExamGroup, /<option value="英文文法總複習講義"/);
-  assert.doesNotMatch(readingOptions(''), /新增講義|其他英文項目/);
-  assert.match(reviewEnglishOptions(''), /<option value="大考英聽A攻略"/);
-  assert.match(reviewEnglishOptions(''), /<option value="Azar英文文法（中階）"/);
-  assert.match(reviewEnglishOptions(''), /<optgroup label="學測">/);
-  assert.match(reviewEnglishOptions(''), /<optgroup label="課外補充">/);
-  const reviewExamGroup = reviewEnglishOptions('').match(/<optgroup label="學測">([\s\S]*?)<\/optgroup>/)?.[1] ?? '';
+  assert.doesNotMatch(readingMarkup, /新增講義|其他英文項目/);
+
+  const reviewMarkup = reviewEnglishOptions('');
+  assert.match(reviewMarkup, /<option value="大考英聽A攻略"/);
+  assert.match(reviewMarkup, /<option value="Azar英文文法（中階）"/);
+  assert.match(reviewMarkup, /<optgroup label="學測">/);
+  assert.match(reviewMarkup, /<optgroup label="課外補充">/);
+  const reviewExamGroup = optionGroupContents(reviewMarkup, '學測');
   assert.match(reviewExamGroup, /<option value="英文寫作測驗"/);
   assert.match(reviewExamGroup, /<option value="英文文法總複習講義"/);
-  assert.doesNotMatch(reviewEnglishOptions(''), /新增講義|其他英文項目/);
+  assert.doesNotMatch(reviewMarkup, /新增講義|其他英文項目/);
 });
 
 test('manual natural lecture is cleared when the subject no longer matches', () => {

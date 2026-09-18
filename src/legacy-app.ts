@@ -10,43 +10,43 @@
  *   application/ · domain/ · infrastructure/ · data/ · study/ · items/ · storage/ · ui/
  */
 
-import { calculateMathProgress, MathProgressIndex } from './study/mathProgress';
-import { decideRevisionSync, mergeStudyRecordsForUpload, recordSyncConflicts, sameStudyContent, stripRecordSyncMeta } from './storage/recordSync';
-import { ACTIVE_RECORD_PREFIX_KEY, LEGACY_UNSCOPED_PREFIX, storagePrefixForUser } from './storage/local';
-import { incrementalSyncStart, latestServerWatermark, recordSyncWatermarkKey } from './storage/syncWatermark';
-import { calendarFixedTemplate } from './calendar/calendarBridge';
-import { prioritizeCalendarPageRanges } from './calendar/pagePriority';
-import { combineNaturalCalendarPlans, resolveNaturalCalendarPlan } from './calendar/naturalPlan';
-import { grammarScheduleSummary } from './calendar/scheduleSummary';
-import { normalizedGrammarUnitTitle, selectGrammarPlan } from './calendar/grammarPlan';
-import { googleCalendarClientConfig } from './config/googleCalendar';
-import { formatPercentagePointDelta, groupedMakeupCompletionUnits, groupedOriginalCompletionUnits, makeupCompletionUnit, originalCompletionUnit, summarizeCompletionUnits } from './study/completionMetrics';
-import { applyDailyWorkRangeOverrides, groupDailyWorkItems, propagateDailyWorkCompletionDates, propagateDailyWorkDeferred, propagateDailyWorkDone, propagateDailyWorkField, propagateDailyWorkMinutes, propagateDailyWorkRangeField, replaceDailyWorkMinutes, ungroupDailyWorkItems } from './study/dailyWorkGroup';
-import { cloneOriginalItemForMakeup, effectiveTemplatePresetKey, mergeDeferredCarryRanges, mergeMakeupProgress, specialItemTemplate } from './study/makeup';
-import { dedupePresetDefinitions, presetDefinitionSemanticKey } from './study/presetDedup';
-import { countDeferredToDay, deferredCapacityCandidates, DEFERRED_TARGET_LIMIT, futureDeferredDays, isConfirmedDeferred, isDeferrableStudyItem, requiresDeferredLimitConfirmation } from './study/deferDays';
-import { groupStudyItemsBySubject, studyItemSubject, studyItemSubjectClass } from './study/subjectOrder';
-import { SUBJECT_TIME_SHORT_LABELS, subjectTimeArcPath, subjectTimeDonutSlices, summarizeSubjectTime } from './study/subjectTime';
-import { groupedSourceDateText, hasDeferredStudySource, shouldShowSourceDate } from './study/sourceDate';
-import { completionCelebrationForChange } from './study/completionCelebration';
-import { applyCompletionDateChange, completionDateLabel, deferredCompletionDate, manualCompletionDateChange } from './study/completionCheckedOn';
-import { finishStudyTimer, formatStudyTimer, normalizeStudyTimerState, pauseStudyTimer, resetStudyTimer, setTimedEntryMinutes, startStudyTimer, studyTimerFromManualMinutes } from './study/studyTimer';
-import { markCalendarNaturalCompletionByUser, markCalendarNaturalProgressByUser, reconcileCalendarNaturalPriorCoverage } from './study/calendarNaturalCompletion';
-import { ensureEnglishReviewWordEntryIds } from './study/englishReview';
-import { initializeMagazineMonth, magazineMonthForDate } from './study/magazineDefaults';
-import { adjacentOverviewMetric, normalizeOverviewMetric, overviewMetricIndex } from './ui/overviewMetricView';
-import { adjacentStudyItemsView, normalizeStudyItemsView, studyItemsViewIndex } from './ui/studyItemsView';
-import { renderItemDeleteFooter } from './ui/itemActions';
-import { LatestTaskQueue } from './storage/latestTaskQueue';
-import { withCrossTabLock } from './storage/crossTabLock';
-import { CURRENT_STUDY_RECORD_SCHEMA_VERSION } from './storage/studyRecordCodec';
-import { CALENDAR_MATH_PLAN, CALENDAR_WEEK_MATH_TARGETS } from './data/mathCalendar';
+import { calculateMathProgress, MathProgressIndex } from './study/mathProgress.ts';
+import { decideRevisionSync, mergeStudyRecordsForUpload, recordSyncConflicts, sameStudyContent, stripRecordSyncMeta } from './storage/recordSync.ts';
+import { ACTIVE_RECORD_PREFIX_KEY, LEGACY_UNSCOPED_PREFIX, storagePrefixForUser } from './storage/local.ts';
+import { incrementalSyncStart, latestServerWatermark, recordSyncWatermarkKey } from './storage/syncWatermark.ts';
+import { calendarFixedTemplate } from './calendar/calendarBridge.ts';
+import { prioritizeCalendarPageRanges } from './calendar/pagePriority.ts';
+import { combineNaturalCalendarPlans, resolveNaturalCalendarPlan } from './calendar/naturalPlan.ts';
+import { grammarScheduleSummary } from './calendar/scheduleSummary.ts';
+import { normalizedGrammarUnitTitle, selectGrammarPlan } from './calendar/grammarPlan.ts';
+import { googleCalendarClientConfig } from './config/googleCalendar.ts';
+import { formatPercentagePointDelta, groupedMakeupCompletionUnits, groupedOriginalCompletionUnits, makeupCompletionUnit, originalCompletionUnit, summarizeCompletionUnits } from './study/completionMetrics.ts';
+import { applyDailyWorkRangeOverrides, groupDailyWorkItems, propagateDailyWorkCompletionDates, propagateDailyWorkDeferred, propagateDailyWorkDone, propagateDailyWorkField, propagateDailyWorkMinutes, propagateDailyWorkRangeField, replaceDailyWorkMinutes, ungroupDailyWorkItems } from './study/dailyWorkGroup.ts';
+import { cloneOriginalItemForMakeup, effectiveTemplatePresetKey, mergeDeferredCarryRanges, mergeMakeupProgress, specialItemTemplate } from './study/makeup.ts';
+import { dedupePresetDefinitions, presetDefinitionSemanticKey } from './study/presetDedup.ts';
+import { countDeferredToDay, deferredCapacityCandidates, DEFERRED_TARGET_LIMIT, futureDeferredDays, isConfirmedDeferred, isDeferrableStudyItem, requiresDeferredLimitConfirmation } from './study/deferDays.ts';
+import { groupStudyItemsBySubject, studyItemSubject, studyItemSubjectClass } from './study/subjectOrder.ts';
+import { SUBJECT_TIME_SHORT_LABELS, subjectTimeArcPath, subjectTimeDonutSlices, summarizeSubjectTime } from './study/subjectTime.ts';
+import { groupedSourceDateText, hasDeferredStudySource, shouldShowSourceDate } from './study/sourceDate.ts';
+import { completionCelebrationForChange } from './study/completionCelebration.ts';
+import { applyCompletionDateChange, completionDateLabel, deferredCompletionDate, manualCompletionDateChange } from './study/completionCheckedOn.ts';
+import { finishStudyTimer, formatStudyTimer, normalizeStudyTimerState, pauseStudyTimer, resetStudyTimer, setTimedEntryMinutes, startStudyTimer, studyTimerFromManualMinutes } from './study/studyTimer.ts';
+import { markCalendarNaturalCompletionByUser, markCalendarNaturalProgressByUser, reconcileCalendarNaturalPriorCoverage } from './study/calendarNaturalCompletion.ts';
+import { ensureEnglishReviewWordEntryIds } from './study/englishReview.ts';
+import { initializeMagazineMonth, magazineMonthForDate } from './study/magazineDefaults.ts';
+import { adjacentOverviewMetric, normalizeOverviewMetric, overviewMetricIndex } from './ui/overviewMetricView.ts';
+import { adjacentStudyItemsView, normalizeStudyItemsView, studyItemsViewIndex } from './ui/studyItemsView.ts';
+import { renderItemDeleteFooter } from './ui/itemActions.ts';
+import { LatestTaskQueue } from './storage/latestTaskQueue.ts';
+import { withCrossTabLock } from './storage/crossTabLock.ts';
+import { CURRENT_STUDY_RECORD_SCHEMA_VERSION } from './storage/studyRecordCodec.ts';
+import { CALENDAR_MATH_PLAN, CALENDAR_WEEK_MATH_TARGETS } from './data/mathCalendar.ts';
 import {
   DIALOGUE_REVIEW_12_PAGE_MAP,
   DIALOGUE_REVIEW_34_PAGE_MAP,
   NEWKEY_12_PAGE_MAP,
   NEWKEY_34_PAGE_MAP,
-} from './data/mathMaterialPageMaps';
+} from './data/mathMaterialPageMaps.ts';
 import {
   CHEMISTRY_NAVIGATOR_MATERIAL,
   MATH_GRAND_SLAM_MATERIAL,
@@ -54,14 +54,14 @@ import {
   naturalLecturePageMap,
   PHYSICS_ADVANTAGE_MATERIAL,
   PHYSICS_COMEBACK_MATERIAL,
-} from './data/lecturePageMaps';
-import { CALENDAR_NATURAL_INTEGRATION_DETAILS, CALENDAR_NATURAL_INTEGRATION_ITEMS, CALENDAR_NATURAL_PLAN } from './data/naturalCalendar';
-import { isListeningTestBookTitle, LISTENING_TEST_BOOK_TITLE, LISTENING_TEST_MAX } from './data/englishBooks';
+} from './data/lecturePageMaps.ts';
+import { CALENDAR_NATURAL_INTEGRATION_DETAILS, CALENDAR_NATURAL_INTEGRATION_ITEMS, CALENDAR_NATURAL_PLAN } from './data/naturalCalendar.ts';
+import { isListeningTestBookTitle, LISTENING_TEST_BOOK_TITLE, LISTENING_TEST_MAX } from './data/englishBooks.ts';
 import {
   AZAR_GRAMMAR_BOOK_TITLE,
   azarGrammarPageSummary,
   isAzarGrammarBookTitle,
-} from './data/azarGrammar';
+} from './data/azarGrammar.ts';
 import {
   bookDetails,
   bookDetailsForTopic,
@@ -78,13 +78,13 @@ import {
   ENGLISH_WEEKLY_PLAN_BOOK,
   isEnglishPageMappedBook,
   pageMappedBookSubject,
-} from './data/bookPageMaps';
-import { LocalStudyRecordRepository } from './infrastructure/storage/localStudyRecordRepository';
-import { SupabaseStudyRecordRepository } from './infrastructure/storage/supabaseStudyRecordRepository';
-import { loadAllCalendarTaskRows } from './infrastructure/storage/supabaseCalendarTaskReader';
-import { buildCalendarStudyTaskPlan } from './application/calendar/calendarStudyTaskService';
+} from './data/bookPageMaps.ts';
+import { LocalStudyRecordRepository } from './infrastructure/storage/localStudyRecordRepository.ts';
+import { SupabaseStudyRecordRepository } from './infrastructure/storage/supabaseStudyRecordRepository.ts';
+import { loadAllCalendarTaskRows } from './infrastructure/storage/supabaseCalendarTaskReader.ts';
+import { buildCalendarStudyTaskPlan } from './application/calendar/calendarStudyTaskService.ts';
 import { createClient } from '@supabase/supabase-js';
-import { parseProgressImportText, progressImportBackupPayload, progressImportResultText } from './application/progressImport';
+import { parseProgressImportText, progressImportBackupPayload, progressImportResultText } from './application/progressImport.ts';
 
 var DAILY_PRESET_START='2026-08-10';
 var MIXED_WRITING_START='2026-08-11';

@@ -1,4 +1,4 @@
-import type { StudyItem, StudyItemFields, StudyRecord } from '../types';
+import type { StudyItem, StudyItemFields, StudyRecord } from '../types.ts';
 import { isMathProgressStudyItem } from '../domain/study/studyItemTypes.ts';
 import { recordedPageRangeFields } from './recordedPageRange.ts';
 

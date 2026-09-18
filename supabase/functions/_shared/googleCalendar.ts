@@ -1,8 +1,8 @@
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.114.0';
+import { classifyCalendarEvent } from './calendarClassification.ts';
 import { staleCalendarEventKeys } from './calendarSyncDiff.ts';
 import { readableErrorMessage } from './functionResponse.ts';
 import { chunksOf, collectStringKeysetPages } from './keysetPagination.ts';
-import { classifyCalendarEvent } from './calendarClassification.ts';
 
 export const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events.readonly';
 export const CORS_HEADERS = {
@@ -39,6 +39,32 @@ function requiredEnv(name: string): string {
   const value = Deno.env.get(name);
   if (!value) throw new Error(`Missing ${name}`);
   return value;
+}
+
+interface GoogleConfig {
+  clientSecret: string;
+  redirectUri: string;
+  stateSecret: string;
+  appReturnUrl: string;
+}
+
+interface GoogleTokenResponse {
+  access_token: string;
+  expires_in: number;
+  refresh_token?: string;
+  scope?: string;
+}
+
+interface CalendarEventWindow {
+  events: GoogleEvent[];
+  timeMinDate: string;
+  timeMaxDate: string;
+}
+
+interface CalendarSyncResult {
+  connected: boolean;
+  synced: number;
+  removed: number;
 }
 
 export class CalendarConfigurationError extends Error {
@@ -84,7 +110,7 @@ export function adminClient(): SupabaseClient {
   });
 }
 
-export function googleConfig() {
+export function googleConfig(): GoogleConfig {
   const env = requiredCalendarEnv([
     'GOOGLE_CLIENT_SECRET',
     'GOOGLE_REDIRECT_URI',
@@ -182,7 +208,7 @@ export function buildGoogleAuthorizationUrl(state: string, clientId: string): st
   return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
 }
 
-export async function exchangeAuthorizationCode(code: string, clientId: string) {
+export async function exchangeAuthorizationCode(code: string, clientId: string): Promise<GoogleTokenResponse> {
   const cfg = googleConfig();
   const response = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
@@ -199,10 +225,10 @@ export async function exchangeAuthorizationCode(code: string, clientId: string) 
   if (!response.ok) {
     throw new Error(readableErrorMessage(data.error_description ?? data.error ?? data, 'Google token exchange failed'));
   }
-  return data as { access_token: string; expires_in: number; refresh_token?: string; scope?: string };
+  return data as GoogleTokenResponse;
 }
 
-async function refreshGoogleAccessToken(refreshToken: string, clientId: string) {
+async function refreshGoogleAccessToken(refreshToken: string, clientId: string): Promise<GoogleTokenResponse> {
   const cfg = googleConfig();
   const response = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
@@ -218,7 +244,7 @@ async function refreshGoogleAccessToken(refreshToken: string, clientId: string) 
   if (!response.ok) {
     throw new Error(readableErrorMessage(data.error_description ?? data.error ?? data, 'Google token refresh failed'));
   }
-  return data as { access_token: string; expires_in: number };
+  return data as GoogleTokenResponse;
 }
 
 async function validAccessToken(admin: SupabaseClient, connection: CalendarConnection): Promise<string> {
@@ -278,7 +304,7 @@ function plainCalendarDescription(value: string): string {
     .trim();
 }
 
-async function fetchCalendarEvents(accessToken: string, calendarId: string) {
+async function fetchCalendarEvents(accessToken: string, calendarId: string): Promise<CalendarEventWindow> {
   const timeMin = new Date(Date.now() - 60 * 86_400_000);
   const timeMax = new Date(Date.now() + 240 * 86_400_000);
   const events: GoogleEvent[] = [];
@@ -311,7 +337,10 @@ async function fetchCalendarEvents(accessToken: string, calendarId: string) {
   };
 }
 
-export async function syncCalendarForUser(admin: SupabaseClient, userId: string) {
+export async function syncCalendarForUser(
+  admin: SupabaseClient,
+  userId: string,
+): Promise<CalendarSyncResult> {
   const { data: connection, error: connectionError } = await admin
     .from('google_calendar_connections').select('*').eq('user_id', userId).maybeSingle();
   if (connectionError) throw connectionError;

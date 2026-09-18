@@ -1,4 +1,4 @@
-import type { PageRange } from '../types';
+import type { PageRange } from '../types.ts';
 
 export function countUniquePages(ranges: PageRange[]): number {
   const pages = new Set<number>();

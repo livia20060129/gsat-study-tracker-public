@@ -4,6 +4,15 @@ function hasOwn(object: object, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(object, key);
 }
 
+function recordedBoundary(
+  values: Record<string, unknown>,
+  key: 'start' | 'end',
+  fallback: unknown,
+): unknown {
+  if (!hasOwn(values, key)) return fallback;
+  return values[key] === true ? fallback : values[key];
+}
+
 /**
  * Calendar may prefill a suggested range into start/end. That is a plan, not a
  * completed page record. A range becomes an actual record only after the user
@@ -28,7 +37,7 @@ export function recordedPageRangeFields(fields: StudyItemFields | undefined): St
     // actual value remained in fields.start/end. New records store the value
     // directly. Supporting both prevents a checked Calendar card from being
     // miscounted as page 1 instead of its recorded range.
-    start: hasOwn(values, 'start') ? (values.start === true ? fields.start : values.start) : fields.start,
-    end: hasOwn(values, 'end') ? (values.end === true ? fields.end : values.end) : fields.end,
+    start: recordedBoundary(values, 'start', fields.start),
+    end: recordedBoundary(values, 'end', fields.end),
   };
 }

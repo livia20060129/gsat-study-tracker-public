@@ -212,7 +212,12 @@ function groupCalendarWorkDefinitions<T extends PresetDefinitionLike>(definition
     const range = numericPageRange(item.f);
     const roundIdentity = calendarRoundIdentity(item);
     const mode = range ? 'range' : 'round';
-    const identity = range ? `range:${calendarRangeIdentity(item)}` : (roundIdentity ? `round:${roundIdentity}` : '');
+    let identity = '';
+    if (range) {
+      identity = `range:${calendarRangeIdentity(item)}`;
+    } else if (roundIdentity) {
+      identity = `round:${roundIdentity}`;
+    }
     if (!identity) {
       passthrough.add(index);
       return;

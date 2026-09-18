@@ -67,7 +67,10 @@ function formatWholeDuration(value: number): string {
 
 function signed(value: number, suffix: string): string {
   const rounded = Math.round(value * 10) / 10;
-  return `${rounded > 0 ? '+' : rounded < 0 ? '' : '±'}${rounded}${suffix}`;
+  let prefix = '±';
+  if (rounded > 0) prefix = '+';
+  else if (rounded < 0) prefix = '';
+  return `${prefix}${rounded}${suffix}`;
 }
 
 function comparisonClass(value: number, lowerIsBetter = false): string {
@@ -79,6 +82,14 @@ function comparisonClass(value: number, lowerIsBetter = false): string {
 function formatDateLabel(value: string): string {
   const [year, month, day] = value.split('-').map(Number);
   return `${year} 年 ${month} 月 ${day} 日`;
+}
+
+function wakeComparisonText(delta: number | null): string {
+  if (delta === null) return '資料不足';
+  if (delta === 0) return '相同';
+  const wakeDifference = Math.abs(delta);
+  const direction = delta < 0 ? '早起' : '晚起';
+  return `${direction} ${Math.floor(wakeDifference / 60)} 小時 ${wakeDifference % 60} 分鐘`;
 }
 
 function tintHex(hex: string, ratio: number): string {
@@ -375,12 +386,7 @@ function renderComparison(current: LearningPeriodSummary, previous: LearningPeri
   const wakeDelta = current.averageWakeMinutes !== null && previous.averageWakeMinutes !== null
     ? current.averageWakeMinutes - previous.averageWakeMinutes
     : null;
-  const wakeDifference = Math.abs(wakeDelta ?? 0);
-  const wakeText = wakeDelta === null
-    ? '資料不足'
-    : wakeDelta === 0
-      ? '相同'
-      : `${wakeDelta < 0 ? '早起' : '晚起'} ${Math.floor(wakeDifference / 60)} 小時 ${wakeDifference % 60} 分鐘`;
+  const wakeText = wakeComparisonText(wakeDelta);
   element<HTMLDListElement>('summaryComparison').innerHTML = `
     <div><dt>學習時間</dt><dd class="${comparisonClass(timeDelta)}">${signed(timeDelta / 60, ' hr')}</dd></div>
     <div><dt>完成率</dt><dd class="${comparisonClass(completionDelta)}">${signed(completionDelta, '%')}</dd></div>`;

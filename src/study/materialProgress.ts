@@ -188,10 +188,19 @@ function numberedSegments(total: number, noun: string): SegmentDefinition[] {
   }));
 }
 
+function mappedSegmentLabel(row: PageMapRow): string {
+  const [start, end, title, detail] = row;
+  let pageRange = String(start);
+  if (start !== end) {
+    pageRange += `–${end === Number.MAX_SAFE_INTEGER ? '末' : end}`;
+  }
+  return `${title}${detail ? `｜${detail}` : ''}（p.${pageRange}）`;
+}
+
 function mappedSegments(rows: readonly PageMapRow[]): SegmentDefinition[] {
   return rows.map((row, index) => ({
     key: String(index + 1),
-    label: `${row[2]}${row[3] ? `｜${row[3]}` : ''}（p.${row[0]}${row[0] === row[1] ? '' : `–${row[1] === Number.MAX_SAFE_INTEGER ? '末' : row[1]}`}）`,
+    label: mappedSegmentLabel(row),
     start: row[0],
     end: row[1],
   }));
@@ -527,7 +536,7 @@ export function activeStudyRecordPrefix(storage: Pick<Storage, 'length' | 'key' 
   if (validRecordPrefix(active)) return active;
   const prefixes = discoveredPrefixes(storage);
   const userPrefix = prefixes.find(prefix => prefix.startsWith('study-v11:user:'));
-  return userPrefix ?? (prefixes.includes('study-v11:guest:') ? 'study-v11:guest:' : 'study-v11:guest:');
+  return userPrefix ?? 'study-v11:guest:';
 }
 
 export function readMaterialProgressRecords(storage: Pick<Storage, 'length' | 'key' | 'getItem'>): {
