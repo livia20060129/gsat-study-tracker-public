@@ -170,6 +170,41 @@ test('timer starts from the closest second represented by manual minutes', async
   await expect(card.locator('[data-timer-display]')).toHaveText('12:30');
 });
 
+test('both math page panels vertically center their left-aligned content', async ({ page }) => {
+  for (const view of [
+    { tab: '今日數學頁數', panel: '#metricMathTodayPanel' },
+    { tab: '本週數學頁數', panel: '#metricMathWeekPanel' },
+  ]) {
+    await page.getByRole('tab', { name: view.tab }).click();
+    const panel = page.locator(view.panel);
+    await expect(panel).toHaveClass(/is-active/);
+    await page.waitForTimeout(450);
+
+    const layout = await panel.evaluate(node => {
+      const panelRect = node.getBoundingClientRect();
+      const content = node.querySelector<HTMLElement>('.metric-math-content')!;
+      const contentRect = content.getBoundingClientRect();
+      const panelStyle = getComputedStyle(node);
+      return {
+        centerDelta: Math.abs(
+          contentRect.top + contentRect.height / 2 - (panelRect.top + panelRect.height / 2),
+        ),
+        textAlign: getComputedStyle(content).textAlign,
+        childLefts: Array.from(content.children).map(child => child.getBoundingClientRect().left),
+        contentLeft: contentRect.left,
+        panelRect: { top: panelRect.top, height: panelRect.height },
+        contentRect: { top: contentRect.top, height: contentRect.height },
+        padding: [panelStyle.paddingTop, panelStyle.paddingBottom],
+        justifyContent: panelStyle.justifyContent,
+      };
+    });
+
+    expect(layout.centerDelta, `${view.tab}: ${JSON.stringify(layout)}`).toBeLessThan(2);
+    expect(layout.textAlign).toBe('left');
+    for (const left of layout.childLefts) expect(Math.abs(left - layout.contentLeft)).toBeLessThan(2);
+  }
+});
+
 test('completing deferred work records its date and checks the original day', async ({ page }) => {
   await page.goto('about:blank');
   await page.clock.install({ time: new Date('2026-09-17T12:00:00+08:00') });
