@@ -5,6 +5,7 @@ import test from 'node:test';
 const runtime = readFileSync(new URL('../src/legacy-app.ts', import.meta.url), 'utf8');
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const styles = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8');
+const connectionMotion = readFileSync(new URL('../src/ui/connectionSettingsMotion.ts', import.meta.url), 'utf8');
 const workflow = readFileSync(new URL('../.github/workflows/deploy.yml', import.meta.url), 'utf8');
 
 test('destructive whole-card and Calendar disconnect actions require confirmation', () => {
@@ -68,18 +69,33 @@ test('mobile settings use a bottom sheet and CI runs real browser tests', () => 
   assert.match(workflow, /npm run test:e2e/);
 });
 
-test('connection settings keep the details open until the retract animation finishes', () => {
-  assert.match(runtime, /classList\.add\('is-opening'\)/);
-  assert.match(runtime, /requestAnimationFrame\(function\(\)\{requestAnimationFrame/);
-  assert.match(runtime, /event\.propertyName!=='height'/);
-  assert.match(runtime, /--connection-expanded-height/);
-  assert.match(runtime, /event\.target!==connectionSettingsPanel/);
-  assert.match(runtime, /connectionSettingsPanel\.open=false/);
-  assert.match(styles, /\.connection-dock\.is-opening\{height:var\(--connection-summary-height\);transition:height/);
-  assert.match(styles, /@keyframes connection-settings-in\{from\{opacity:0;transform:translate3d/);
-  assert.match(styles, /@keyframes connection-dock-collapse/);
-  assert.match(styles, /\.connection-dock\[open\]\.is-closing\{animation:connection-dock-collapse/);
-  assert.match(styles, /\.connection-dock\[open\]\.is-closing\{animation:connection-sheet-out/);
+test('connection settings share one stable responsive transition lifecycle', () => {
+  assert.match(runtime, /setupConnectionSettingsMotion\(connectionSettingsPanel,connectionSettingsSummary\)/);
+  assert.match(connectionMotion, /type ConnectionMotionState = 'idle' \| 'opening' \| 'closing'/);
+  assert.match(connectionMotion, /mobilePlaceholder\.classList\.add\('is-active'\)/);
+  assert.match(connectionMotion, /panel\.style\.top = `\$\{collapsedRect\.top\}px`/);
+  assert.match(connectionMotion, /clearMotionStyles\(isMobile\(\)\)/);
+  assert.match(connectionMotion, /document\.addEventListener\('touchmove', handleGuardedTouchMove, \{ passive: false \}\)/);
+  assert.match(styles, /\.connection-dock-placeholder\.is-active\{display:block\}/);
+  assert.match(styles, /\.connection-dock\.is-preparing,\.connection-dock\.is-animating\{overflow:hidden;pointer-events:none/);
+  assert.match(styles, /body\.connection-sheet-open\{overscroll-behavior:none\}/);
+  assert.doesNotMatch(styles, /body\.connection-sheet-open\{overflow:hidden\}/);
+  assert.doesNotMatch(styles, /@keyframes connection-(settings-in|settings-out|dock-collapse|sheet-in|sheet-out)/);
+});
+
+test('Cloud records render before Calendar reconciliation and failures preserve the visible record', () => {
+  assert.match(runtime, /load\(\{skipCloudRead:true,cacheOnly:true,skipPresetReconcile:true\}\)/);
+  assert.match(runtime, /refreshVisibleDataAfterBackgroundSync\(\{skipPresetReconcile:true\}\)/);
+  assert.match(runtime, /setCloudVisibleRefreshPending\(true,options\)/);
+  assert.match(runtime, /withOperationTimeout\(calendarRefreshStatus\(false\)/);
+  assert.match(runtime, /calendarReady\)refreshVisibleDataAfterBackgroundSync\(\)/);
+  assert.match(runtime, /if\(!opts\.skipPresetReconcile\)changed=ensureDailyPresets/);
+});
+
+test('Biology and Chemistry New Key cards display their mapped unit and topic', () => {
+  assert.match(runtime, /import \{ naturalNewKeyPageText \} from '\.\/data\/naturalMaterialPageMaps\.ts'/);
+  assert.match(runtime, /新關鍵｜頁碼對應單元／主題/);
+  assert.match(runtime, /\(f\.subject==='生物'\|\|f\.subject==='化學'\)&&f\.material==='新關鍵'/);
 });
 
 test('material progress navigation stays in the current browser tab', () => {

@@ -27,6 +27,7 @@ import { dedupePresetDefinitions, presetDefinitionSemanticKey } from './study/pr
 import { countDeferredToDay, deferredCapacityCandidates, DEFERRED_TARGET_LIMIT, futureDeferredDays, isConfirmedDeferred, isDeferrableStudyItem, requiresDeferredLimitConfirmation } from './study/deferDays.ts';
 import { groupStudyItemsBySubject, studyItemSubject, studyItemSubjectClass } from './study/subjectOrder.ts';
 import { SUBJECT_TIME_SHORT_LABELS, subjectTimeArcPath, subjectTimeDonutSlices, summarizeSubjectTime } from './study/subjectTime.ts';
+import { withOperationTimeout } from './application/cloud/operationTimeout.ts';
 import { groupedSourceDateText, hasDeferredStudySource, shouldShowSourceDate } from './study/sourceDate.ts';
 import { completionCelebrationForChange } from './study/completionCelebration.ts';
 import { applyCompletionDateChange, completionDateLabel, deferredCompletionDate, manualCompletionDateChange } from './study/completionCheckedOn.ts';
@@ -37,6 +38,7 @@ import { initializeMagazineMonth, magazineMonthForDate } from './study/magazineD
 import { adjacentOverviewMetric, normalizeOverviewMetric, overviewMetricIndex } from './ui/overviewMetricView.ts';
 import { adjacentStudyItemsView, normalizeStudyItemsView, studyItemsViewIndex } from './ui/studyItemsView.ts';
 import { renderItemDeleteFooter } from './ui/itemActions.ts';
+import { setupConnectionSettingsMotion } from './ui/connectionSettingsMotion.ts';
 import { LatestTaskQueue } from './storage/latestTaskQueue.ts';
 import { withCrossTabLock } from './storage/crossTabLock.ts';
 import { CURRENT_STUDY_RECORD_SCHEMA_VERSION } from './storage/studyRecordCodec.ts';
@@ -47,6 +49,7 @@ import {
   NEWKEY_12_PAGE_MAP,
   NEWKEY_34_PAGE_MAP,
 } from './data/mathMaterialPageMaps.ts';
+import { naturalNewKeyPageText } from './data/naturalMaterialPageMaps.ts';
 import {
   CHEMISTRY_NAVIGATOR_MATERIAL,
   MATH_GRAND_SLAM_MATERIAL,
@@ -616,9 +619,12 @@ var periodicCloudSaveBusy=false;
 var PERIODIC_CLOUD_SAVE_MS=10*60*1000;
 var cloudHasError=false;
 var cloudVisibleRefreshPending=false;
+var cloudVisibleRefreshOptions=null;
 var deleteUndoState=null;
 var deleteUndoTimer=null;
 var DELETE_UNDO_MS=8000;
+var CLOUD_RECORD_BOOTSTRAP_TIMEOUT_MS=20000;
+var CLOUD_CALENDAR_BOOTSTRAP_TIMEOUT_MS=15000;
 
 var calendarConnected=false;
 var calendarCacheLoaded=false;
@@ -888,7 +894,7 @@ async function cloudPullAllRecordsOnce(options){
  try{
   cloudLoading=true;
   if(!opts.silent)cloudSetMessage('正在讀取雲端紀錄…',true);
-  var snapshots=await cloudRecordRepository.loadMany(since);total=snapshots.length;
+  var snapshots=await cloudRecordRepository.loadMany(since,opts.signal);total=snapshots.length;
   snapshots.forEach(function(snapshot){
    var cloud=snapshot.record,date=snapshot.studyDate;
    cloudDates[date]=true;
@@ -1330,19 +1336,21 @@ function isEditingRecordControl(){
  var active=document.activeElement,tag=active&&active.tagName?String(active.tagName).toUpperCase():'';
  return (tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')&&active!==id('studyDate');
 }
-function setCloudVisibleRefreshPending(pending){
+function setCloudVisibleRefreshPending(pending,options){
  cloudVisibleRefreshPending=!!pending;
+ cloudVisibleRefreshOptions=cloudVisibleRefreshPending?Object.assign({},options||{}):null;
  var notice=id('cloudRefreshNotice');if(notice)notice.hidden=!cloudVisibleRefreshPending;
 }
-function refreshVisibleDataAfterBackgroundSync(){
- if(isEditingRecordControl()){setCloudVisibleRefreshPending(true);return false}
+function refreshVisibleDataAfterBackgroundSync(options){
+ if(isEditingRecordControl()){setCloudVisibleRefreshPending(true,options);return false}
  setCloudVisibleRefreshPending(false);
- load({skipCloudRead:true});return true;
+ load(Object.assign({skipCloudRead:true},options||{}));return true;
 }
 function applyPendingVisibleCloudRefresh(){
  if(!cloudVisibleRefreshPending||isEditingRecordControl())return false;
+ var options=cloudVisibleRefreshOptions;
  if(!persist(false))return false;
- setCloudVisibleRefreshPending(false);load({skipCloudRead:true});return true;
+ setCloudVisibleRefreshPending(false);load(Object.assign({skipCloudRead:true},options||{}));return true;
 }
 async function retryDirtyCloudRecordsOnReconnect(){
  if(!cloudClient||!cloudUser||!currentStorageIsUserScoped())return false;
@@ -1357,36 +1365,60 @@ async function retryDirtyCloudRecordsOnReconnect(){
 }
 async function activateCloudUser(user){
  var serial=++cloudActivationSerial;cloudUser=user||null;setStorageScope(cloudUser?cloudUser.id:null);cloudBootstrapPending=!!cloudUser;cloudUpdateUI();clearCalendarRuntime();
- rebuildMathProgressIndex();
  if(!cloudUser){
-  cloudBootstrapPending=false;cloudSetMessage('已登出；目前使用獨立 guest 本機資料。',true);load({skipCloudRead:true});return;
+  cloudBootstrapPending=false;cloudSetMessage('已登出；目前使用獨立 guest 本機資料。',true);rebuildMathProgressIndex();load({skipCloudRead:true});return;
  }
 
  // Render the account-scoped cache immediately. cacheOnly prevents a missing
  // cached day from being generated and mistaken for a newer server record.
- load({skipCloudRead:true,cacheOnly:true});
- cloudSetMessage('登入完成；已先載入本機快取，雲端紀錄與 Calendar 正在背景同步。',true);
- var recordStats=null;
  try{
-  var results=await Promise.all([cloudPullAllRecords({silent:true}),calendarRefreshStatus(false)]);
-  recordStats=results[0];
+  rebuildMathProgressIndex();
+  load({skipCloudRead:true,cacheOnly:true,skipPresetReconcile:true});
+ }catch(e){
+  if(serial===cloudActivationSerial){
+   cloudBootstrapPending=false;cloudLoading=false;updateCloudActionButtons();
+   cloudSetMessage('已登入，但載入帳號本機快取失敗：'+(e&&e.message?e.message:String(e))+'。',false);
+  }
+  return;
+ }
+ cloudSetMessage('登入完成；已先載入本機快取，正在讀取雲端紀錄。',true);
+ var recordStats=null;
+ var controller=new AbortController();
+ try{
+  recordStats=await withOperationTimeout(cloudPullAllRecords({silent:true,signal:controller.signal}),{
+   timeoutMs:CLOUD_RECORD_BOOTSTRAP_TIMEOUT_MS,
+   message:'雲端紀錄讀取超過 20 秒，已停止本次讀取；本機快取仍安全保留。',
+   onTimeout:function(){controller.abort()}
+  });
  }catch(e){
   recordStats={ok:false,error:e&&e.message?e.message:String(e)};
  }
  if(serial!==cloudActivationSerial)return;
  cloudBootstrapPending=false;
  updateCloudActionButtons();
- var calendarCleaned=calendarConnected?reconcileStoredCalendarPresets():0;
  var queued=queueDirtyCloudRecords();
- var refreshed=refreshVisibleDataAfterBackgroundSync();
+ var refreshed=refreshVisibleDataAfterBackgroundSync({skipPresetReconcile:true});
  if(recordStats&&recordStats.ok){
   var msg='登入完成；本機快取已立即顯示，'+recordStats.message;
-  if(calendarCleaned)msg+=' Calendar 已更新 '+calendarCleaned+' 天本機項目。';
   if(queued)msg+=' 另有 '+queued+' 天已排入背景上傳。';
   if(!refreshed)msg+=' 目前正在輸入；完成輸入後會安全合併並更新畫面，也可按「立即套用」。';
   cloudSetMessage(msg,recordStats.conflicts?false:true);
  }else{
   cloudSetMessage('已登入並使用本機快取；背景讀取雲端失敗：'+((recordStats&&recordStats.error)||'未知錯誤')+'。',false);
+ }
+ setTimeout(function(){refreshCalendarAfterCloudActivation(serial)},0);
+}
+async function refreshCalendarAfterCloudActivation(serial){
+ if(serial!==cloudActivationSerial||!cloudUser)return;
+ calendarSetMessage('正在讀取 Google Calendar 連線狀態…',true);
+ try{
+  var calendarReady=await withOperationTimeout(calendarRefreshStatus(false),{
+   timeoutMs:CLOUD_CALENDAR_BOOTSTRAP_TIMEOUT_MS,
+   message:'Calendar 狀態讀取超過 15 秒；這不影響 Cloud 登入與雲端紀錄。'
+  });
+  if(serial===cloudActivationSerial&&calendarReady)refreshVisibleDataAfterBackgroundSync();
+ }catch(e){
+  if(serial===cloudActivationSerial)calendarSetMessage(e&&e.message?e.message:String(e),false);
  }
 }
 async function initCloud(){
@@ -2598,6 +2630,7 @@ function renderScienceFields(x,reviewMode){
  if(isCalendarNatural(x)&&f.calendarTopic)h+=calendarTopicSourceRow(x);
  if(f.material==='好考點'&&(f.subject==='物理'||f.subject==='化學'))h+='<div class="field" style="margin-top:10px"><label>對應單元／章節</label><div class="small" data-science-auto>'+esc(goodPointCombinedText(f.subject,f.start,f.end))+'</div></div>';
  if(f.material==='123日的淬鍊'&&f.subject!=='混合')h+='<div class="field" style="margin-top:10px"><label>123日的淬鍊｜頁碼對應章節</label><div class="small" data-science-auto>'+esc(day123Text(f.subject,f.start,f.end))+'</div></div>';
+ if((f.subject==='生物'||f.subject==='化學')&&f.material==='新關鍵')h+='<div class="field" style="margin-top:10px"><label>新關鍵｜頁碼對應單元／主題</label><div class="small" data-science-auto>'+esc(naturalNewKeyPageText(f.subject,f.start,f.end))+'</div></div>';
  if(f.material==='領航'||f.material==='優勢'||f.material==='逆轉勝')h+='<div class="field" style="margin-top:10px"><label>'+esc(f.material)+'｜頁碼對應單元／章節</label><div class="small" data-science-auto>'+esc(lectureNaturalText(f.subject,f.material,f.start,f.end))+'</div></div>';
  if(f.subject==='混合'&&f.material==='複習週記')h+='<div class="field" style="margin-top:10px"><label>對應章節</label><div class="small" data-science-auto>'+esc(naturalReviewText(x))+'</div></div>';
  if(!reviewMode)h+='<div class="checkline" style="margin-top:10px"><label><input type="checkbox" data-check="progress"'+checked(f.progress)+'> 進度</label><label><input type="checkbox" data-check="graded"'+checked(f.graded)+'> 批改</label><label><input type="checkbox" data-check="corrected"'+checked(f.corrected)+'> 訂正</label></div>';
@@ -3255,6 +3288,7 @@ function refreshAuto(card,x){
   normalizeScience(x.f);var s=card.querySelector('[data-science-auto]');
   if(x.f.material==='好考點'){applyGoodPoint(x.f);if(s)s.textContent=goodPointCombinedText(x.f.subject,x.f.start,x.f.end)}
   else if(x.f.material==='123日的淬鍊'){if(s)s.textContent=day123Text(x.f.subject,x.f.start,x.f.end)}
+  else if((x.f.subject==='生物'||x.f.subject==='化學')&&x.f.material==='新關鍵'){if(s)s.textContent=naturalNewKeyPageText(x.f.subject,x.f.start,x.f.end)}
   else if(x.f.material==='領航'||x.f.material==='優勢'||x.f.material==='逆轉勝'){applyLectureNatural(x.f);if(s)s.textContent=lectureNaturalText(x.f.subject,x.f.material,x.f.start,x.f.end)}
   else if(x.f.subject==='混合'){applyNaturalReview(x);if(s)s.textContent=naturalReviewText(x)}
  }
@@ -3758,7 +3792,7 @@ function persist(show){
 function load(options){
  var opts=options||{},d=id('studyDate').value;pendingDeferredTargets={};deferredLimitPrompt=null;data=loadData(d);updateCloudConflictUI(data.syncConflict?d:'');updateStorageRecoveryUI();id('weekdayText').textContent=weekdays[parseDate(d).getDay()];
  if(data.storageIssue){writeHeader();render();id('status').textContent=d+' 的本機紀錄無法讀取；原始內容已保留，修復前不會覆蓋。';return}
- var changed=ensureDailyPresets(data,d);if(ensureEnglishReviewWordEntryIds(data))changed=true;writeHeader();render();if(changed&&!opts.cacheOnly)persist(false);
+ var changed=false;if(!opts.skipPresetReconcile)changed=ensureDailyPresets(data,d);if(ensureEnglishReviewWordEntryIds(data))changed=true;writeHeader();render();if(changed&&!opts.cacheOnly)persist(false);
  if(cloudUser&&!cloudBootstrapPending&&!opts.skipCloudRead)cloudPullDate(d,false);
 }
 
@@ -3779,7 +3813,7 @@ function itemDetails(x){
  }
  else if(x.type==='magazine'){if(isFixedMagazine(x)){s+='｜'+ensureMagazineEntries(x).map(function(r,i){return'第'+(i+1)+'筆：'+line(r.name)+'｜'+line(r.month)+'月號｜Unit '+line(r.unit)+'｜'+line(r.minutes)+' 分鐘'}).join('；')}else s+='｜'+line(f.name)+'｜'+line(f.month)+'月號｜Unit '+line(f.unit)}
  else if(x.type==='chineseReading'){if(f.kind==='writing')s+='｜寫作｜題目：'+line(f.topic)+'｜分數：'+line(f.score)+'｜題型：'+line(f.writingType)+'｜改進方向：'+line(f.improvement);else if(f.kind==='reading')s+='｜古今悅讀一百｜第'+line(f.round)+'回｜進度：'+(f.progress?'✓':'—')+'｜批改：'+(f.graded?'✓':'—')+'｜訂正：'+(f.corrected?'✓':'—');else if(f.kind==='book')s+='｜'+line(f.book)+'｜頁碼：第'+line(f.start)+'頁～第'+line(f.end)+'頁｜對應：'+bookPageText(f.book,f.start,f.end);else s+='｜國文項目：未選擇'}
- else if(x.type==='scienceReview'){if(isCalendarNaturalIntegration(x)){var ce=ensureCalendarNaturalIntegrationEntries(x,(data&&data.date)||'');s+='｜Calendar主題：'+line(f.calendarTopic)+'｜分科項目：'+ce.map(function(c){return(c.done?'✓ ':'— ')+c.subject+'｜123日的淬鍊｜'+line(c.pageText)+'｜對應章節：'+line(c.chapterText)}).join('；')}else{normalizeScience(f);s+='｜科目：'+line(f.subject);if(isCalendarNatural(x)&&f.calendarTopic)s+='｜Calendar主題：'+line(f.calendarTopic);s+='｜講義：'+line(f.material)+'｜頁數：第'+line(f.start)+'頁到第'+line(f.end)+'頁';if(f.material==='好考點')s+='｜對應：'+goodPointCombinedText(f.subject,f.start,f.end);if(f.material==='123日的淬鍊'){var d123=day123Matches(f.subject,f.start,f.end);if(d123.length)s+='｜對應：'+day123Text(f.subject,f.start,f.end)}if(f.subject==='混合')s+='｜章節：'+line(f.chapter);s+='｜進度：'+(f.progress?'✓':'—')+'｜批改：'+(f.graded?'✓':'—')+'｜訂正：'+(f.corrected?'✓':'—');if(f.corrected)s+='｜錯因／不熟觀念：'+line(f.reason)}}
+ else if(x.type==='scienceReview'){if(isCalendarNaturalIntegration(x)){var ce=ensureCalendarNaturalIntegrationEntries(x,(data&&data.date)||'');s+='｜Calendar主題：'+line(f.calendarTopic)+'｜分科項目：'+ce.map(function(c){return(c.done?'✓ ':'— ')+c.subject+'｜123日的淬鍊｜'+line(c.pageText)+'｜對應章節：'+line(c.chapterText)}).join('；')}else{normalizeScience(f);s+='｜科目：'+line(f.subject);if(isCalendarNatural(x)&&f.calendarTopic)s+='｜Calendar主題：'+line(f.calendarTopic);s+='｜講義：'+line(f.material)+'｜頁數：第'+line(f.start)+'頁到第'+line(f.end)+'頁';if(f.material==='好考點')s+='｜對應：'+goodPointCombinedText(f.subject,f.start,f.end);if(f.material==='123日的淬鍊'){var d123=day123Matches(f.subject,f.start,f.end);if(d123.length)s+='｜對應：'+day123Text(f.subject,f.start,f.end)}if((f.subject==='生物'||f.subject==='化學')&&f.material==='新關鍵')s+='｜對應：'+naturalNewKeyPageText(f.subject,f.start,f.end);if(f.subject==='混合')s+='｜章節：'+line(f.chapter);s+='｜進度：'+(f.progress?'✓':'—')+'｜批改：'+(f.graded?'✓':'—')+'｜訂正：'+(f.corrected?'✓':'—');if(f.corrected)s+='｜錯因／不熟觀念：'+line(f.reason)}}
  else if(x.type==='mock')s+='｜科目：'+(isLockedEnglishMock(x)?'英文':line(f.subject))+'｜'+line(f.year)+' '+line(f.exam)+' '+line(f.round)+'｜狀態：'+line(f.status)+'｜錯因／不熟觀念：'+line(f.reason);
  else if(x.type==='englishVocabInteractive'){var vw=Array.isArray(f.words)?f.words:[];s+='｜今日單字：'+(vw.length?vw.map(function(z){return typeof z==='string'?z:(z.text||'')}).filter(Boolean).join('、'):'未填')}
  else if(x.type==='general'&&isEnglishReview(x)){var w=Array.isArray(f.words)?f.words:[];s+='｜今日單字：'+(w.length?w.map(function(z){return typeof z==='string'?z:(z.text||'')}).filter(Boolean).join('、'):'未填')}
@@ -4129,71 +4163,7 @@ id('calendarSyncBtn').addEventListener('click',calendarSyncNow);
 id('calendarDisconnectBtn').addEventListener('click',calendarDisconnect);
 var connectionSettingsPanel=id('connectionSettings');
 var connectionSettingsSummary=connectionSettingsPanel.querySelector(':scope > summary');
-if(connectionSettingsSummary)connectionSettingsSummary.addEventListener('click',function(e){
- if(e.target&&e.target.closest&&e.target.closest('button,a,input,select,textarea'))return;
- var reduceConnectionMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
- var narrowConnectionViewport=window.matchMedia('(max-width: 720px)').matches;
- if(connectionSettingsPanel.classList.contains('is-opening')||connectionSettingsPanel.classList.contains('is-closing')){e.preventDefault();return}
- if(!connectionSettingsPanel.open&&!reduceConnectionMotion&&!narrowConnectionViewport){
-  e.preventDefault();
-  var openingSummaryHeight=connectionSettingsSummary.getBoundingClientRect().height;
-  connectionSettingsPanel.classList.add('is-opening');
-  connectionSettingsPanel.style.setProperty('--connection-summary-height',openingSummaryHeight+'px');
-  connectionSettingsPanel.style.height=openingSummaryHeight+'px';
-  connectionSettingsPanel.open=true;
-  var openingExpandedHeight=Math.max(openingSummaryHeight,connectionSettingsPanel.scrollHeight);
-  connectionSettingsPanel.style.setProperty('--connection-expanded-height',openingExpandedHeight+'px');
-  var opened=false;
-  function connectionSettingsOpenTransitionEnd(event){
-   if(event.target!==connectionSettingsPanel||event.propertyName!=='height')return;
-   finishConnectionSettingsOpen();
-  }
-  function finishConnectionSettingsOpen(){
-   if(opened)return;
-   opened=true;
-   connectionSettingsPanel.removeEventListener('transitionend',connectionSettingsOpenTransitionEnd);
-   connectionSettingsPanel.classList.remove('is-opening');
-   connectionSettingsPanel.style.removeProperty('height');
-   connectionSettingsPanel.style.removeProperty('--connection-expanded-height');
-   connectionSettingsPanel.style.removeProperty('--connection-summary-height');
-  }
-  connectionSettingsPanel.addEventListener('transitionend',connectionSettingsOpenTransitionEnd);
-  requestAnimationFrame(function(){requestAnimationFrame(function(){connectionSettingsPanel.style.height=openingExpandedHeight+'px'})});
-  setTimeout(finishConnectionSettingsOpen,520);
-  return;
- }
- if(!connectionSettingsPanel.open||reduceConnectionMotion)return;
- e.preventDefault();
- var expandedHeight=connectionSettingsPanel.getBoundingClientRect().height;
- var summaryHeight=connectionSettingsSummary.getBoundingClientRect().height;
- connectionSettingsPanel.style.setProperty('--connection-expanded-height',expandedHeight+'px');
- connectionSettingsPanel.style.setProperty('--connection-summary-height',summaryHeight+'px');
- connectionSettingsPanel.classList.add('is-closing');
- var closed=false;
- function connectionSettingsCloseAnimationEnd(event){
-  if(event.target!==connectionSettingsPanel)return;
-  finishConnectionSettingsClose();
- }
- function finishConnectionSettingsClose(){
-  if(closed)return;
-  closed=true;
-  connectionSettingsPanel.removeEventListener('animationend',connectionSettingsCloseAnimationEnd);
-  connectionSettingsPanel.open=false;
-  connectionSettingsPanel.classList.remove('is-closing');
-  connectionSettingsPanel.style.removeProperty('--connection-expanded-height');
-  connectionSettingsPanel.style.removeProperty('--connection-summary-height');
- }
- connectionSettingsPanel.addEventListener('animationend',connectionSettingsCloseAnimationEnd);
- setTimeout(finishConnectionSettingsClose,420);
-});
-connectionSettingsPanel.addEventListener('toggle',function(e){
- if(e.currentTarget.open&&!e.currentTarget.classList.contains('is-opening')){
-  e.currentTarget.classList.remove('is-closing');
-  e.currentTarget.style.removeProperty('--connection-expanded-height');
-  e.currentTarget.style.removeProperty('--connection-summary-height');
- }
- document.body.classList.toggle('connection-sheet-open',!!e.currentTarget.open);
-});
+if(connectionSettingsSummary)setupConnectionSettingsMotion(connectionSettingsPanel,connectionSettingsSummary);
 document.addEventListener('focusout',function(){setTimeout(applyPendingVisibleCloudRefresh,0)});
 window.addEventListener('online',function(){retryDirtyCloudRecordsOnReconnect().catch(function(e){cloudSetMessage('網路恢復後重試失敗：'+(e&&e.message?e.message:String(e)),false)})});
 window.addEventListener('offline',function(){cloudSetMessage('目前離線；新紀錄已保存在本機，恢復連線後會立即重試。',false)});

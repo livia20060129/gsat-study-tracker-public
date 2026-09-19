@@ -28,6 +28,7 @@ import {
   PHYSICS_ADVANTAGE_PAGE_MAP,
   PHYSICS_COMEBACK_PAGE_MAP,
 } from '../data/lecturePageMaps.ts';
+import { BIOLOGY_NEW_KEY_PAGE_MAP, CHEMISTRY_NEW_KEY_PAGE_MAP } from '../data/naturalMaterialPageMaps.ts';
 import { ACTIVE_RECORD_PREFIX_KEY } from '../storage/local.ts';
 import type { CalendarNaturalIntegrationEntry, StudyItem, StudyRecord } from '../types.ts';
 import { recordedPageRangeFields } from './recordedPageRange.ts';
@@ -206,6 +207,24 @@ function mappedSegments(rows: readonly PageMapRow[]): SegmentDefinition[] {
   }));
 }
 
+function largeTopicSegments(rows: readonly PageMapRow[]): SegmentDefinition[] {
+  const topics: Array<{ label: string; start: number; end: number }> = [];
+  rows.forEach(row => {
+    const previous = topics.at(-1);
+    if (previous?.label === row[2]) {
+      previous.end = Math.max(previous.end, row[1]);
+      return;
+    }
+    topics.push({ label: row[2], start: row[0], end: row[1] });
+  });
+  return topics.map((topic, index) => ({
+    key: String(index + 1),
+    label: `${topic.label}（p.${topic.start}${topic.start === topic.end ? '' : `–${topic.end}`}）`,
+    start: topic.start,
+    end: topic.end,
+  }));
+}
+
 function bookDefinition(book: PageMappedBook): MaterialDefinition {
   const subject = pageMappedBookSubject(book) === '國文' ? 'chinese' : 'english';
   return {
@@ -277,6 +296,14 @@ const MATERIAL_DEFINITIONS: MaterialDefinition[] = [
     id: `natural:${subject}:好考點`, subject: 'natural' as const,
     title: `自然｜${subject}｜好考點`, unitLabel: '單元', segments: mappedSegments(rows),
   })),
+  {
+    id: 'natural:生物:新關鍵', subject: 'natural',
+    title: '自然｜生物｜新關鍵', unitLabel: '大主題', segments: largeTopicSegments(BIOLOGY_NEW_KEY_PAGE_MAP),
+  },
+  {
+    id: 'natural:化學:新關鍵', subject: 'natural',
+    title: '自然｜化學｜新關鍵', unitLabel: '大主題', segments: largeTopicSegments(CHEMISTRY_NEW_KEY_PAGE_MAP),
+  },
   { id: 'natural:化學:領航', subject: 'natural', title: '自然｜化學｜領航', unitLabel: '分項', segments: mappedSegments(CHEMISTRY_NAVIGATOR_PAGE_MAP) },
   { id: 'natural:物理:優勢', subject: 'natural', title: '自然｜物理｜優勢', unitLabel: '分項', segments: mappedSegments(PHYSICS_ADVANTAGE_PAGE_MAP) },
   { id: 'natural:物理:逆轉勝', subject: 'natural', title: '自然｜物理｜逆轉勝', unitLabel: '主題', segments: mappedSegments(PHYSICS_COMEBACK_PAGE_MAP) },

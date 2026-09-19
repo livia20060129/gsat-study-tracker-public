@@ -24,7 +24,7 @@ export interface CloudStudyRecordSaveResult {
 }
 
 export interface CloudStudyRecordRepositoryPort {
-  loadMany(updatedSince?: string | null): Promise<CloudStudyRecordSnapshot[]>;
+  loadMany(updatedSince?: string | null, signal?: AbortSignal): Promise<CloudStudyRecordSnapshot[]>;
   loadDate(date: string): Promise<CloudStudyRecordSnapshot | null>;
   loadRevision(date: string): Promise<number>;
   save(record: StudyRecord, baseRevision: number): Promise<CloudStudyRecordSaveResult>;

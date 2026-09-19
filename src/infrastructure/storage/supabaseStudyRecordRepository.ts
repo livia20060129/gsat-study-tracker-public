@@ -20,6 +20,7 @@ interface SupabaseResult<T> {
 }
 
 interface StudyRecordQuery extends PromiseLike<SupabaseResult<unknown>> {
+  abortSignal(signal: AbortSignal): StudyRecordQuery;
   gte(column: string, value: string): StudyRecordQuery;
   gt(column: string, value: string): StudyRecordQuery;
   eq(column: string, value: string): StudyRecordQuery;
@@ -115,12 +116,13 @@ export class SupabaseStudyRecordRepository implements CloudStudyRecordRepository
     this.client = client;
   }
 
-  async loadMany(updatedSince?: string | null): Promise<CloudStudyRecordSnapshot[]> {
+  async loadMany(updatedSince?: string | null, signal?: AbortSignal): Promise<CloudStudyRecordSnapshot[]> {
     const snapshots: CloudStudyRecordSnapshot[] = [];
     let cursor: StudyRecordCursor | null = null;
 
     while (true) {
       let query = this.client.from('study_records').select('study_date,payload,updated_at,revision');
+      if (signal) query = query.abortSignal(signal);
       if (updatedSince) query = query.gte('updated_at', updatedSince);
       if (cursor) query = query.or(afterStudyRecordCursor(cursor));
       query = query

@@ -94,18 +94,69 @@ test('account recovery controls are readable without changing data', async ({ pa
   await expect(page.locator('#cloudMessage')).toContainText('請先輸入');
 });
 
-test('expanded connection settings become a mobile bottom sheet', async ({ browser }) => {
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true });
+test('mobile connection settings stay anchored to their scrolled position', async ({ browser }) => {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    hasTouch: true,
+    isMobile: true,
+  });
   const page = await context.newPage();
   await page.goto('/');
-  await page.locator('#connectionSettings > summary').click();
+  const openingFrame = await page.evaluate(() => {
+    const settings = document.querySelector<HTMLDetailsElement>('#connectionSettings')!;
+    const nextPanel = document.querySelector<HTMLElement>('.panel')!;
+    window.scrollTo(0, Math.min(520, document.documentElement.scrollHeight - window.innerHeight));
+    const scrollTop = window.scrollY;
+    const collapsedRect = settings.getBoundingClientRect();
+    const nextPanelTop = nextPanel.getBoundingClientRect().top;
+    settings.querySelector<HTMLElement>(':scope > summary')!.click();
+    const preparingRect = settings.getBoundingClientRect();
+    return {
+      backgroundShift: nextPanel.getBoundingClientRect().top - nextPanelTop,
+      collapsedHeight: collapsedRect.height,
+      collapsedTop: collapsedRect.top,
+      preparing: settings.classList.contains('is-preparing'),
+      preparingHeight: preparingRect.height,
+      preparingTop: preparingRect.top,
+      scrollTop,
+      scrollTopAfterOpen: window.scrollY,
+    };
+  });
+  expect(openingFrame.scrollTop).toBeGreaterThan(0);
+  expect(openingFrame.scrollTopAfterOpen).toBe(openingFrame.scrollTop);
+  expect(Math.abs(openingFrame.backgroundShift)).toBeLessThan(1);
+  expect(openingFrame.preparing).toBe(true);
+  expect(Math.abs(openingFrame.preparingTop - openingFrame.collapsedTop)).toBeLessThan(1);
+  expect(Math.abs(openingFrame.preparingHeight - openingFrame.collapsedHeight)).toBeLessThan(1);
   await expect(page.locator('#connectionSettings')).toHaveAttribute('open', '');
   expect(await page.locator('#connectionSettings').evaluate(node => getComputedStyle(node).position)).toBe('fixed');
+  await expect(page.locator('.connection-dock-placeholder')).toHaveClass(/is-active/);
   await expect(page.locator('body')).toHaveClass(/connection-sheet-open/);
+  expect(await page.locator('body').evaluate(node => getComputedStyle(node).overflowY)).not.toBe('hidden');
+  await expect(page.locator('#connectionSettings')).not.toHaveClass(/is-opening/);
+  expect(await page.evaluate(() => window.scrollY)).toBe(openingFrame.scrollTop);
+  const settledTop = await page.locator('#connectionSettings').evaluate(node => node.getBoundingClientRect().top);
+  expect(Math.abs(settledTop - openingFrame.collapsedTop)).toBeLessThan(1);
+  await page.locator('#cloudMessage').evaluate((node) => {
+    node.textContent = '連線狀態更新後顯示的較長說明文字。'.repeat(18);
+  });
+  await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  const updatedTop = await page.locator('#connectionSettings').evaluate(node => node.getBoundingClientRect().top);
+  expect(Math.abs(updatedTop - settledTop)).toBeLessThan(1);
+  expect(await page.evaluate(() => window.scrollY)).toBe(openingFrame.scrollTop);
   await page.locator('#connectionSettings > summary').click();
   await expect(page.locator('#connectionSettings')).toHaveClass(/is-closing/);
+  await page.waitForTimeout(120);
+  const closingTop = await page.locator('#connectionSettings').evaluate(node => node.getBoundingClientRect().top);
+  expect(Math.abs(closingTop - openingFrame.collapsedTop)).toBeLessThan(1);
   await expect(page.locator('#connectionSettings')).not.toHaveAttribute('open', '');
+  const collapsedTopAfterClose = await page.locator('#connectionSettings').evaluate(
+    node => node.getBoundingClientRect().top,
+  );
+  expect(Math.abs(collapsedTopAfterClose - openingFrame.collapsedTop)).toBeLessThan(1);
+  await expect(page.locator('.connection-dock-placeholder')).not.toHaveClass(/is-active/);
   await expect(page.locator('body')).not.toHaveClass(/connection-sheet-open/);
+  expect(await page.evaluate(() => window.scrollY)).toBe(openingFrame.scrollTop);
   await context.close();
 });
 
