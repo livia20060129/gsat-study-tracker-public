@@ -233,26 +233,31 @@ test('both math page panels vertically center their left-aligned content', async
 
     const layout = await panel.evaluate(node => {
       const panelRect = node.getBoundingClientRect();
-      const content = node.querySelector<HTMLElement>('.metric-math-content')!;
-      const contentRect = content.getBoundingClientRect();
+      const children = Array.from(node.children) as HTMLElement[];
+      const childRects = children.map(child => child.getBoundingClientRect());
+      const contentTop = Math.min(...childRects.map(rect => rect.top));
+      const contentBottom = Math.max(...childRects.map(rect => rect.bottom));
       const panelStyle = getComputedStyle(node);
       return {
         centerDelta: Math.abs(
-          contentRect.top + contentRect.height / 2 - (panelRect.top + panelRect.height / 2),
+          (contentTop + contentBottom) / 2 - (panelRect.top + panelRect.height / 2),
         ),
-        textAlign: getComputedStyle(content).textAlign,
-        childLefts: Array.from(content.children).map(child => child.getBoundingClientRect().left),
-        contentLeft: contentRect.left,
+        textAlign: panelStyle.textAlign,
+        childLefts: childRects.map(rect => rect.left),
+        panelContentLeft: panelRect.left + Number.parseFloat(panelStyle.paddingLeft),
         panelRect: { top: panelRect.top, height: panelRect.height },
-        contentRect: { top: contentRect.top, height: contentRect.height },
+        contentRect: { top: contentTop, height: contentBottom - contentTop },
         padding: [panelStyle.paddingTop, panelStyle.paddingBottom],
+        alignItems: panelStyle.alignItems,
         justifyContent: panelStyle.justifyContent,
       };
     });
 
     expect(layout.centerDelta, `${view.tab}: ${JSON.stringify(layout)}`).toBeLessThan(2);
     expect(layout.textAlign).toBe('left');
-    for (const left of layout.childLefts) expect(Math.abs(left - layout.contentLeft)).toBeLessThan(2);
+    expect(layout.alignItems).toBe('flex-start');
+    expect(layout.justifyContent).toBe('center');
+    for (const left of layout.childLefts) expect(Math.abs(left - layout.panelContentLeft)).toBeLessThan(2);
   }
 });
 

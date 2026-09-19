@@ -27,7 +27,7 @@ test('keyboard segment navigation wraps in both directions', () => {
   assert.equal(adjacentOverviewMetric('minutes', -1), 'mathWeek');
 });
 
-test('overview metric panels resize smoothly and keep stacked completion metrics left aligned in a centered group', () => {
+test('overview metric panels resize smoothly and vertically center left-aligned math metrics', () => {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const styles = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8');
   const runtime = readFileSync(new URL('../src/legacy-app.ts', import.meta.url), 'utf8');
@@ -35,12 +35,11 @@ test('overview metric panels resize smoothly and keep stacked completion metrics
   assert.match(html, /id="overviewStats"/);
   assert.match(html, /class="metric-panel-stage"/);
   assert.equal((html.match(/class="metric-panel metric-math-panel"/g) || []).length, 2);
-  assert.equal((html.match(/class="metric-math-content"/g) || []).length, 2);
+  assert.equal((html.match(/class="metric-math-content"/g) || []).length, 0);
   assert.match(styles, /metric-panel-stage\{[^}]*transition:min-height/);
   assert.match(styles, /overview-metric-stat\[data-metric-view="minutes"\]\{--metric-panel-height:282px\}/);
-  assert.match(styles, /metric-math-panel\{justify-content:center;align-items:stretch;padding:6px 5px;text-align:left\}/);
-  assert.match(styles, /metric-math-content\{[^}]*justify-content:center;[^}]*margin-block:auto;text-align:left\}/);
-  assert.match(styles, /metric-math-content strong,.metric-math-content \.small\{text-align:left\}/);
+  assert.match(styles, /metric-panel-stage \.metric-math-panel\{align-items:flex-start;justify-content:center;padding:6px 5px;text-align:left\}/);
+  assert.match(styles, /metric-panel-stage \.metric-math-panel strong,.metric-panel-stage \.metric-math-panel \.progress,.metric-panel-stage \.metric-math-panel \.small\{flex:0 0 auto;text-align:left\}/);
   assert.match(styles, /completion-stat #completionRatePanel\{grid-template-columns:minmax\(0,420px\);justify-content:center;align-content:center/);
   assert.match(styles, /completion-stat \.completion-metric-head\{flex-direction:row;align-items:baseline;justify-content:space-between;text-align:left\}/);
   assert.match(styles, /completion-stat \.completion-metric \.small\{text-align:left\}/);
