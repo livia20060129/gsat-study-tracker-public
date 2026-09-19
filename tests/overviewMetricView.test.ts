@@ -36,7 +36,7 @@ test('overview metric panels resize smoothly and vertically center left-aligned 
   assert.match(html, /class="metric-panel-stage"/);
   assert.equal((html.match(/class="metric-panel metric-math-panel"/g) || []).length, 2);
   assert.equal((html.match(/class="metric-math-content"/g) || []).length, 0);
-  assert.match(styles, /metric-panel-stage\{[^}]*transition:min-height/);
+  assert.match(styles, /metric-panel-stage\{[^}]*flex:1;[^}]*transition:min-height/);
   assert.match(styles, /overview-metric-stat\[data-metric-view="minutes"\]\{--metric-panel-height:282px\}/);
   assert.match(styles, /metric-panel-stage \.metric-math-panel\{align-items:flex-start;justify-content:center;padding:6px 5px;text-align:left\}/);
   assert.match(styles, /metric-panel-stage \.metric-math-panel strong,.metric-panel-stage \.metric-math-panel \.progress,.metric-panel-stage \.metric-math-panel \.small\{flex:0 0 auto;text-align:left\}/);

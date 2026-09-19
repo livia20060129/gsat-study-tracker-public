@@ -222,6 +222,10 @@ test('timer starts from the closest second represented by manual minutes', async
 });
 
 test('both math page panels vertically center their left-aligned content', async ({ page }) => {
+  await page.locator('#studyDate').fill('2026-09-20');
+  await page.locator('#studyDate').dispatchEvent('change');
+  await expect(page.locator('#settlementMetrics')).toBeVisible();
+
   for (const view of [
     { tab: '今日數學頁數', panel: '#metricMathTodayPanel' },
     { tab: '本週數學頁數', panel: '#metricMathWeekPanel' },
@@ -233,6 +237,11 @@ test('both math page panels vertically center their left-aligned content', async
 
     const layout = await panel.evaluate(node => {
       const panelRect = node.getBoundingClientRect();
+      const stage = node.parentElement!;
+      const card = stage.parentElement!;
+      const stageRect = stage.getBoundingClientRect();
+      const cardRect = card.getBoundingClientRect();
+      const cardStyle = getComputedStyle(card);
       const children = Array.from(node.children) as HTMLElement[];
       const childRects = children.map(child => child.getBoundingClientRect());
       const contentTop = Math.min(...childRects.map(rect => rect.top));
@@ -250,6 +259,9 @@ test('both math page panels vertically center their left-aligned content', async
         padding: [panelStyle.paddingTop, panelStyle.paddingBottom],
         alignItems: panelStyle.alignItems,
         justifyContent: panelStyle.justifyContent,
+        stageBottomDelta: Math.abs(
+          stageRect.bottom - (cardRect.bottom - Number.parseFloat(cardStyle.paddingBottom)),
+        ),
       };
     });
 
@@ -257,6 +269,7 @@ test('both math page panels vertically center their left-aligned content', async
     expect(layout.textAlign).toBe('left');
     expect(layout.alignItems).toBe('flex-start');
     expect(layout.justifyContent).toBe('center');
+    expect(layout.stageBottomDelta, `${view.tab}: ${JSON.stringify(layout)}`).toBeLessThan(2);
     for (const left of layout.childLefts) expect(Math.abs(left - layout.panelContentLeft)).toBeLessThan(2);
   }
 });
