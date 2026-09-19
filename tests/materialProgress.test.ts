@@ -389,7 +389,7 @@ test('includes completed Calendar natural integration child ranges', () => {
   assert.match(biology.segments.find(segment => segment.recorded)?.label ?? '', /Chapter 2 遺傳/);
 });
 
-test('records Azar Calendar child sections independently instead of filling the whole page range', () => {
+test('shows one Azar progress segment per chapter while preserving section-level completion', () => {
   const first = item({
     id: 'azar-2-1', type: 'extra', done: true,
     f: { title: 'Azar英文文法（中階）', azarSectionCode: '2-1', start: '31', end: '31' },
@@ -401,10 +401,14 @@ test('records Azar Calendar child sections independently instead of filling the 
   const parent = item({ id: 'azar-chapter', f: { groupedWorkEntries: [first, second] } });
   const azar = materialProgressRows([record([parent])]).find(row => row.id === 'english:azar-intermediate');
   assert.ok(azar);
-  assert.equal(azar.total, 149);
+  assert.equal(azar.unitLabel, '章');
+  assert.equal(azar.total, 14);
   assert.equal(azar.recorded, 1);
-  assert.equal(azar.segments.find(segment => segment.key === '2-1')?.recorded, true);
-  assert.equal(azar.segments.find(segment => segment.key === '2-2')?.recorded, false);
+  assert.equal(azar.segments[0].label, '第一章：現在式（p.1–29）');
+  assert.equal(azar.segments[13].label, '第十四章：名詞子句（p.400–428）');
+  assert.equal(azar.segments.find(segment => segment.key === '2')?.recorded, true);
+  assert.equal(azar.segments.find(segment => segment.key === '2')?.completionPercent, 3);
+  assert.equal(azar.segments.find(segment => segment.key === '1')?.recorded, false);
 });
 
 test('uses the Tracker active account prefix and ignores other account records', () => {

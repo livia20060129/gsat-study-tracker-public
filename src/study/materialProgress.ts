@@ -13,6 +13,7 @@ import {
 import { LISTENING_TEST_BOOK_TITLE, isListeningTestBookTitle } from '../data/englishBooks.ts';
 import {
   AZAR_GRAMMAR_BOOK_TITLE,
+  AZAR_GRAMMAR_CHAPTERS,
   AZAR_GRAMMAR_SECTIONS,
   isAzarGrammarBookTitle,
 } from '../data/azarGrammar.ts';
@@ -266,12 +267,12 @@ const MATERIAL_DEFINITIONS: MaterialDefinition[] = [
     id: 'english:azar-intermediate',
     subject: 'english',
     title: `英文｜${AZAR_GRAMMAR_BOOK_TITLE}`,
-    unitLabel: '分項',
-    segments: AZAR_GRAMMAR_SECTIONS.map(section => ({
-      key: section.code,
-      label: `${section.code}${section.title}（p.${section.start}${section.start === section.end ? '' : `–${section.end}`}）`,
-      start: section.start,
-      end: section.end,
+    unitLabel: '章',
+    segments: AZAR_GRAMMAR_CHAPTERS.map(chapter => ({
+      key: String(chapter.number),
+      label: `${chapter.label}（p.${chapter.start}–${chapter.end}）`,
+      start: chapter.start,
+      end: chapter.end,
     })),
   },
   bookDefinition(ENGLISH_TOPIC_READING_BOOK),
@@ -403,6 +404,13 @@ function markExact(recorded: Map<string, MaterialCoverage>, definitionId: string
   coverageFor(recorded, definitionId).exactKeys.add(key);
 }
 
+function markAzarSection(recorded: Map<string, MaterialCoverage>, sectionCodeValue: unknown): void {
+  const sectionCode = String(sectionCodeValue ?? '').trim();
+  const section = AZAR_GRAMMAR_SECTIONS.find(candidate => candidate.code === sectionCode);
+  if (!section) return;
+  markRange(recorded, 'english:azar-intermediate', section.start, section.end);
+}
+
 function markStudyItem(recorded: Map<string, MaterialCoverage>, item: StudyItem): void {
   const fields = objectValue(item.f);
   const delegatesRangeToChildren = ['groupedWorkEntries', 'dailyWorkSourceItems']
@@ -435,7 +443,7 @@ function markStudyItem(recorded: Map<string, MaterialCoverage>, item: StudyItem)
       else if (/Essential\s+Grammar\s+in\s+Use/i.test(title)) markLinear(recorded, 'english:essential', fields.unitStart ?? fields.unit, fields.unitEnd ?? fields.unitStart ?? fields.unit);
       else if (/英文寫作測驗/.test(title)) markLinear(recorded, 'english:writing', fields.round);
       else if (isAzarGrammarBookTitle(title)) {
-        if (fields.azarSectionCode) markExact(recorded, 'english:azar-intermediate', fields.azarSectionCode);
+        if (fields.azarSectionCode) markAzarSection(recorded, fields.azarSectionCode);
         else markRange(recorded, 'english:azar-intermediate', fields.start, fields.end);
       }
       else if (/英文文法總複習講義/.test(title)) markRange(recorded, 'english:grammar', fields.start, fields.end);
