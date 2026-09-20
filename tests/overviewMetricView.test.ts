@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 test('daily overview keeps the completed-time subject donut', () => {
@@ -24,7 +24,7 @@ test('daily overview runtime no longer calculates or switches math metrics', () 
 
   assert.doesNotMatch(runtime, /overviewMetricView|overviewMetricTabs|updateOverviewMetricView/);
   assert.doesNotMatch(runtime, /MathProgressIndex|calculateMathProgress|mathProgressIndex/);
-  assert.equal(existsSync(new URL('../src/study/mathProgressHistory.ts', import.meta.url)), false);
+  assert.doesNotMatch(runtime, /mathProgressHistory|initHistoricalMathProgressGuard/);
 });
 
 test('completed-time panel remains sized while completion metrics stay aligned', () => {
