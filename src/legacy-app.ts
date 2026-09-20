@@ -10,7 +10,6 @@
  *   application/ · domain/ · infrastructure/ · data/ · study/ · items/ · storage/ · ui/
  */
 
-import { calculateMathProgress, MathProgressIndex } from './study/mathProgress.ts';
 import { decideRevisionSync, mergeStudyRecordsForUpload, recordSyncConflicts, sameStudyContent, stripRecordSyncMeta } from './storage/recordSync.ts';
 import { ACTIVE_RECORD_PREFIX_KEY, LEGACY_UNSCOPED_PREFIX, storagePrefixForUser } from './storage/local.ts';
 import { incrementalSyncStart, latestServerWatermark, recordSyncWatermarkKey } from './storage/syncWatermark.ts';
@@ -35,7 +34,6 @@ import { finishStudyTimer, formatStudyTimer, normalizeStudyTimerState, pauseStud
 import { markCalendarNaturalCompletionByUser, markCalendarNaturalProgressByUser, reconcileCalendarNaturalPriorCoverage } from './study/calendarNaturalCompletion.ts';
 import { ensureEnglishReviewWordEntryIds } from './study/englishReview.ts';
 import { initializeMagazineMonth, magazineMonthForDate } from './study/magazineDefaults.ts';
-import { adjacentOverviewMetric, normalizeOverviewMetric, overviewMetricIndex } from './ui/overviewMetricView.ts';
 import { adjacentStudyItemsView, normalizeStudyItemsView, studyItemsViewIndex } from './ui/studyItemsView.ts';
 import { renderItemDeleteFooter } from './ui/itemActions.ts';
 import { setupConnectionSettingsMotion } from './ui/connectionSettingsMotion.ts';
@@ -88,6 +86,7 @@ import { loadAllCalendarTaskRows } from './infrastructure/storage/supabaseCalend
 import { buildCalendarStudyTaskPlan } from './application/calendar/calendarStudyTaskService.ts';
 import { createClient } from '@supabase/supabase-js';
 import { parseProgressImportText, progressImportBackupPayload, progressImportResultText } from './application/progressImport.ts';
+import { bedtimeRecordForStudyDate } from './study/sleep.ts';
 
 var DAILY_PRESET_START='2026-08-10';
 var MIXED_WRITING_START='2026-08-11';
@@ -592,7 +591,9 @@ var EXTRA_READING_TITLES=[
 ];
 
 var data=null;
-var mathProgressIndex=new MathProgressIndex();
+var routineTimeMode='wake';
+var routineTimeDrafts={wake:{hour:'',minute:''},bedtime:{hour:'',minute:''}};
+var routineTimeSwitchTimer=null;
 var pendingDeferredTargets={};
 var deferredLimitPrompt=null;
 
@@ -639,7 +640,6 @@ function setStorageScope(userId){
  STORE_PREFIX=storagePrefixForUser(userId||null);
  localRecordRepository.setPrefix(STORE_PREFIX);
  try{store.setItem(ACTIVE_RECORD_PREFIX_KEY,STORE_PREFIX)}catch(e){}
- mathProgressIndex.replaceAll([]);
  data=null;
  updateImportBackupButton();
 }
@@ -783,7 +783,6 @@ function writeStoredRecord(rec){
  try{
   rec.schemaVersion=CURRENT_STUDY_RECORD_SCHEMA_VERSION;
   if(!localRecordRepository.save(rec))return false;
-  mathProgressIndex.upsert(rec);
   return true;
  }catch(e){return false}
 }
@@ -972,11 +971,6 @@ async function cloudPullDateLocked(date,force){
  return !!cloud||!!localToPush;
 }
 function localStudyDates(){return recordDatesForPrefix(STORE_PREFIX)}
-function rebuildMathProgressIndex(){
- var records=[];
- localStudyDates().forEach(function(date){var rec=readStoredRecord(date);if(rec)records.push(rec)});
- mathProgressIndex.replaceAll(records);
-}
 function legacyLocalDates(){
  var set={};
  recordDatesForPrefix(LEGACY_UNSCOPED_PREFIX).forEach(function(d){set[d]=true});
@@ -1025,7 +1019,7 @@ async function cloudMergeLocalMissing(){
    var rec=cloneRecord(current||candidate.record);rec.date=d;
    if(await cloudForceLocalRecord(rec))migrated++;else failed++;
   }
-  rebuildMathProgressIndex();load();
+  load();
   var msg='本機舊資料處理完成：'+migrated+' 天已匯入目前帳號';
   if(ambiguous)msg+='；'+ambiguous+' 天同時存在兩份不同的 legacy／guest 資料，為安全起見未自動選擇';
   if(failed)msg+='；'+failed+' 天同步失敗或發生競爭衝突';
@@ -1366,13 +1360,12 @@ async function retryDirtyCloudRecordsOnReconnect(){
 async function activateCloudUser(user){
  var serial=++cloudActivationSerial;cloudUser=user||null;setStorageScope(cloudUser?cloudUser.id:null);cloudBootstrapPending=!!cloudUser;cloudUpdateUI();clearCalendarRuntime();
  if(!cloudUser){
-  cloudBootstrapPending=false;cloudSetMessage('已登出；目前使用獨立 guest 本機資料。',true);rebuildMathProgressIndex();load({skipCloudRead:true});return;
+  cloudBootstrapPending=false;cloudSetMessage('已登出；目前使用獨立 guest 本機資料。',true);load({skipCloudRead:true});return;
  }
 
  // Render the account-scoped cache immediately. cacheOnly prevents a missing
  // cached day from being generated and mistaken for a newer server record.
  try{
-  rebuildMathProgressIndex();
   load({skipCloudRead:true,cacheOnly:true,skipPresetReconcile:true});
  }catch(e){
   if(serial===cloudActivationSerial){
@@ -1500,7 +1493,7 @@ function loadData(date){
   if(Array.isArray(o.syncConflictDetails))b.syncConflictDetails=cloneObj(o.syncConflictDetails);
   if(o.syncConflictLocal)b.syncConflictLocal=cloneObj(o.syncConflictLocal);
   if(o.syncConflictCloud)b.syncConflictCloud=cloneObj(o.syncConflictCloud);
-  b.mood=o.mood||'';b.wakeTime=o.wakeTime||'';b.biggestBlock=o.biggestBlock||'';b.firstThingTomorrow=o.firstThingTomorrow||'';b.notes=o.notes||'';
+  b.mood=o.mood||'';b.wakeTime=o.wakeTime||'';if(o.bedtime&&typeof o.bedtime==='object')b.bedtime=cloneObj(o.bedtime);b.biggestBlock=o.biggestBlock||'';b.firstThingTomorrow=o.firstThingTomorrow||'';b.notes=o.notes||'';
   var storedCelebrations=o.completionCelebrations&&o.completionCelebrations.version===3?o.completionCelebrations:null;
   b.completionCelebrations={version:3,half:!!(storedCelebrations&&storedCelebrations.half),complete:!!(storedCelebrations&&storedCelebrations.complete)};
   if(Array.isArray(o.items))for(var i=0;i<o.items.length;i++){var it=normalizeItem(o.items[i],date);if(it)b.items.push(it)}
@@ -3140,20 +3133,13 @@ function renderWeeklyItems(){
  id('weeklyItemList').innerHTML=html;
  id('weeklyItemBadge').textContent=total+' 項';
 }
-var studyItemsView='today',overviewMetricView='minutes';
+var studyItemsView='today';
 function updateStudyItemsView(focusSelected){
  studyItemsView=normalizeStudyItemsView(studyItemsView);
  var today=studyItemsView==='today',tabs=id('studyItemsViewTabs'),index=studyItemsViewIndex(studyItemsView);tabs.dataset.active=String(index);
  tabs.querySelectorAll('[data-study-items-view]').forEach(function(button){var selected=button.getAttribute('data-study-items-view')===studyItemsView;button.setAttribute('aria-selected',selected?'true':'false');button.tabIndex=selected?0:-1;if(selected&&focusSelected)button.focus()});
  id('dailyItemsView').hidden=!today;id('weeklyItemsView').hidden=today;
  id('dailyPresetBadge').hidden=!today;id('weeklyItemBadge').hidden=today;
-}
-function updateOverviewMetricView(focusSelected){
- overviewMetricView=normalizeOverviewMetric(overviewMetricView);
- var tabs=id('overviewMetricTabs'),index=overviewMetricIndex(overviewMetricView);tabs.dataset.active=String(index);
- tabs.querySelectorAll('[data-overview-metric]').forEach(function(button){var selected=button.getAttribute('data-overview-metric')===overviewMetricView;button.setAttribute('aria-selected',selected?'true':'false');button.tabIndex=selected?0:-1;if(selected&&focusSelected)button.focus()});
- var card=tabs.closest('.overview-metric-stat');if(card)card.dataset.metricView=overviewMetricView;
- document.querySelectorAll('[data-metric-panel]').forEach(function(panel){var selected=panel.getAttribute('data-metric-panel')===overviewMetricView;panel.hidden=false;panel.classList.toggle('is-active',selected);panel.setAttribute('aria-hidden',selected?'false':'true');panel.inert=!selected});
 }
 function render(){
  deferredCapacityCache=null;
@@ -3174,7 +3160,7 @@ function render(){
  id('dailyNotice').textContent=isAway(data)?'今日外出：固定排程全部取消；自行新增項目仍可照常記錄。':(data.date>=DAILY_PRESET_START?dailyMessageForDate(data.date):'歷史日期：不自動改寫原有紀錄。');
  updateSummary();
  renderWeeklyItems();
- updateStudyItemsView();updateOverviewMetricView(false);
+ updateStudyItemsView();
  refreshTimerUI();
 }
 function findRecursive(list,target){
@@ -3696,7 +3682,6 @@ function renderSubjectTimeDonut(summary){
 }
 
 function updateSummary(){
- mathProgressIndex.upsert(data);
  var subjectMinuteEntries=[],active=visibleItems(data);
  function addSubjectMinutes(item,value){var minutes=Number(value||0);if(Number.isFinite(minutes)&&minutes>0)subjectMinuteEntries.push({subject:studyItemSubject(item),minutes:minutes})}
  function collectCompletedMinutes(x){
@@ -3727,7 +3712,6 @@ function updateSummary(){
  active.forEach(collectCompletedMinutes);
  var subjectTime=summarizeSubjectTime(subjectMinuteEntries);
  var completion=summarizeCompletionUnits(completionUnitsForRecord(data,data.date)),pct=completion.itemPercent;
- var math=calculateMathProgress(mathProgressIndex.view(),data.date,calendarWeekMathTarget(data.date));
  id('completionPercent').textContent=pct+'%';
  id('completionBar').style.width=pct+'%';
  id('completionText').textContent=completion.itemCompleted+'/'+completion.itemTotal+' 項';
@@ -3736,21 +3720,35 @@ function updateSummary(){
   id('workloadCompletionText').textContent=completion.workloadCompleted+'/'+completion.workloadTotal+' 項工作量';
   updateSettlementMetrics(data.date);
  renderSubjectTimeDonut(subjectTime);
- id('mathPagesTop').textContent=math.dailyNewPages;
- id('weekMathPages').textContent=math.weeklyNewPages;
- id('weekMathTarget').textContent=math.weeklyTarget;
- id('weekMathBar').style.width=math.weeklyPercent+'%';
- id('weekMathPercent').textContent=math.weeklyPercent+'%';
 }
 function wakeParts(s){var m=String(s||'').match(/^(\d{1,2}):(\d{1,2})$/);return m?{hour:m[1],minute:m[2]}:{hour:'',minute:''}}
-function composeWake(){var h=id('wakeHour').value,m=id('wakeMinute').value;if(h===''||m==='')return'';h=Number(h);m=Number(m);if(!Number.isInteger(h)||!Number.isInteger(m)||h<0||h>23||m<0||m>59)return'';return pad(h)+':'+pad(m)}
-function readHeader(){data.mood=id('mood').value;data.wakeTime=composeWake();data.biggestBlock=id('biggestBlock').value;data.firstThingTomorrow=id('firstThingTomorrow').value;data.notes=id('notes').value}
-function writeHeader(){id('mood').value=data.mood||'';var w=wakeParts(data.wakeTime);id('wakeHour').value=w.hour;id('wakeMinute').value=w.minute;id('biggestBlock').value=data.biggestBlock||'';id('firstThingTomorrow').value=data.firstThingTomorrow||'';id('notes').value=data.notes||''}
+function routineDraftTime(mode){var draft=routineTimeDrafts[mode]||{},h=draft.hour,m=draft.minute;if(h===''||m==='')return'';h=Number(h);m=Number(m);if(!Number.isInteger(h)||!Number.isInteger(m)||h<0||h>23||m<0||m>59)return'';return pad(h)+':'+pad(m)}
+function captureRoutineDraft(){routineTimeDrafts[routineTimeMode]={hour:id('wakeHour').value,minute:id('wakeMinute').value}}
+function syncRoutineDraftToRecord(){
+ var value=routineDraftTime(routineTimeMode);
+ if(routineTimeMode==='wake')data.wakeTime=value;
+ else if(value){var bedtime=bedtimeRecordForStudyDate(data.date,value);if(bedtime)data.bedtime=bedtime}
+ else delete data.bedtime;
+}
+function updateRoutineTimeHint(){
+ var bedtimeValue=routineDraftTime('bedtime'),nextDay=routineTimeMode==='bedtime'&&bedtimeValue&&Number(bedtimeValue.slice(0,2))<6;id('routineNextDayHint').hidden=!nextDay;
+}
+function updateRoutineTimeUI(){
+ var switcher=id('routineTimeModeSwitch'),activeIndex=routineTimeMode==='wake'?0:1,draft=routineTimeDrafts[routineTimeMode];switcher.dataset.active=String(activeIndex);
+ switcher.querySelectorAll('[data-routine-mode]').forEach(function(button){var selected=button.getAttribute('data-routine-mode')===routineTimeMode;button.setAttribute('aria-selected',String(selected));button.tabIndex=selected?0:-1});
+ id('wakeHour').value=draft.hour;id('wakeMinute').value=draft.minute;id('wakeHour').setAttribute('aria-label',(routineTimeMode==='wake'?'起床':'就寢')+'小時');id('wakeMinute').setAttribute('aria-label',(routineTimeMode==='wake'?'起床':'就寢')+'分鐘');updateRoutineTimeHint();
+}
+function setRoutineTimeMode(mode){
+ if(mode!=='wake'&&mode!=='bedtime'||mode===routineTimeMode)return;captureRoutineDraft();syncRoutineDraftToRecord();routineTimeMode=mode;var field=id('routineTimeField');if(routineTimeSwitchTimer)clearTimeout(routineTimeSwitchTimer);field.classList.add('is-switching');updateRoutineTimeUI();routineTimeSwitchTimer=setTimeout(function(){field.classList.remove('is-switching');routineTimeSwitchTimer=null},220);
+}
+function readHeader(){data.mood=id('mood').value;captureRoutineDraft();syncRoutineDraftToRecord();data.biggestBlock=id('biggestBlock').value;data.firstThingTomorrow=id('firstThingTomorrow').value;data.notes=id('notes').value;updateRoutineTimeHint()}
+function writeHeader(){id('mood').value=data.mood||'';routineTimeMode='wake';routineTimeDrafts={wake:wakeParts(data.wakeTime),bedtime:wakeParts(data.bedtime&&data.bedtime.time)};updateRoutineTimeUI();id('biggestBlock').value=data.biggestBlock||'';id('firstThingTomorrow').value=data.firstThingTomorrow||'';id('notes').value=data.notes||''}
 function validate(){
  var ok=true,msg='';
  var wakeHour=id('wakeHour'),wakeMinute=id('wakeMinute'),wakeHourValue=wakeHour.value===''?null:Number(wakeHour.value),wakeMinuteValue=wakeMinute.value===''?null:Number(wakeMinute.value);
- var wakeHourValid=wakeHourValue===null||(Number.isInteger(wakeHourValue)&&wakeHourValue>=0&&wakeHourValue<=23),wakeMinuteValid=wakeMinuteValue===null||(Number.isInteger(wakeMinuteValue)&&wakeMinuteValue>=0&&wakeMinuteValue<=59);
- wakeHour.setCustomValidity(wakeHourValid?'':'小時請填 00～23。');wakeMinute.setCustomValidity(wakeMinuteValid?'':'分鐘請填 00～59。');if(!wakeHourValid||!wakeMinuteValid){ok=false;msg='起床時間格式不正確；小時請填 00～23，分鐘請填 00～59。'}
+ function draftValid(draft){var h=draft.hour===''?null:Number(draft.hour),m=draft.minute===''?null:Number(draft.minute);return(h===null)===(m===null)&&(h===null||(Number.isInteger(h)&&h>=0&&h<=23&&Number.isInteger(m)&&m>=0&&m<=59))}
+ var wakeHourValid=wakeHourValue===null||(Number.isInteger(wakeHourValue)&&wakeHourValue>=0&&wakeHourValue<=23),wakeMinuteValid=wakeMinuteValue===null||(Number.isInteger(wakeMinuteValue)&&wakeMinuteValue>=0&&wakeMinuteValue<=59),wakePairValid=(wakeHourValue===null)===(wakeMinuteValue===null),wakeDraftValid=draftValid(routineTimeDrafts.wake),bedtimeDraftValid=draftValid(routineTimeDrafts.bedtime),routineLabel=!wakeDraftValid?'起床':(!bedtimeDraftValid?'就寢':(routineTimeMode==='wake'?'起床':'就寢'));
+ wakeHour.setCustomValidity(wakeHourValid&&wakeMinuteValid&&wakePairValid?'':'請完整填寫有效時間。');wakeMinute.setCustomValidity(wakeHourValid&&wakeMinuteValid&&wakePairValid?'':'請完整填寫有效時間。');if(!wakeHourValid||!wakeMinuteValid||!wakePairValid||!wakeDraftValid||!bedtimeDraftValid){ok=false;msg=routineLabel+'時間格式不正確；小時請填 00～23，分鐘請填 00～59，或將兩欄都留空。'}
  document.querySelectorAll('[data-field="essayScore"]').forEach(function(el){var v=el.value===''?null:Number(el.value),x=v===null||(Number.isInteger(v)&&v>=0&&v<=18);el.setCustomValidity(x?'':'作文範圍起點請填 0～18。');if(!x){ok=false;msg='英文作文分數超出範圍。'}});
  document.querySelectorAll('[data-field="mixedScore"]').forEach(function(el){var v=el.value===''?null:Number(el.value),x=v===null||(Number.isInteger(v)&&v>=0&&v<=10);el.setCustomValidity(x?'':'混合題分數請填 0～10。');if(!x){ok=false;msg='英文混合題分數超出範圍。'}});
  document.querySelectorAll('[data-field="score"]').forEach(function(el){var v=el.value===''?null:Number(el.value),x=v===null||(Number.isInteger(v)&&v>=0&&v<=25);el.setCustomValidity(x?'':'國文寫作分數請填 0～25。');if(!x){ok=false;msg='國文寫作分數超出範圍。'}});
@@ -3830,7 +3828,7 @@ function itemSummary(x){
  return s;
 }
 function daySummary(date){
- var rec=loadData(date);if(rec.storageIssue)return'【'+date+' '+weekdays[parseDate(date).getDay()]+'】\n本機紀錄無法讀取，原始資料已保留等待修復。';ensureDailyPresets(rec,date);var a=['【'+date+' '+weekdays[parseDate(date).getDay()]+'】','狀態：'+line(rec.mood),'起床時間：'+line(rec.wakeTime)];if(isAway(rec))a.push('固定排程：因外出取消');visibleItems(rec).forEach(function(x){a.push(itemSummary(x))});a.push('最大卡點：'+line(rec.biggestBlock));a.push('明天第一件事：'+line(rec.firstThingTomorrow));a.push('補充：'+line(rec.notes));return a.join('\n');
+ var rec=loadData(date);if(rec.storageIssue)return'【'+date+' '+weekdays[parseDate(date).getDay()]+'】\n本機紀錄無法讀取，原始資料已保留等待修復。';ensureDailyPresets(rec,date);var bedtimeText=rec.bedtime&&rec.bedtime.time?rec.bedtime.time+(rec.bedtime.nextDay?'（隔日凌晨）':''):'—',a=['【'+date+' '+weekdays[parseDate(date).getDay()]+'】','狀態：'+line(rec.mood),'起床時間：'+line(rec.wakeTime),'就寢時間：'+bedtimeText];if(isAway(rec))a.push('固定排程：因外出取消');visibleItems(rec).forEach(function(x){a.push(itemSummary(x))});a.push('最大卡點：'+line(rec.biggestBlock));a.push('明天第一件事：'+line(rec.firstThingTomorrow));a.push('補充：'+line(rec.notes));return a.join('\n');
 }
 function buildWeekSummary(){persist(false);var mon=mondayOf(parseDate(data.date)),a=['本週讀書紀錄｜'+dateString(mon)+'～'+dateString(new Date(mon.getFullYear(),mon.getMonth(),mon.getDate()+6,12))];for(var i=0;i<7;i++){var d=new Date(mon.getFullYear(),mon.getMonth(),mon.getDate()+i,12);a.push('\n'+daySummary(dateString(d)))}return a.join('\n')}
 function importProgressItemKey(x){
@@ -3886,6 +3884,8 @@ function mergedImportedProgressRecord(current,incoming){
  next.date=d;
  next.mood=mergeImportedProgressValue(next.mood,incoming.mood)||'';
  next.wakeTime=mergeImportedProgressValue(next.wakeTime,incoming.wakeTime)||'';
+ next.bedtime=mergeImportedProgressValue(next.bedtime,incoming.bedtime);
+ if(!next.bedtime)delete next.bedtime;
  next.biggestBlock=mergeImportedProgressValue(next.biggestBlock,incoming.biggestBlock)||'';
  next.firstThingTomorrow=mergeImportedProgressValue(next.firstThingTomorrow,incoming.firstThingTomorrow)||'';
  next.notes=mergeImportedProgressValue(next.notes,incoming.notes)||'';
@@ -3982,7 +3982,7 @@ async function confirmProgressImport(){
   showImportPanel(hasIssue?'匯入完成，但有項目待處理':'匯入完成',message,changed.map(function(entry){return entry.date+'：'+outcomes[entry.date]}),hasIssue?'error':'success');
   id('status').textContent=message;setImportButtons({showConfirm:false,showCancel:false});updateImportBackupButton();
  }catch(e){
-  var rolledBack=restoreLocalImportEntries(written);rebuildMathProgressIndex();
+  var rolledBack=restoreLocalImportEntries(written);
   var detail=(e&&e.message?e.message:String(e))+(rolledBack?'；已復原本次本機變更。':'；本機復原不完整，請勿關閉頁面。');
   showImportPanel('匯入未完成',detail,[],'error');id('status').textContent=detail;setImportButtons({showConfirm:true,showCancel:true});
  }
@@ -4004,7 +4004,7 @@ async function undoLastProgressImport(){
   var message=progressImportResultText(summary),hasIssue=summary.localFailed||summary.cloudConflicts||summary.cloudFailed;
   showImportPanel(hasIssue?'已復原本機，但有項目待處理':'已復原上次匯入',message,restored.map(function(entry){return entry.date+'：'+outcomes[entry.date]}),hasIssue?'error':'success');id('status').textContent=message;
  }catch(e){
-  restoreLocalImportEntries(prior);rebuildMathProgressIndex();var detail='復原失敗：'+(e&&e.message?e.message:String(e));showImportPanel('無法復原',detail,[],'error');id('status').textContent=detail;
+  restoreLocalImportEntries(prior);var detail='復原失敗：'+(e&&e.message?e.message:String(e));showImportPanel('無法復原',detail,[],'error');id('status').textContent=detail;
  }finally{setImportButtons({showConfirm:false,showCancel:false});updateImportBackupButton()}
 }
 
@@ -4090,8 +4090,6 @@ function notesInput(){data.notes=id('notes').value}
 id('dailyItemList').addEventListener('input',handleInput);id('dailyItemList').addEventListener('change',handleChange);id('dailyItemList').addEventListener('click',handleClick);
 id('studyItemsViewTabs').addEventListener('click',function(e){var button=e.target.closest('[data-study-items-view]');if(!button)return;studyItemsView=button.getAttribute('data-study-items-view');updateStudyItemsView(false)});
 id('studyItemsViewTabs').addEventListener('keydown',function(e){if(e.key!=='ArrowLeft'&&e.key!=='ArrowRight'&&e.key!=='Home'&&e.key!=='End')return;e.preventDefault();if(e.key==='Home')studyItemsView='today';else if(e.key==='End')studyItemsView='week';else studyItemsView=adjacentStudyItemsView(studyItemsView,e.key==='ArrowRight'?1:-1);updateStudyItemsView(true)});
-id('overviewMetricTabs').addEventListener('click',function(e){var button=e.target.closest('[data-overview-metric]');if(!button)return;overviewMetricView=button.getAttribute('data-overview-metric');updateOverviewMetricView(false)});
-id('overviewMetricTabs').addEventListener('keydown',function(e){if(e.key!=='ArrowLeft'&&e.key!=='ArrowRight'&&e.key!=='Home'&&e.key!=='End')return;e.preventDefault();if(e.key==='Home')overviewMetricView='minutes';else if(e.key==='End')overviewMetricView='mathWeek';else overviewMetricView=adjacentOverviewMetric(overviewMetricView,e.key==='ArrowRight'?1:-1);updateOverviewMetricView(true)});
 id('activeTimerSummary').addEventListener('click',handleClick);
 id('weeklyItemList').addEventListener('click',handleClick);
 id('weeklyItemList').addEventListener('change',handleWeeklyChange);
@@ -4099,6 +4097,9 @@ id('englishReviewList').addEventListener('input',handleInput);id('englishReviewL
 id('itemList').addEventListener('input',handleInput);id('itemList').addEventListener('change',handleChange);id('itemList').addEventListener('click',handleClick);
 id('studyDate').addEventListener('change',function(e){switchStudyDate(e.target.value)});
 id('mood').addEventListener('change',function(){readHeader();render();persist(false)});
+id('routineTimeModeSwitch').addEventListener('pointerdown',function(){captureRoutineDraft();syncRoutineDraftToRecord()});
+id('routineTimeModeSwitch').addEventListener('click',function(e){var button=e.target.closest('[data-routine-mode]');if(button)setRoutineTimeMode(button.getAttribute('data-routine-mode'))});
+id('routineTimeModeSwitch').addEventListener('keydown',function(e){if(e.key!=='ArrowLeft'&&e.key!=='ArrowRight'&&e.key!=='Home'&&e.key!=='End')return;e.preventDefault();var mode=e.key==='Home'||e.key==='ArrowLeft'?'wake':'bedtime';setRoutineTimeMode(mode);id('routineTimeModeSwitch').querySelector('[data-routine-mode="'+mode+'"]').focus()});
 ['wakeHour','wakeMinute','biggestBlock','firstThingTomorrow'].forEach(function(k){id(k).addEventListener('input',headerInput);id(k).addEventListener('change',headerChange)});
 id('notes').addEventListener('input',notesInput);id('notes').addEventListener('change',headerChange);
 id('addItemBtn').addEventListener('click',addCustom);

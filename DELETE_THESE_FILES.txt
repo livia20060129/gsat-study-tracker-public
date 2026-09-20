@@ -1,0 +1,6 @@
+覆蓋更新檔案後，請刪除下列已停用檔案：
+
+src/ui/overviewMetricView.ts
+src/study/mathProgressHistory.ts
+
+這兩個檔案只服務已移除的「今日數學頁數／本週數學頁數」介面與歷史統計更新。
