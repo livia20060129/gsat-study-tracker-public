@@ -18,7 +18,7 @@ import { prioritizeCalendarPageRanges } from './calendar/pagePriority.ts';
 import { combineNaturalCalendarPlans, resolveNaturalCalendarPlan } from './calendar/naturalPlan.ts';
 import { grammarScheduleSummary } from './calendar/scheduleSummary.ts';
 import { normalizedGrammarUnitTitle, selectGrammarPlan } from './calendar/grammarPlan.ts';
-import { googleCalendarClientConfig } from './config/googleCalendar.ts';
+import { googleCalendarConnectionController } from './application/googleCalendarConnectionController.ts';
 import { formatPercentagePointDelta, groupedMakeupCompletionUnits, groupedOriginalCompletionUnits, makeupCompletionUnit, originalCompletionUnit, summarizeCompletionUnits } from './study/completionMetrics.ts';
 import { applyDailyWorkRangeOverrides, groupDailyWorkItems, propagateDailyWorkCompletionDates, propagateDailyWorkDeferred, propagateDailyWorkDone, propagateDailyWorkField, propagateDailyWorkMinutes, propagateDailyWorkRangeField, replaceDailyWorkMinutes, ungroupDailyWorkItems } from './study/dailyWorkGroup.ts';
 import { cloneOriginalItemForMakeup, effectiveTemplatePresetKey, mergeDeferredCarryRanges, mergeMakeupProgress, specialItemTemplate } from './study/makeup.ts';
@@ -1175,7 +1175,7 @@ function calendarSetMessage(msg,ok){
  calendarHasError=ok===false;
  var busy=/正在|同步中/.test(String(msg||''));
  if(!cloudUser)setConnectionBadge('calendarStatusBadge','需先登入','offline');
- else if(!calendarConnected&&!googleCalendarClientConfig.isConfigured)setConnectionBadge('calendarStatusBadge','設定未完成','warning');
+ else if(!calendarConnected&&!googleCalendarConnectionController.isConfigured)setConnectionBadge('calendarStatusBadge','設定未完成','warning');
  else if(busy)setConnectionBadge('calendarStatusBadge','同步中','busy');
  else if(ok===false)setConnectionBadge('calendarStatusBadge','同步異常','error');
  else if(calendarConnected)setConnectionBadge('calendarStatusBadge','已連接','ok');
@@ -1184,14 +1184,14 @@ function calendarSetMessage(msg,ok){
 function calendarUpdateUI(){
  var connect=id('calendarConnectBtn'),sync=id('calendarSyncBtn'),disconnect=id('calendarDisconnectBtn');
  if(connect){
-  connect.disabled=!cloudUser||calendarConnected||!googleCalendarClientConfig.isConfigured;
-  connect.title=!googleCalendarClientConfig.isConfigured?(googleCalendarClientConfig.message||'Google Calendar 設定未完成。'):'';
+  connect.disabled=!cloudUser||calendarConnected||!googleCalendarConnectionController.isConfigured;
+  connect.title=!googleCalendarConnectionController.isConfigured?(googleCalendarConnectionController.configurationMessage||'Google Calendar 設定未完成。'):'';
  }
  if(sync)sync.disabled=!cloudUser||!calendarConnected;
  if(disconnect)disconnect.disabled=!cloudUser||!calendarConnected;
  if(!cloudUser)setConnectionBadge('calendarStatusBadge','需先登入','offline');
  else if(calendarConnected)setConnectionBadge('calendarStatusBadge','已連接','ok');
- else if(!googleCalendarClientConfig.isConfigured)setConnectionBadge('calendarStatusBadge','設定未完成','warning');
+ else if(!googleCalendarConnectionController.isConfigured)setConnectionBadge('calendarStatusBadge','設定未完成','warning');
  else if(calendarHasError)setConnectionBadge('calendarStatusBadge','同步異常','error');
  else setConnectionBadge('calendarStatusBadge','未連接','offline');
 }
@@ -1199,11 +1199,11 @@ function calendarFriendlyError(message,body){
  message=String(message||'Calendar request failed');
  if(body&&body.code==='calendar_configuration_error'){
   var missingList=Array.isArray(body.missing)?body.missing:[];
-  if(missingList.indexOf('VITE_GOOGLE_CLIENT_ID')>=0)return googleCalendarClientConfig.message||'請在部署環境設定 VITE_GOOGLE_CLIENT_ID 後重新建置網站。';
+  if(missingList.indexOf('VITE_GOOGLE_CLIENT_ID')>=0)return googleCalendarConnectionController.configurationMessage||'請在部署環境設定 VITE_GOOGLE_CLIENT_ID 後重新建置網站。';
   var missing=missingList.join('、');
   return 'Google Calendar 伺服器設定未完成'+(missing?'（缺少 '+missing+'）':'')+'。請依 README 設定 Supabase secrets 後重新部署 Calendar Functions。';
  }
- if(/Missing GOOGLE_CLIENT_ID|VITE_GOOGLE_CLIENT_ID/i.test(message))return googleCalendarClientConfig.message||'請在部署環境設定 VITE_GOOGLE_CLIENT_ID 後重新建置網站。';
+ if(/Missing GOOGLE_CLIENT_ID|VITE_GOOGLE_CLIENT_ID/i.test(message))return googleCalendarConnectionController.configurationMessage||'請在部署環境設定 VITE_GOOGLE_CLIENT_ID 後重新建置網站。';
  if(/Missing GOOGLE_CLIENT_SECRET/i.test(message))return 'Google Calendar 伺服器缺少 GOOGLE_CLIENT_SECRET。請在 Supabase secrets 設定後重新部署 Calendar Functions。';
  if(/Missing GOOGLE_REDIRECT_URI/i.test(message))return 'Google Calendar 伺服器缺少 GOOGLE_REDIRECT_URI。請在 Supabase secrets 設定 OAuth callback 網址。';
  if(/Missing GOOGLE_STATE_SECRET/i.test(message))return 'Google Calendar 伺服器缺少 GOOGLE_STATE_SECRET。請在 Supabase secrets 設定高熵隨機字串。';
@@ -1304,17 +1304,19 @@ async function calendarRefreshStatus(showMessage){
   if(calendarConnected){var n=await refreshCalendarTaskCache(),cleaned=cloudBootstrapPending?0:reconcileStoredCalendarPresets();calendarSetMessage('Google Calendar 已連接；已載入 '+n+' 筆同步排程'+(cleaned?'，已更新 '+cleaned+' 天本機項目':'')+'。',true)}
   else{
    calendarCacheLoaded=false;calendarParsedByDate={};
-   if(!googleCalendarClientConfig.isConfigured)calendarSetMessage(googleCalendarClientConfig.message,false);
+   if(!googleCalendarConnectionController.isConfigured)calendarSetMessage(googleCalendarConnectionController.configurationMessage,false);
    else calendarSetMessage('尚未連接 Google Calendar；目前使用內建排程 fallback。',true);
   }
   calendarUpdateUI();return calendarConnected;
  }catch(e){calendarCacheLoaded=false;calendarSetMessage('Calendar 連線失敗：'+(e&&e.message?e.message:String(e)),false);calendarUpdateUI();return false}
 }
 async function calendarConnect(){
- try{
-  if(!googleCalendarClientConfig.isConfigured||!googleCalendarClientConfig.clientId){calendarSetMessage(googleCalendarClientConfig.message,false);calendarUpdateUI();return}
-  calendarSetMessage('正在建立 Google OAuth 連線…',true);var r=await calendarInvoke('auth-url',{clientId:googleCalendarClientConfig.clientId});if(!r.url)throw new Error('伺服器未回傳 Google 授權網址。');window.location.assign(String(r.url));
- }catch(e){calendarSetMessage('Calendar 連線失敗：'+(e&&e.message?e.message:String(e)),false)}
+ await googleCalendarConnectionController.connect({
+  requestAuthorizationUrl:function(payload){return calendarInvoke('auth-url',payload)},
+  setMessage:calendarSetMessage,
+  navigate:function(url){window.location.assign(url)}
+ });
+ calendarUpdateUI();
 }
 async function calendarSyncNow(){
  try{

@@ -10,6 +10,8 @@ const deployWorkflow = readFileSync(new URL('../.github/workflows/deploy.yml', i
 const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8');
 const calendarRuntime = readFileSync(new URL('../supabase/functions/_shared/googleCalendar.ts', import.meta.url), 'utf8');
 const privacyPolicy = readFileSync(new URL('../public/privacy.html', import.meta.url), 'utf8');
+const calendarController = readFileSync(new URL('../src/application/googleCalendarConnectionController.ts', import.meta.url), 'utf8');
+const calendarClientConfig = readFileSync(new URL('../src/config/googleCalendar.ts', import.meta.url), 'utf8');
 
 function capture(source: string, pattern: RegExp, label: string): string {
   const value = source.match(pattern)?.[1];
@@ -56,4 +58,16 @@ test('public OAuth documentation points back to the public custom domain', () =>
   assert.match(readme, /Site URL\s+https:\/\/gsat-study-tracker\.liviayeh\.dev\//);
   assert.match(readme, /https:\/\/gsat-study-tracker\.liviayeh\.dev\/terms/);
   assert.doesNotMatch(readme, /livia20060129\.github\.io\/gsat-study-tracker\//);
+});
+
+test('OAuth configuration stays on the correct side of the browser and server boundary', () => {
+  assert.match(runtime, /googleCalendarConnectionController/);
+  assert.doesNotMatch(runtime, /googleCalendarClientConfig|import\.meta\.env|\.apps\.googleusercontent\.com/);
+  assert.match(calendarController, /from '\.\.\/config\/googleCalendar\.ts'/);
+  assert.match(calendarController, /hostname !== 'accounts\.google\.com'/);
+  assert.match(calendarClientConfig, /import\.meta\.env\?\.VITE_GOOGLE_CLIENT_ID/);
+  assert.doesNotMatch(calendarClientConfig, /GOOGLE_CLIENT_SECRET|GOOGLE_STATE_SECRET|CALENDAR_CRON_SECRET/);
+  assert.match(calendarRuntime, /Deno\.env\.get\(name\)/);
+  assert.match(calendarRuntime, /'GOOGLE_CLIENT_SECRET'/);
+  assert.match(calendarRuntime, /'GOOGLE_STATE_SECRET'/);
 });

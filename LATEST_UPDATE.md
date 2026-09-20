@@ -1,5 +1,29 @@
 # 最新更新
 
+版本：公開版 v171.6.0-public.29
+
+## OAuth 前端環境與 Calendar controller 安全化
+
+- 建置採前端環境變數白名單，只允許公開的 `VITE_GOOGLE_CLIENT_ID`；若誤設 `VITE_GOOGLE_CLIENT_SECRET`、token 或其他 `VITE_` 值，開發、測試與正式建置會立即失敗。
+- `.env.example` 固定為範例模板；真實 Client ID 必須放在 Git 已忽略的 `.env.local` 或部署平台變數，直接把真實值寫入範例檔會被 CI 阻止。
+- 增加 TypeScript 的 Vite 環境變數嚴格型別，未列入允許清單的 `import.meta.env` 名稱會在型別檢查中失敗。
+- Google Calendar 連線流程已抽離成 typed controller；舊版 UI runtime 只負責傳入請求、訊息與導頁方法，不再直接讀取 Vite 設定。
+- Controller 只接受 `https://accounts.google.com` 授權網址，避免異常後端回應把使用者導向非 Google 網站。
+- Supabase Edge Function 的 `GOOGLE_CLIENT_SECRET`、OAuth state secret、token 與 service role key 維持伺服器端 `Deno.env` 邊界，未移入前端。
+- 新增 `ARCHITECTURE.md`，明確記錄公開版的 Browser／Controller／Supabase Secret 邊界與後續拆分規則。
+
+## 驗證
+
+- 403 項單元／回歸測試通過，包含環境安全、Calendar controller 與 Browser／Supabase 來源邊界。
+- 12 項 Chromium 瀏覽器流程全部通過。
+- TypeScript 型別檢查與 Vite 正式建置通過。
+
+## Commit 建議
+
+`security(public): enforce OAuth environment boundaries`
+
+---
+
 版本：公開版 v171.6.0-public.28
 
 ## 覆蓋式更新的 CI 驗收修正

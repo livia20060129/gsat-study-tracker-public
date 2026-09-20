@@ -1,6 +1,6 @@
 # GSAT Study Tracker
 
-目前版本：**公開版 v171.6.0-public.28**
+目前版本：**公開版 v171.6.0-public.29**
 
 公開版學測讀書追蹤器，整合 Google Calendar 唯讀排程、手動新增項目、Supabase 跨裝置同步、計時、完成率、教材進度與學習總結。
 
@@ -287,7 +287,7 @@ npm run typecheck:edge
 
 ```text
 src/
-├─ application/       Calendar → StudyTask 等流程
+├─ application/       Cloud／Calendar controller 與 Calendar → StudyTask 流程
 ├─ calendar/          Calendar parsing 與排程摘要
 ├─ data/              教材、章節與頁碼資料
 ├─ storage/           Local／Supabase Repository、同步與 migration
@@ -302,12 +302,16 @@ supabase/
 tests/                單元與回歸測試
 e2e/                  Playwright 真實瀏覽器流程
 .github/workflows/    驗證、Supabase 與 GitHub Pages 部署
+scripts/              建置前環境變數安全檢查
 ```
 
 ## VIII. 注意事項
 
 - 不要把 `GOOGLE_CLIENT_SECRET`、`GOOGLE_STATE_SECRET`、`CALENDAR_CRON_SECRET`、Supabase service role key 或資料庫密碼放進前端或 Git。
-- Supabase publishable key 與 Google OAuth Client ID 是前端公開識別碼，但應由既定設定流程管理。
+- 前端環境變數採白名單：只允許 `VITE_GOOGLE_CLIENT_ID`。任何其他 `VITE_` 變數都會讓開發、測試或正式建置失敗，避免 Secret 被 Vite 打包進瀏覽器。
+- `.env.example` 只保留範例值；請複製成已被 Git 忽略的 `.env.local` 再填入真實 Client ID。若直接修改範例檔，CI 會拒絕發布。
+- Supabase publishable key 與 Google OAuth Client ID 是前端公開識別碼，但應由既定設定流程管理；所有 OAuth Secret 與 token 只放在 Supabase Edge Function secrets。
+- Calendar 連線由 typed controller 管理；`legacy-app.ts` 不直接讀取環境變數或寫死 OAuth Client ID。完整邊界見 `ARCHITECTURE.md`。
 - 瀏覽器若禁止 persistent storage，Tracker 會顯示警告；此時不要把「已暫存」理解成關頁後仍一定存在。
 - Google Calendar 只讀 scope 不代表同步後的 Tracker 副本不含個人資料；資料刪除與隱私權政策仍需和實際行為一致。
 - 建置若只出現 JavaScript chunk size 警告，不會阻止發布；後續可繼續拆分 `legacy-app.ts` 以降低載入與修改風險。
