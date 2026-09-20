@@ -5,7 +5,6 @@ import {
   calendarLeadingBlankCount,
   dateKey,
   fixedPeriodRemarks,
-  formatClockMinutes,
   shiftSummaryAnchor,
   summarizeStudyItemTime,
   summarizeLearningPeriod,
@@ -13,6 +12,13 @@ import {
   type LearningPeriodSummary,
   type SummaryMode,
 } from './study/learningSummary.ts';
+import {
+  formatClockMinutes,
+  formatSleepDuration,
+  sleepComparisonText,
+  summarizeSleepPeriod,
+  type SleepPeriodSummary,
+} from './study/sleep.ts';
 import {
   NATURAL_SCIENCE_SUBJECTS,
   SUBJECT_TIME_COLORS,
@@ -82,14 +88,6 @@ function comparisonClass(value: number, lowerIsBetter = false): string {
 function formatDateLabel(value: string): string {
   const [year, month, day] = value.split('-').map(Number);
   return `${year} 年 ${month} 月 ${day} 日`;
-}
-
-function wakeComparisonText(delta: number | null): string {
-  if (delta === null) return '資料不足';
-  if (delta === 0) return '相同';
-  const wakeDifference = Math.abs(delta);
-  const direction = delta < 0 ? '早起' : '晚起';
-  return `${direction} ${Math.floor(wakeDifference / 60)} 小時 ${wakeDifference % 60} 分鐘`;
 }
 
 function tintHex(hex: string, ratio: number): string {
@@ -383,17 +381,66 @@ function renderTrend(summary: LearningPeriodSummary): void {
 function renderComparison(current: LearningPeriodSummary, previous: LearningPeriodSummary): void {
   const timeDelta = current.subjectTime.totalMinutes - previous.subjectTime.totalMinutes;
   const completionDelta = current.completion.settlementPercent - previous.completion.settlementPercent;
-  const wakeDelta = current.averageWakeMinutes !== null && previous.averageWakeMinutes !== null
-    ? current.averageWakeMinutes - previous.averageWakeMinutes
-    : null;
-  const wakeText = wakeComparisonText(wakeDelta);
   element<HTMLDListElement>('summaryComparison').innerHTML = `
     <div><dt>學習時間</dt><dd class="${comparisonClass(timeDelta)}">${signed(timeDelta / 60, ' hr')}</dd></div>
     <div><dt>完成率</dt><dd class="${comparisonClass(completionDelta)}">${signed(completionDelta, '%')}</dd></div>`;
-  element<HTMLParagraphElement>('wakeComparisonLabel').textContent = activeMode === 'week' ? '相較上週' : '相較上月';
-  const wakeValue = element<HTMLElement>('wakeComparisonValue');
-  wakeValue.className = `summary-wake-comparison-value ${wakeDelta === null ? 'is-flat' : comparisonClass(wakeDelta, true)}`;
-  wakeValue.textContent = wakeText;
+}
+
+function sleepTrendMarkup(summary: SleepPeriodSummary): string {
+  const width = 840;
+  const height = 230;
+  const left = 52;
+  const right = 18;
+  const top = 20;
+  const bottom = 42;
+  const plotWidth = width - left - right;
+  const plotHeight = height - top - bottom;
+  const maxMinutes = Math.max(12 * 60, ...summary.days.map(day => day.sleepMinutes ?? 0));
+  const points = summary.days.map((day, index) => ({
+    ...day,
+    x: left + plotWidth * (index + .5) / Math.max(1, summary.days.length),
+    y: day.sleepMinutes === null ? null : top + plotHeight * (1 - day.sleepMinutes / maxMinutes),
+  }));
+  const grid = [0, .5, 1].map(ratio => {
+    const minutes = Math.round(maxMinutes * ratio);
+    const y = top + plotHeight * (1 - ratio);
+    return `<line x1="${left}" y1="${y}" x2="${width - right}" y2="${y}"/><text x="4" y="${y + 4}">${Math.floor(minutes / 60)} hr</text>`;
+  }).join('');
+  const runs: Array<Array<(typeof points)[number]>> = [];
+  points.forEach(point => {
+    if (point.y === null) return;
+    const previous = points[points.indexOf(point) - 1];
+    if (!runs.length || !previous || previous.y === null) runs.push([]);
+    runs.at(-1)?.push(point);
+  });
+  const lines = runs.filter(run => run.length > 1).map(run => `<polyline points="${run.map(point => `${point.x},${point.y}`).join(' ')}"/>`).join('');
+  const markers = points.map(point => {
+    const label = activeMode === 'week' ? `週${['日', '一', '二', '三', '四', '五', '六'][new Date(`${point.date}T12:00:00`).getDay()]}` : Number(point.date.slice(-2));
+    const detail = point.status === 'valid' ? formatSleepDuration(point.sleepMinutes) : point.statusText;
+    const marker = point.y === null
+      ? `<text class="sleep-status-marker" x="${point.x}" y="${top + plotHeight - 5}">—<title>${point.date}：${detail}</title></text>`
+      : `<circle cx="${point.x}" cy="${point.y}" r="4"><title>${point.date}：${detail}</title></circle>`;
+    const index = points.indexOf(point);
+    const showLabel = activeMode === 'week' || index === 0 || index === points.length - 1 || Number(point.date.slice(-2)) % 5 === 0;
+    return `${marker}${showLabel ? `<text class="sleep-day-label" x="${point.x}" y="${height - 13}">${label}</text>` : ''}`;
+  }).join('');
+  return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="本期每日睡眠時間趨勢">${grid}${lines}${markers}</svg>`;
+}
+
+function renderPersonalStatus(current: SleepPeriodSummary, previous: SleepPeriodSummary): void {
+  element<HTMLElement>('personalStatusPeriod').textContent = activeMode === 'week' ? '本週作息統計' : '本月作息統計';
+  element<HTMLElement>('averageSleepDuration').textContent = formatSleepDuration(current.averageSleepMinutes);
+  element<HTMLElement>('averageBedtime').textContent = formatClockMinutes(current.averageBedtimeMinutes);
+  element<HTMLElement>('averageWakeTime').textContent = formatClockMinutes(current.averageWakeMinutes);
+  element<HTMLElement>('validSleepCount').textContent = `${current.validNightCount}／${current.totalNightCount} 晚`;
+  element<HTMLElement>('sleepTrend').innerHTML = sleepTrendMarkup(current);
+  element<HTMLElement>('sleepComparisonPeriod').textContent = activeMode === 'week' ? '相較上週' : '相較上月';
+  const comparison = element<HTMLElement>('sleepComparisonValue');
+  const difference = current.averageSleepMinutes !== null && previous.averageSleepMinutes !== null
+    ? current.averageSleepMinutes - previous.averageSleepMinutes
+    : null;
+  comparison.className = difference === null || Math.abs(difference) < 5 ? 'is-flat' : comparisonClass(difference);
+  comparison.textContent = sleepComparisonText(current.averageSleepMinutes, previous.averageSleepMinutes);
 }
 
 function renderConclusion(current: LearningPeriodSummary, previous: LearningPeriodSummary): void {
@@ -415,6 +462,8 @@ function renderAll(): void {
   const previousPeriod = summaryPeriod(shiftSummaryAnchor(activeAnchor, activeMode, -1), activeMode);
   const current = summarizeLearningPeriod(records, period);
   const previous = summarizeLearningPeriod(records, previousPeriod);
+  const currentSleep = summarizeSleepPeriod(records, period.dates);
+  const previousSleep = summarizeSleepPeriod(records, previousPeriod.dates);
   const switcher = element<HTMLDivElement>('summaryModeSwitch');
   switcher.dataset.active = String(SUMMARY_MODES.indexOf(activeMode));
   switcher.querySelectorAll<HTMLButtonElement>('[data-summary-mode]').forEach(button => {
@@ -425,14 +474,13 @@ function renderAll(): void {
   element<HTMLElement>('periodLabel').textContent = period.label;
   element<HTMLButtonElement>('previousPeriod').ariaLabel = activeMode === 'week' ? '上一週' : '上一月';
   element<HTMLButtonElement>('nextPeriod').ariaLabel = activeMode === 'week' ? '下一週' : '下一月';
-  element<HTMLParagraphElement>('wakePeriodLabel').textContent = activeMode === 'week' ? '本週平均' : '本月平均';
   element<HTMLHeadingElement>('conclusionTitle').textContent = activeMode === 'week' ? '本週小結' : '本月小結';
-  element<HTMLElement>('averageWakeTime').textContent = formatClockMinutes(current.averageWakeMinutes);
   renderCalendar(current);
   renderSubjectDistribution(current);
   renderTrend(current);
   renderComparison(current, previous);
   renderConclusion(current, previous);
+  renderPersonalStatus(currentSleep, previousSleep);
 }
 
 function switchSummaryMode(mode: SummaryMode): void {

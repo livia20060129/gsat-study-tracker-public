@@ -101,6 +101,15 @@ export interface StudyRecordStorageIssue {
   capturedAt: string;
 }
 
+export interface BedtimeRecord {
+  /** User-facing 24-hour clock value. */
+  time: string;
+  /** Local ISO-like date time without a timezone, for example 2026-09-21T01:30. */
+  dateTime: string;
+  /** True when 00:00-05:59 belongs to the next calendar date. */
+  nextDay: boolean;
+}
+
 export interface StudyRecord {
   /** Explicit JSON payload schema; absent records are decoded as legacy schema 0. */
   schemaVersion?: number;
@@ -121,6 +130,8 @@ export interface StudyRecord {
   storageIssue?: StudyRecordStorageIssue;
   mood?: string;
   wakeTime?: string;
+  /** Bedtime for this study date's evening, with its resolved calendar date. */
+  bedtime?: BedtimeRecord;
   biggestBlock?: string;
   firstThingTomorrow?: string;
   notes?: string;

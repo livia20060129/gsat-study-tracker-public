@@ -66,20 +66,31 @@
 
     <section class="summary-card summary-conclusion-card" aria-labelledby="conclusionTitle">
       <div class="summary-section-head"><h2 id="conclusionTitle">本期小結</h2></div>
-      <div class="summary-conclusion-layout">
-        <div class="summary-conclusion-main">
-          <section class="summary-period-comparison" aria-labelledby="comparisonTitle">
-            <h3 id="comparisonTitle">與上期比較</h3>
-            <dl id="summaryComparison" class="summary-comparison"></dl>
-          </section>
-          <div id="summaryConclusion" class="summary-conclusion"></div>
-        </div>
-        <aside class="summary-conclusion-wake" aria-labelledby="wakeTitle">
-          <h3 id="wakeTitle">平均起床時間</h3>
-          <p id="wakePeriodLabel" class="summary-eyebrow"></p>
-          <strong id="averageWakeTime" class="summary-big-value">—</strong>
-          <p id="wakeComparisonLabel" class="summary-wake-comparison-label"></p>
-          <strong id="wakeComparisonValue" class="summary-wake-comparison-value">—</strong>
+      <section class="summary-period-comparison" aria-labelledby="comparisonTitle">
+        <h3 id="comparisonTitle">與上期比較</h3>
+        <dl id="summaryComparison" class="summary-comparison"></dl>
+      </section>
+      <div id="summaryConclusion" class="summary-conclusion"></div>
+    </section>
+
+    <section class="summary-card summary-personal-card" aria-labelledby="personalStatusTitle">
+      <div class="summary-section-head"><div><h2 id="personalStatusTitle">個人狀態</h2><p id="personalStatusPeriod"></p></div></div>
+      <div class="summary-personal-metrics">
+        <article><span>平均睡眠時間</span><strong id="averageSleepDuration">—</strong></article>
+        <article><span>平均就寢時間</span><strong id="averageBedtime">—</strong></article>
+        <article><span>平均起床時間</span><strong id="averageWakeTime">—</strong></article>
+        <article><span>有效紀錄</span><strong id="validSleepCount">0／0 晚</strong></article>
+      </div>
+      <div class="summary-sleep-layout">
+        <section class="summary-sleep-trend-section" aria-labelledby="sleepTrendTitle">
+          <h3 id="sleepTrendTitle">每日睡眠時間趨勢</h3>
+          <div id="sleepTrend" class="summary-sleep-trend"></div>
+        </section>
+        <aside class="summary-sleep-comparison" aria-labelledby="sleepComparisonTitle">
+          <h3 id="sleepComparisonTitle">與上期相比</h3>
+          <p id="sleepComparisonPeriod"></p>
+          <strong id="sleepComparisonValue">資料不足</strong>
+          <p>僅統計就寢及起床時間皆有效的夜晚。</p>
         </aside>
       </div>
     </section>

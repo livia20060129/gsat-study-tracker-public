@@ -105,3 +105,15 @@ test('manual and deferred completion dates survive the cloud-compatible payload 
   assert.equal(stored.items[0].checkedOn, '2026-09-17');
   assert.equal(stored.items[0].deferredCompletedOn, '2026-09-17');
 });
+
+test('wake and explicit bedtime fields survive the local and cloud-compatible payload round trip', () => {
+  const stored = reload({
+    date: '2026-09-20',
+    wakeTime: '07:20',
+    bedtime: { time: '01:30', dateTime: '2026-09-21T01:30', nextDay: true },
+    items: [],
+  });
+
+  assert.equal(stored.wakeTime, '07:20');
+  assert.deepEqual(stored.bedtime, { time: '01:30', dateTime: '2026-09-21T01:30', nextDay: true });
+});

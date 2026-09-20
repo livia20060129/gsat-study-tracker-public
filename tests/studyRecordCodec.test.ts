@@ -74,3 +74,12 @@ test('normalizes a missing items array while preserving the record', () => {
   assert.deepEqual(decoded.record.items, []);
   assert.equal(decoded.record.notes, '保留');
 });
+
+test('migrates schema one records without inventing a bedtime', () => {
+  const decoded = decodeStudyRecord({ schemaVersion: 1, date: '2026-09-01', wakeTime: '07:20', items: [] });
+  assert.equal(decoded.ok, true);
+  if (!decoded.ok) return;
+  assert.equal(decoded.migrated, true);
+  assert.equal(decoded.record.wakeTime, '07:20');
+  assert.equal(decoded.record.bedtime, undefined);
+});

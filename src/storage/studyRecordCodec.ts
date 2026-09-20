@@ -1,6 +1,6 @@
 import type { StudyRecord } from '../types.ts';
 
-export const CURRENT_STUDY_RECORD_SCHEMA_VERSION = 1;
+export const CURRENT_STUDY_RECORD_SCHEMA_VERSION = 2;
 
 export type StudyRecordDecodeError =
   | 'invalid-json'
@@ -34,7 +34,7 @@ function cloneObject(value: JsonObject): JsonObject {
   return JSON.parse(JSON.stringify(value)) as JsonObject;
 }
 
-function migrateLegacyRecord(source: JsonObject): JsonObject {
+function migrateRecord(source: JsonObject): JsonObject {
   return {
     ...source,
     schemaVersion: CURRENT_STUDY_RECORD_SCHEMA_VERSION,
@@ -74,7 +74,7 @@ export function decodeStudyRecord(
   }
 
   let migrated = cloneObject(parsed);
-  if (fromVersion === 0) migrated = migrateLegacyRecord(migrated);
+  if (fromVersion < CURRENT_STUDY_RECORD_SCHEMA_VERSION) migrated = migrateRecord(migrated);
 
   let date: string | null = null;
   if (validDate(authoritativeDate)) date = authoritativeDate;

@@ -79,6 +79,27 @@ test('progress import rejects unsupported schemas and unsafe object keys', () =>
   if (!unsafe.ok) assert.match(unsafe.errors.join(' '), /不允許的欄位 __proto__/);
 });
 
+test('progress import preserves valid routine data and rejects an inconsistent bedtime date', () => {
+  const valid = parseProgressImportText(JSON.stringify({
+    date: '2026-09-20', wakeTime: '07:20',
+    bedtime: { time: '01:30', dateTime: '2026-09-21T01:30', nextDay: true },
+    items: [],
+  }));
+  assert.equal(valid.ok, true);
+  if (valid.ok) {
+    assert.equal(valid.records[0].wakeTime, '07:20');
+    assert.deepEqual(valid.records[0].bedtime, { time: '01:30', dateTime: '2026-09-21T01:30', nextDay: true });
+  }
+
+  const invalid = parseProgressImportText(JSON.stringify({
+    date: '2026-09-20',
+    bedtime: { time: '01:30', dateTime: '2026-09-20T01:30', nextDay: false },
+    items: [],
+  }));
+  assert.equal(invalid.ok, false);
+  if (!invalid.ok) assert.match(invalid.errors.join(' '), /跨日日期與時間不一致/);
+});
+
 test('progress import validates timer data inside natural integration children', () => {
   const parsed = parseProgressImportText(JSON.stringify({
     date: '2026-09-13',

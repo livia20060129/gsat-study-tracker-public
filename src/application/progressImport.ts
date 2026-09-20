@@ -78,6 +78,32 @@ function validateOptionalBoolean(value: unknown, label: string, errors: string[]
   if (value !== undefined && typeof value !== 'boolean') errors.push(`${label}必須是 true 或 false。`);
 }
 
+function validateBedtime(value: unknown, recordDate: string, label: string, errors: string[]): void {
+  if (value === undefined) return;
+  if (!isObject(value)) {
+    errors.push(`${label}必須是物件。`);
+    return;
+  }
+  const time = typeof value.time === 'string' ? value.time : '';
+  const timeMatch = time.match(/^(\d{2}):(\d{2})$/);
+  if (!timeMatch || Number(timeMatch[1]) > 23 || Number(timeMatch[2]) > 59) {
+    errors.push(`${label}.time 必須是 00:00～23:59。`);
+  }
+  if (typeof value.nextDay !== 'boolean') errors.push(`${label}.nextDay 必須是 true 或 false。`);
+  if (typeof value.dateTime !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value.dateTime)) {
+    errors.push(`${label}.dateTime 必須是含日期的 YYYY-MM-DDTHH:mm。`);
+    return;
+  }
+  if (!timeMatch || typeof value.nextDay !== 'boolean') return;
+  const expectedNextDay = Number(timeMatch[1]) < 6;
+  const base = new Date(`${recordDate}T12:00:00`);
+  if (expectedNextDay) base.setDate(base.getDate() + 1);
+  const expectedDate = `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, '0')}-${String(base.getDate()).padStart(2, '0')}`;
+  if (value.nextDay !== expectedNextDay || value.dateTime !== `${expectedDate}T${time}`) {
+    errors.push(`${label}的跨日日期與時間不一致。`);
+  }
+}
+
 function validateWords(value: unknown, label: string, errors: string[]): void {
   if (value === undefined) return;
   if (!Array.isArray(value)) {
@@ -238,6 +264,7 @@ function recordFrom(
   if (!decoded.ok) errors.push(`${label}無法解碼（${decoded.error}）。`);
   validateOptionalString(value.mood, `${label}的 mood`, errors);
   validateOptionalString(value.wakeTime, `${label}的 wakeTime`, errors);
+  validateBedtime(value.bedtime, date, `${label}的 bedtime`, errors);
   validateOptionalString(value.biggestBlock, `${label}的 biggestBlock`, errors);
   validateOptionalString(value.firstThingTomorrow, `${label}的 firstThingTomorrow`, errors);
   validateOptionalString(value.notes, `${label}的 notes`, errors);
