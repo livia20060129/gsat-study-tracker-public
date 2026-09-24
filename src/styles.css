@@ -114,6 +114,7 @@ textarea{resize:vertical;min-height:72px}input[type=checkbox]{width:18px;height:
 .subject-english{--subject-accent:#a898bd;--subject-soft:#f5f1f7;--subject-inner:#faf7fb;--subject-ink:#675878;--subject-child-accent:#aaa2b3;--subject-child:#fbfafb;--subject-child-inner:#fcfbfc;--subject-child-ink:#5f5966}
 .subject-natural{--subject-accent:#8eaea1;--subject-soft:#eef6f2;--subject-inner:#f6faf8;--subject-ink:#4f7164;--subject-child-accent:#9eaea7;--subject-child:#fafcfb;--subject-child-inner:#fbfcfc;--subject-child-ink:#58665f}
 .subject-other{--subject-accent:#aab3bd;--subject-soft:#f4f6f8;--subject-inner:#fafbfc;--subject-ink:#5d6874;--subject-child-accent:#aab0b7;--subject-child:#fafbfb;--subject-child-inner:#fcfcfd;--subject-child-ink:#5d636a}
+.subject-social{--subject-accent:#d2a25d;--subject-soft:#fff7e8;--subject-inner:#fffaf1;--subject-ink:#835b22;--subject-child-accent:#dfb97d;--subject-child:#fffaf1;--subject-child-inner:#fffdf8;--subject-child-ink:#76552b}
 .item.subject-card{border-color:var(--subject-accent)!important;border-left:4px solid var(--subject-accent)!important;background-color:var(--subject-soft)!important}
 .item.subject-card>.item-top{margin:-6px -6px 10px;padding:8px;border-radius:12px;background:var(--subject-soft)}
 .item.subject-card>.item-top .item-title{color:var(--subject-ink)}

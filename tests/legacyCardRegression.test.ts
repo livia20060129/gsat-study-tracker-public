@@ -17,7 +17,9 @@ import {
   CHINESE_TOPIC_BOOK,
   DEEP_FIFTEEN_BOOK,
   ENGLISH_TOPIC_CLOZE_BOOK,
+  GEOGRAPHY_WEEKLY_PLAN_BOOK,
   isEnglishPageMappedBook,
+  pageMappedBookSocialSubject,
   pageMappedBookSubject,
 } from '../src/data/bookPageMaps.ts';
 
@@ -749,6 +751,36 @@ test('Calendar book scopes render as fixed fields for all four supported books',
   assert.match(chineseHtml, /<label>結束頁<\/label><div class="fixed-book-value">25<\/div>/);
   assert.match(chineseHtml, /<label>對應主題<\/label><label>對應章節<\/label>/);
   assert.doesNotMatch(chineseHtml, /<select|data-field="start"|data-field="end"/);
+});
+
+test('Calendar social weekly plans render fixed subject, book, pages, and mapped unit fields', () => {
+  const render = runtimeFunction<(x: StudyItem) => string>('renderGeneralFields', {
+    isSaturdayMakeup: () => false,
+    isSaturdayReview: () => false,
+    isEnglishReview: () => false,
+    calendarSocialPageBook: (x: StudyItem) => x.f.calendarBookRangeLocked ? GEOGRAPHY_WEEKLY_PLAN_BOOK : null,
+    pageMappedBookSocialSubject,
+    bookPageAutoField: () => '<div data-book-topic-auto>地理學測週計畫</div><div data-book-detail-auto>第3週｜氣候系統</div>',
+    esc: (value: unknown) => String(value ?? ''),
+  });
+  const html = render(item({
+    type: 'general',
+    title: '地理｜學測週計畫',
+    f: {
+      subject: '地理',
+      book: GEOGRAPHY_WEEKLY_PLAN_BOOK,
+      start: '24',
+      end: '34',
+      calendarBookRangeLocked: true,
+    },
+  }));
+
+  assert.match(html, /<label>科目<\/label><div class="fixed-book-value">地理<\/div>/);
+  assert.match(html, /<label>教材<\/label><div class="fixed-book-value">學測週計畫<\/div>/);
+  assert.match(html, /<label>起始頁<\/label><div class="fixed-book-value">24<\/div>/);
+  assert.match(html, /<label>結束頁<\/label><div class="fixed-book-value">34<\/div>/);
+  assert.match(html, /第3週｜氣候系統/);
+  assert.doesNotMatch(html, /<input|<select/);
 });
 
 test('manual English topic selection keeps a compatible round and never creates page fields', () => {

@@ -405,6 +405,33 @@ test('lecture identifiers still select the material after adding a unique event 
   }
 });
 
+test('social weekly-plan identifiers select separate geography, history, and civics maps', () => {
+  const cases = [
+    ['氣候系統', '【頁碼範圍】24–34\n【識別碼】GSAT-GEO-WEEKPLAN-20260924-03', '地理', '地理｜學測週計畫'],
+    ['人群的移動與交流', '【頁碼範圍】114–145\n【識別碼】GSAT-HIST-WEEKPLAN-20260924-05', '歷史', '歷史｜學測週計畫'],
+    ['媒體與公共意見', '【頁碼範圍】83–98\n【識別碼】GSAT-CIVICS-WEEKPLAN-20260924-06', '公民', '公民｜學測週計畫'],
+  ] as const;
+
+  for (const [title, description, socialSubject, book] of cases) {
+    const parsed = parseCalendarTask(row(title, description, 'studyItem'));
+    assert.equal(parsed.kind, 'bookPages');
+    if (parsed.kind === 'bookPages') {
+      assert.deepEqual([parsed.subject, parsed.socialSubject, parsed.book], ['社會', socialSubject, book]);
+    }
+  }
+});
+
+test('social weekly-plan subject is inferred from a uniquely matching unit name', () => {
+  const geography = parseCalendarTask(row('東亞文化圈的形成與發展', '【頁碼範圍】60–67', 'studyItem'));
+  const history = parseCalendarTask(row('歐洲文化與現代世界', '【頁碼範圍】178–218', 'studyItem'));
+  const civics = parseCalendarTask(row('全球關聯與永續發展', '【頁碼範圍】325–330', 'studyItem'));
+
+  for (const [parsed, subject] of [[geography, '地理'], [history, '歷史'], [civics, '公民']] as const) {
+    assert.equal(parsed.kind, 'bookPages');
+    if (parsed.kind === 'bookPages') assert.deepEqual([parsed.subject, parsed.socialSubject], ['社會', subject]);
+  }
+});
+
 test('infers an abbreviated English Topic Collection title from its topic and reads flexible round notation', () => {
   const cases = [
     ['英文｜主題百匯｜新新世代', '【單元進度】第２回', '主題百匯：克漏字', '新新世代', '第二回'],

@@ -36,6 +36,9 @@ export function studyItemSubjectClass(item: StudyItem): string {
     case '自然':
       tone = 'natural';
       break;
+    case '社會':
+      tone = 'social';
+      break;
   }
   return `subject-card subject-${tone}`;
 }

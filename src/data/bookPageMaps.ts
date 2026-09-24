@@ -6,6 +6,11 @@ export const ENGLISH_TOPIC_READING_BOOK = '主題百匯：篇章結構·閱讀�
 export const ENGLISH_TOPIC_CLOZE_BOOK = '主題百匯：克漏字';
 export const ENGLISH_WEEKLY_PLAN_BOOK = '學測週計畫';
 export const ENGLISH_MIXED_30_BOOK = '混合題30篇實戰演練';
+export const GEOGRAPHY_WEEKLY_PLAN_BOOK = '地理｜學測週計畫';
+export const HISTORY_WEEKLY_PLAN_BOOK = '歷史｜學測週計畫';
+export const CIVICS_WEEKLY_PLAN_BOOK = '公民｜學測週計畫';
+
+export type SocialStudiesSubject = '地理' | '歷史' | '公民';
 
 export type PageMappedBook =
   | typeof DEEP_FIFTEEN_BOOK
@@ -13,7 +18,10 @@ export type PageMappedBook =
   | typeof ENGLISH_TOPIC_READING_BOOK
   | typeof ENGLISH_TOPIC_CLOZE_BOOK
   | typeof ENGLISH_WEEKLY_PLAN_BOOK
-  | typeof ENGLISH_MIXED_30_BOOK;
+  | typeof ENGLISH_MIXED_30_BOOK
+  | typeof GEOGRAPHY_WEEKLY_PLAN_BOOK
+  | typeof HISTORY_WEEKLY_PLAN_BOOK
+  | typeof CIVICS_WEEKLY_PLAN_BOOK;
 
 export interface BookPageSection {
   start: number;
@@ -140,6 +148,72 @@ const englishMixed30 = groupedSections([
   { topic: '附錄', starts: [['測驗用答案紙', 71]], end: 71 },
 ]);
 
+const OPEN_ENDED_SECTION = Number.MAX_SAFE_INTEGER;
+
+function weeklyPlanSections(
+  topic: string,
+  starts: Array<[string, number]>,
+): BookPageSection[] {
+  return starts.map(([detail, start], index) => ({
+    start,
+    end: index + 1 < starts.length ? starts[index + 1][1] - 1 : OPEN_ENDED_SECTION,
+    topic,
+    detail,
+  }));
+}
+
+const geographyWeeklyPlan = weeklyPlanSections('地理學測週計畫', [
+  ['第1週｜研究觀點與研究方法；地理資訊；地圖', 4],
+  ['第2週｜地形系統', 14],
+  ['第3週｜氣候系統', 24],
+  ['第4週｜人口與環境負載力', 35],
+  ['第5週｜聚落、流通路線與區域；都市與城鄉關係', 42],
+  ['第6週｜產業活動', 50],
+  ['第7週｜世界體系；臺灣與世界；東亞文化圈的形成與發展', 60],
+  ['第8週｜東西文化的接觸與區域發展——東南亞、南亞', 68],
+  ['第9週｜從孤立到樞紐——澳、紐；伊斯蘭世界的形成與發展', 76],
+  ['第10週｜歐洲文明的發展與擴散；超級強國的興起與挑戰——美國', 86],
+  ['第11週｜南方區域的發展與挑戰——中南美洲、非洲；全球化', 99],
+  ['第12週｜第一～三冊複習 I', 110],
+  ['第13週｜第一～三冊複習 II', 118],
+  ['第14週｜115學年度學科能力測驗試題', 126],
+]);
+
+const civicsWeeklyPlan = weeklyPlanSections('公民學測週計畫', [
+  ['單元1｜國家組成與認同', 2],
+  ['單元2｜普世人權與公民身分', 16],
+  ['單元3｜公平正義與多元文化', 31],
+  ['單元4｜社會安全制度與勞動參與', 43],
+  ['單元5｜政府組成與運作', 59],
+  ['單元6｜媒體與公共意見', 83],
+  ['單元7｜民主治理與政治參與', 99],
+  ['單元8｜社會規範與法律', 126],
+  ['單元9｜權利主體與基本權利', 142],
+  ['單元10｜限制行政權的法律規範', 159],
+  ['單元11｜犯罪與刑罰', 175],
+  ['單元12｜民事權利的法律保障', 198],
+  ['單元13｜有限資源的分配與誘因', 216],
+  ['單元14｜生產與消費', 231],
+  ['單元15｜市場機能', 253],
+  ['單元16｜市場競爭與政府規範', 266],
+  ['單元17｜專業分工與自由貿易', 280],
+  ['單元18｜國民所得', 298],
+  ['單元19｜外部性與政府對策', 313],
+  ['單元20｜全球關聯與永續發展', 325],
+]);
+
+const historyWeeklyPlan = weeklyPlanSections('歷史學測週計畫', [
+  ['單元1｜多元族群社會的形成', 2],
+  ['單元2｜現代國家的形塑', 25],
+  ['單元3｜經濟與文化的多樣性', 50],
+  ['單元4｜國家與社會', 78],
+  ['單元5｜人群的移動與交流', 114],
+  ['單元6｜現代化的歷程', 146],
+  ['單元7｜歐洲文化與現代世界', 178],
+  ['單元8｜文化的交會與多元世界的發展', 219],
+  ['單元9｜世界變遷與現代性', 252],
+]);
+
 export const BOOK_PAGE_MAPS: Record<PageMappedBook, BookPageSection[]> = {
   [DEEP_FIFTEEN_BOOK]: deepFifteen,
   [CHINESE_TOPIC_BOOK]: chineseTopics,
@@ -147,24 +221,60 @@ export const BOOK_PAGE_MAPS: Record<PageMappedBook, BookPageSection[]> = {
   [ENGLISH_TOPIC_CLOZE_BOOK]: englishCloze,
   [ENGLISH_WEEKLY_PLAN_BOOK]: englishWeeklyPlan,
   [ENGLISH_MIXED_30_BOOK]: englishMixed30,
+  [GEOGRAPHY_WEEKLY_PLAN_BOOK]: geographyWeeklyPlan,
+  [HISTORY_WEEKLY_PLAN_BOOK]: historyWeeklyPlan,
+  [CIVICS_WEEKLY_PLAN_BOOK]: civicsWeeklyPlan,
 };
+
+const SOCIAL_WEEKLY_PLAN_BOOKS: Record<SocialStudiesSubject, PageMappedBook> = {
+  地理: GEOGRAPHY_WEEKLY_PLAN_BOOK,
+  歷史: HISTORY_WEEKLY_PLAN_BOOK,
+  公民: CIVICS_WEEKLY_PLAN_BOOK,
+};
+
+function inferredSocialWeeklyPlanBook(title: string): PageMappedBook | null {
+  const explicitSubject = (Object.keys(SOCIAL_WEEKLY_PLAN_BOOKS) as SocialStudiesSubject[])
+    .find(subject => title.includes(subject) && /學測週計[畫劃]/.test(title));
+  if (explicitSubject) return SOCIAL_WEEKLY_PLAN_BOOKS[explicitSubject];
+
+  const matches = (Object.entries(SOCIAL_WEEKLY_PLAN_BOOKS) as Array<[SocialStudiesSubject, PageMappedBook]>)
+    .filter(([, book]) => BOOK_PAGE_MAPS[book].some(section => {
+      const unitName = section.detail.replace(/^(?:第\d+週|單元\d+)｜/, '');
+      const searchableNames = [unitName, ...unitName.split(/[；;、]/)].map(name => name.trim());
+      return searchableNames.some(name => name.length >= 4 && title.includes(name));
+    }));
+  return matches.length === 1 ? matches[0][1] : null;
+}
 
 export function canonicalPageMappedBook(value: unknown): PageMappedBook | null {
   const title = String(value ?? '').replace(/[：:·‧．]/g, ' ').replace(/\s+/g, ' ').trim();
   const identifier = title.toUpperCase();
   if (identifier.includes(LECTURE_IDENTIFIERS.englishWeeklyPlan)) return ENGLISH_WEEKLY_PLAN_BOOK;
   if (identifier.includes(LECTURE_IDENTIFIERS.englishMixed30)) return ENGLISH_MIXED_30_BOOK;
+  if (identifier.includes(LECTURE_IDENTIFIERS.geographyWeeklyPlan)) return GEOGRAPHY_WEEKLY_PLAN_BOOK;
+  if (identifier.includes(LECTURE_IDENTIFIERS.historyWeeklyPlan)) return HISTORY_WEEKLY_PLAN_BOOK;
+  if (identifier.includes(LECTURE_IDENTIFIERS.civicsWeeklyPlan)) return CIVICS_WEEKLY_PLAN_BOOK;
   if (title.includes('深耕十五')) return DEEP_FIFTEEN_BOOK;
   if (title.includes('主題百匯') && title.includes('閱讀寫作新進化')) return CHINESE_TOPIC_BOOK;
   if (title.includes('主題百匯') && (title.includes('篇章結構') || title.includes('閱讀測驗'))) return ENGLISH_TOPIC_READING_BOOK;
   if (title.includes('主題百匯') && title.includes('克漏字')) return ENGLISH_TOPIC_CLOZE_BOOK;
-  if (title.replace(/\s+/g, '').includes('學測週計畫')) return ENGLISH_WEEKLY_PLAN_BOOK;
+  const socialWeeklyPlan = inferredSocialWeeklyPlanBook(title);
+  if (socialWeeklyPlan) return socialWeeklyPlan;
+  if (/學測週計[畫劃]/.test(title.replace(/\s+/g, ''))) return ENGLISH_WEEKLY_PLAN_BOOK;
   if (title.replace(/\s+/g, '').includes('混合題30篇實戰演練')) return ENGLISH_MIXED_30_BOOK;
   return null;
 }
 
-export function pageMappedBookSubject(book: PageMappedBook): '國文' | '英文' {
-  return book === DEEP_FIFTEEN_BOOK || book === CHINESE_TOPIC_BOOK ? '國文' : '英文';
+export function pageMappedBookSubject(book: PageMappedBook): '國文' | '英文' | '社會' {
+  if (book === DEEP_FIFTEEN_BOOK || book === CHINESE_TOPIC_BOOK) return '國文';
+  return pageMappedBookSocialSubject(book) ? '社會' : '英文';
+}
+
+export function pageMappedBookSocialSubject(book: PageMappedBook): SocialStudiesSubject | null {
+  if (book === GEOGRAPHY_WEEKLY_PLAN_BOOK) return '地理';
+  if (book === HISTORY_WEEKLY_PLAN_BOOK) return '歷史';
+  if (book === CIVICS_WEEKLY_PLAN_BOOK) return '公民';
+  return null;
 }
 
 export function isEnglishPageMappedBook(value: unknown): boolean {

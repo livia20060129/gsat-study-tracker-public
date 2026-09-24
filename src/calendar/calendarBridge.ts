@@ -13,8 +13,10 @@ import {
   canonicalPageMappedBook,
   ENGLISH_TOPIC_CLOZE_BOOK,
   ENGLISH_TOPIC_READING_BOOK,
+  pageMappedBookSocialSubject,
   pageMappedBookUsesScopeSelection,
   pageMappedBookSubject,
+  type SocialStudiesSubject,
   type PageMappedBook,
 } from '../data/bookPageMaps.ts';
 
@@ -81,7 +83,8 @@ export type ParsedCalendarTask =
   | (ParsedBase & { kind: 'gujin'; rounds: number[] })
   | (ParsedBase & {
       kind: 'bookPages';
-      subject: '國文' | '英文';
+      subject: '國文' | '英文' | '社會';
+      socialSubject?: SocialStudiesSubject;
       book: PageMappedBook;
       startPage: number | null;
       endPage: number | null;
@@ -581,6 +584,7 @@ export function parseCalendarTask(row: CalendarTaskRow): ParsedCalendarTask {
       title: withoutOriginalDate(title),
       kind: 'bookPages',
       subject,
+      ...(subject === '社會' ? { socialSubject: pageMappedBookSocialSubject(pageMappedBook) ?? undefined } : {}),
       book: pageMappedBook,
       startPage,
       endPage,

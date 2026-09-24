@@ -46,5 +46,6 @@ test('每個主要科目使用固定淡色類別且自然整合沿用自然色',
   assert.equal(studyItemSubjectClass(item('e', 'extra', 'Essential Grammar in Use')), 'subject-card subject-english');
   assert.equal(studyItemSubjectClass(item('s', 'scienceReview', '自然')), 'subject-card subject-natural');
   assert.equal(studyItemSubjectClass(item('si', 'scienceReview', '自然整合', '混合')), 'subject-card subject-natural');
+  assert.equal(studyItemSubjectClass(item('social', 'general', '地理｜學測週計畫', '地理')), 'subject-card subject-social');
   assert.equal(studyItemSubjectClass(item('o', 'general', '自訂項目')), 'subject-card subject-other');
 });

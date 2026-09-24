@@ -37,3 +37,9 @@ test('lecture identifiers classify shortened math and natural titles', () => {
   assert.equal(classifyCalendarEvent('原子光譜', '【識別碼】GSAT-PHYS-YOUSHI'), 'natural');
   assert.equal(classifyCalendarEvent('複習', '【識別碼】GSAT-PHYS-NIZHUANSHENG'), 'natural');
 });
+
+test('social weekly-plan identifiers remain readable study items', () => {
+  assert.equal(classifyCalendarEvent('氣候系統', '【識別碼】GSAT-GEO-WEEKPLAN-20260924-03'), 'studyItem');
+  assert.equal(classifyCalendarEvent('現代化的歷程', '【識別碼】GSAT-HIST-WEEKPLAN-20260924-06'), 'studyItem');
+  assert.equal(classifyCalendarEvent('市場機能', '【識別碼】GSAT-CIVICS-WEEKPLAN-20260924-15'), 'studyItem');
+});

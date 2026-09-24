@@ -13,10 +13,15 @@ import {
   canonicalPageMappedBook,
   CHINESE_TOPIC_BOOK,
   DEEP_FIFTEEN_BOOK,
+  CIVICS_WEEKLY_PLAN_BOOK,
   ENGLISH_TOPIC_CLOZE_BOOK,
   ENGLISH_TOPIC_READING_BOOK,
   ENGLISH_MIXED_30_BOOK,
   ENGLISH_WEEKLY_PLAN_BOOK,
+  GEOGRAPHY_WEEKLY_PLAN_BOOK,
+  HISTORY_WEEKLY_PLAN_BOOK,
+  pageMappedBookSocialSubject,
+  pageMappedBookSubject,
 } from '../src/data/bookPageMaps.ts';
 import { cloneOriginalItemForMakeup } from '../src/study/makeup.ts';
 import type { StudyItem } from '../src/types.ts';
@@ -30,6 +35,41 @@ test('identifies every supported book from punctuation and surrounding Calendar 
   assert.equal(canonicalPageMappedBook('英文｜混合題30篇 實戰演練'), ENGLISH_MIXED_30_BOOK);
   assert.equal(canonicalPageMappedBook('【識別碼】GSAT-ENG-WEEKPLAN'), ENGLISH_WEEKLY_PLAN_BOOK);
   assert.equal(canonicalPageMappedBook('GSAT-ENG-MIXED30'), ENGLISH_MIXED_30_BOOK);
+  assert.equal(canonicalPageMappedBook('GSAT-GEO-WEEKPLAN-20260924-01'), GEOGRAPHY_WEEKLY_PLAN_BOOK);
+  assert.equal(canonicalPageMappedBook('【識別碼】GSAT-HIST-WEEKPLAN'), HISTORY_WEEKLY_PLAN_BOOK);
+  assert.equal(canonicalPageMappedBook('GSAT-CIVICS-WEEKPLAN'), CIVICS_WEEKLY_PLAN_BOOK);
+});
+
+test('distinguishes social weekly plans by subject and uniquely matching unit names', () => {
+  assert.equal(canonicalPageMappedBook('地理｜學測週計劃｜氣候系統'), GEOGRAPHY_WEEKLY_PLAN_BOOK);
+  assert.equal(canonicalPageMappedBook('人群的移動與交流'), HISTORY_WEEKLY_PLAN_BOOK);
+  assert.equal(canonicalPageMappedBook('媒體與公共意見'), CIVICS_WEEKLY_PLAN_BOOK);
+  assert.equal(canonicalPageMappedBook('東亞文化圈的形成與發展'), GEOGRAPHY_WEEKLY_PLAN_BOOK);
+  assert.equal(canonicalPageMappedBook('英文｜學測週計畫｜第15回'), ENGLISH_WEEKLY_PLAN_BOOK);
+  assert.equal(pageMappedBookSubject(GEOGRAPHY_WEEKLY_PLAN_BOOK), '社會');
+  assert.equal(pageMappedBookSocialSubject(GEOGRAPHY_WEEKLY_PLAN_BOOK), '地理');
+  assert.equal(pageMappedBookSocialSubject(HISTORY_WEEKLY_PLAN_BOOK), '歷史');
+  assert.equal(pageMappedBookSocialSubject(CIVICS_WEEKLY_PLAN_BOOK), '公民');
+  assert.equal(pageMappedBookSocialSubject(ENGLISH_WEEKLY_PLAN_BOOK), null);
+});
+
+test('uses the photographed start pages for geography, history, and civics weekly plans', () => {
+  assert.equal(
+    bookPageText(GEOGRAPHY_WEEKLY_PLAN_BOOK, 24, 34),
+    '地理學測週計畫｜第3週｜氣候系統（p.24–34）',
+  );
+  assert.equal(
+    bookPageText(HISTORY_WEEKLY_PLAN_BOOK, 114, 145),
+    '歷史學測週計畫｜單元5｜人群的移動與交流（p.114–145）',
+  );
+  assert.equal(
+    bookPageText(CIVICS_WEEKLY_PLAN_BOOK, 313, 324),
+    '公民學測週計畫｜單元19｜外部性與政府對策（p.313–324）',
+  );
+  assert.equal(
+    bookPageText(GEOGRAPHY_WEEKLY_PLAN_BOOK, 126, 130),
+    '地理學測週計畫｜第14週｜115學年度學科能力測驗試題（p.126–130）',
+  );
 });
 
 test('uses the supplied endings for the two new English lecture books', () => {

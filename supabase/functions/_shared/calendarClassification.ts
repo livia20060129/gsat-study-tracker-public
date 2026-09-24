@@ -16,6 +16,7 @@ export function classifyCalendarEvent(title: string, description = ''): string {
   const identifier = String(description ?? '').toUpperCase();
   if (/GSAT-MATHA-NEW-DAMANFEN/.test(identifier)) return 'math';
   if (/GSAT-(?:CHEM-LINGHANG|PHYS-(?:YOUSHI|NIZHUANSHENG))/.test(identifier)) return 'natural';
+  if (/GSAT-(?:GEO|HIST|CIVICS)-WEEKPLAN/.test(identifier)) return 'studyItem';
   if (/Essential Grammar in Use/i.test(value)) return 'essentialGrammar';
   if (/^ACE Reading(?:\s*[｜:：]\s*|\s+)第/i.test(value)) return 'ace';
   if (/^(?:國文\s*[｜:：]\s*)?古今悅讀一百(?:\s*[｜:：]\s*|\s+)第/.test(value)) return 'gujin';

@@ -10,6 +10,9 @@ export const LECTURE_IDENTIFIERS = {
   physicsAdvantage: 'GSAT-PHYS-YOUSHI',
   englishWeeklyPlan: 'GSAT-ENG-WEEKPLAN',
   englishMixed30: 'GSAT-ENG-MIXED30',
+  geographyWeeklyPlan: 'GSAT-GEO-WEEKPLAN',
+  historyWeeklyPlan: 'GSAT-HIST-WEEKPLAN',
+  civicsWeeklyPlan: 'GSAT-CIVICS-WEEKPLAN',
   physicsComeback: 'GSAT-PHYS-NIZHUANSHENG',
   mathGrandSlamA: 'GSAT-MATHA-NEW-DAMANFEN',
 } as const;
@@ -17,6 +20,7 @@ export const LECTURE_IDENTIFIERS = {
 export type LectureIdentifierMatch =
   | { kind: 'natural'; subject: '化學' | '物理'; material: string }
   | { kind: 'englishBook'; book: '學測週計畫' | '混合題30篇實戰演練' }
+  | { kind: 'socialBook'; subject: '地理' | '歷史' | '公民'; book: '地理｜學測週計畫' | '歷史｜學測週計畫' | '公民｜學測週計畫' }
   | { kind: 'math'; material: '新大滿貫'; book: 'A' };
 
 export function lectureIdentifierMatch(value: unknown): LectureIdentifierMatch | null {
@@ -27,6 +31,9 @@ export function lectureIdentifierMatch(value: unknown): LectureIdentifierMatch |
   if (matches(LECTURE_IDENTIFIERS.physicsComeback)) return { kind: 'natural', subject: '物理', material: PHYSICS_COMEBACK_MATERIAL };
   if (matches(LECTURE_IDENTIFIERS.englishWeeklyPlan)) return { kind: 'englishBook', book: '學測週計畫' };
   if (matches(LECTURE_IDENTIFIERS.englishMixed30)) return { kind: 'englishBook', book: '混合題30篇實戰演練' };
+  if (matches(LECTURE_IDENTIFIERS.geographyWeeklyPlan)) return { kind: 'socialBook', subject: '地理', book: '地理｜學測週計畫' };
+  if (matches(LECTURE_IDENTIFIERS.historyWeeklyPlan)) return { kind: 'socialBook', subject: '歷史', book: '歷史｜學測週計畫' };
+  if (matches(LECTURE_IDENTIFIERS.civicsWeeklyPlan)) return { kind: 'socialBook', subject: '公民', book: '公民｜學測週計畫' };
   if (matches(LECTURE_IDENTIFIERS.mathGrandSlamA)) return { kind: 'math', material: MATH_GRAND_SLAM_MATERIAL, book: 'A' };
   return null;
 }
