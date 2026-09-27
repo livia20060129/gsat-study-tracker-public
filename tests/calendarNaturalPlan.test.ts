@@ -11,6 +11,7 @@ import { applyDailyWorkRangeOverrides, groupDailyWorkItems, propagateDailyWorkFi
 import { summarizeCompletionUnits } from '../src/study/completionMetrics.ts';
 import { cloneOriginalItemForMakeup, effectiveTemplatePresetKey, mergeMakeupProgress } from '../src/study/makeup.ts';
 import { reconcileCalendarNaturalPriorCoverage } from '../src/study/calendarNaturalCompletion.ts';
+import { includesCompletionInPeriod } from '../src/study/learningSummary.ts';
 
 const date = '2026-09-02';
 function row(id: string, title: string, description: string): CalendarTaskRow {
@@ -207,7 +208,7 @@ function editingApp(day: string, separated: boolean | 'biology', deferred = fals
   const ctx = app(separated === 'biology' ? [current, { ...biology, event_date: day }] : separated ? [current, makeup] : [current]);
   const elements = new Map<string, { innerHTML: string; textContent: string }>();
   Object.assign(ctx, {
-    propagateDailyWorkField, propagateDailyWorkRangeField, summarizeCompletionUnits,
+    propagateDailyWorkField, propagateDailyWorkRangeField, summarizeCompletionUnits, includesCompletionInPeriod,
     data: { date: day, items: [] },
     loadData: (date: string) => ({ date, items: [] }),
     visibleItems: (record: any) => record.items,

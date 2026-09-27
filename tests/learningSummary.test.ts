@@ -64,6 +64,54 @@ test('summary reuses completion rules and only counts time on completed work', (
   assert.deepEqual(subjectTime.slices.map(slice => slice.subject), ['數學', '國文']);
 });
 
+test('completed minutes belong to the actual check date for both past and future source dates', () => {
+  const past = item('past', true, '20', '數學');
+  past.checkedOn = '2026-09-17';
+  const sameDay = item('same-day', true, '10', '國文');
+  const future = item('future', true, '40', '英文');
+  future.checkedOn = '2026-09-17';
+  const records = [
+    record('2026-09-16', [past]),
+    record('2026-09-17', [sameDay]),
+    record('2026-09-18', [future]),
+  ];
+
+  const entries = completedStudyTimeEntries(records);
+  assert.deepEqual(entries.map(entry => entry.date), ['2026-09-17', '2026-09-17', '2026-09-17']);
+  const summary = summarizeLearningPeriod(records, summaryPeriod('2026-09-17', 'week'));
+  assert.equal(summary.days.find(day => day.date === '2026-09-16')?.totalMinutes, 0);
+  assert.equal(summary.days.find(day => day.date === '2026-09-17')?.totalMinutes, 70);
+  assert.equal(summary.days.find(day => day.date === '2026-09-18')?.totalMinutes, 0);
+  assert.equal(summary.subjectTime.totalMinutes, 70);
+});
+
+test('a checked item from outside the selected period is counted inside its actual check period', () => {
+  const source = item('previous-week', true, '25', '英文');
+  source.checkedOn = '2026-09-14';
+  const summary = summarizeLearningPeriod(
+    [record('2026-09-13', [source])],
+    summaryPeriod('2026-09-14', 'week'),
+  );
+
+  assert.equal(summary.records.length, 0);
+  assert.equal(summary.days[0].totalMinutes, 25);
+  assert.equal(summary.days[0].hasRecord, true);
+  assert.equal(summary.subjectTime.totalMinutes, 25);
+  assert.equal(summary.recordedDayCount, 1);
+});
+
+test('a grouped parent check date is inherited by completed child time', () => {
+  const child = item('child', true, '15', '自然');
+  const parent = item('parent', true, '', '自然');
+  parent.checkedOn = '2026-09-17';
+  parent.f.groupedWorkEntries = [child];
+
+  const entries = completedStudyTimeEntries([record('2026-09-16', [parent])]);
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].date, '2026-09-17');
+  assert.equal(entries[0].minutes, 15);
+});
+
 test('learning summary separates natural science into physics, chemistry, biology, and earth science', () => {
   const entries = completedStudyTimeEntries([record('2026-09-15', [
     { id: 'physics', type: 'scienceReview', title: '物理｜運動學', done: true, minutes: '10', required: true, f: { subject: '物理' } },

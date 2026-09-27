@@ -9,6 +9,8 @@ import { propagateDailyWorkField } from '../src/study/dailyWorkGroup.ts';
 import { normalizeStudyTimerState } from '../src/study/studyTimer.ts';
 import { studyItemSubject } from '../src/study/subjectOrder.ts';
 import { summarizeSubjectTime } from '../src/study/subjectTime.ts';
+import { completedStudyTimeEntries } from '../src/study/learningSummary.ts';
+import { isCompletedByDate } from '../src/study/completionCheckedOn.ts';
 import { parseCalendarTask } from '../src/calendar/calendarBridge.ts';
 import { prioritizeCalendarPageRanges } from '../src/calendar/pagePriority.ts';
 import type { StudyItem, StudyRecord } from '../src/types.ts';
@@ -46,10 +48,11 @@ function optionGroupContents(markup: string, label: string): string {
   return markup.match(new RegExp(`<optgroup label="${escapedLabel}">([\\s\\S]*?)<\\/optgroup>`))?.[1] ?? '';
 }
 
-const recordUnits = runtimeFunction<(record: StudyRecord, date: string) => completion.CompletionUnit[]>(
+const recordUnits = runtimeFunction<(record: StudyRecord, date: string, cutoffDate?: string) => completion.CompletionUnit[]>(
   'completionUnitsForRecord',
   {
     ...completion,
+    isCompletedByDate,
     data: null,
     visibleItems: (record: StudyRecord) => record.items,
     confirmedDeferred: isConfirmedDeferred,
@@ -71,6 +74,46 @@ function metrics(items: StudyItem[]) {
   const record = { date: '2026-09-04', items };
   return completion.summarizeCompletionUnits(recordUnits(record, record.date));
 }
+
+test('Friday settlement excludes weekday items completed during the weekend', () => {
+  const record = { date: '2026-09-16', items: [
+    item({ done: true, checkedOn: '2026-09-19' }),
+    item({ f: { groupedWorkEntries: [item({ done: true, checkedOn: '2026-09-20' })] } }),
+    item({ type: 'interactiveDaily', f: { interactiveEntries: [item({ done: true, checkedOn: '2026-09-18' })] } }),
+  ] };
+  const friday = completion.summarizeCompletionUnits(recordUnits(record, record.date, '2026-09-18'));
+  const sunday = completion.summarizeCompletionUnits(recordUnits(record, record.date, '2026-09-20'));
+
+  assert.equal(friday.itemCompleted, 1);
+  assert.equal(friday.workloadCompleted, 1);
+  assert.equal(sunday.itemCompleted, 3);
+  assert.equal(sunday.workloadCompleted, 3);
+});
+
+test('weekly completion metrics pass Friday and Sunday as separate snapshot cutoffs', () => {
+  const cutoffs: string[] = [];
+  const weekMetrics = runtimeFunction<(date: string, lastDayIndex: number) => completion.CompletionMetrics>(
+    'completionMetricsForWeek',
+    {
+      mondayOf: (date: Date) => date,
+      parseDate: (date: string) => new Date(`${date}T12:00:00`),
+      dateString: (date: Date) => date.toISOString().slice(0, 10),
+      studyRecordForOverview: (date: string) => ({ date, items: [] }),
+      completionUnitsForRecord: (_record: StudyRecord, _date: string, cutoffDate: string) => {
+        cutoffs.push(cutoffDate);
+        return [];
+      },
+      includesCompletionInPeriod: () => true,
+      summarizeCompletionUnits: completion.summarizeCompletionUnits,
+    },
+  );
+
+  weekMetrics('2026-09-14', 4);
+  assert.deepEqual(cutoffs, Array(5).fill('2026-09-18'));
+  cutoffs.length = 0;
+  weekMetrics('2026-09-14', 6);
+  assert.deepEqual(cutoffs, Array(7).fill('2026-09-20'));
+});
 
 test('runtime metrics wait for confirmation, subtract once on retargeting, and restore on cancellation', () => {
   const moving = item({ deferred: true });
@@ -528,6 +571,9 @@ test('every completed time-capable child counts without waiting for its parent c
   let renderedTotal = -1;
   const update = runtimeFunction<() => void>('updateSummary', {
     data: { date: '2026-09-13', items },
+    studyRecordsForOverview: () => [{ date: '2026-09-13', items }],
+    cloneRecord: (record: StudyRecord) => structuredClone(record),
+    completedTimeEntriesForOverviewDate: () => completedStudyTimeEntries([{ date: '2026-09-13', items }]),
     mathProgressIndex: { upsert() {}, view: () => [] },
     visibleItems: (record: { items: StudyItem[] }) => record.items,
     isGroupedWork: (x: StudyItem) => Boolean(x.f.groupedWorkEntries?.length),

@@ -96,3 +96,21 @@ export function completionDateLabel(item: StudyItem | null | undefined): string 
   }
   return '';
 }
+
+/**
+ * Returns whether an item was already complete at the requested snapshot date.
+ * Older records may not have completion metadata, so their scheduled record
+ * date remains the compatibility fallback.
+ */
+export function isCompletedByDate(
+  item: StudyItem | null | undefined,
+  recordDate: string,
+  cutoffDate?: string,
+): boolean {
+  if (!item?.done) return false;
+  if (!validDate(cutoffDate)) return true;
+  let completedOn = recordDate;
+  if (validDate(item.checkedOn)) completedOn = item.checkedOn;
+  else if (validDate(item.deferredCompletedOn)) completedOn = item.deferredCompletedOn;
+  return !validDate(completedOn) || completedOn <= cutoffDate;
+}

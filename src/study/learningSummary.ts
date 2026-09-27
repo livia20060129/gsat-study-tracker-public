@@ -333,9 +333,18 @@ function stableTimeKey(recordDate: string, item: StudyItem, label: string, child
   return `record:${recordDate}:${semantic}`;
 }
 
+function completedTimeDate(item: StudyItem, fallbackDate: string): string {
+  const checkedOn = text(item.checkedOn);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(checkedOn)) return checkedOn;
+  const deferredCompletedOn = text(item.deferredCompletedOn);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(deferredCompletedOn)) return deferredCompletedOn;
+  return fallbackDate;
+}
+
 function addCompletedTime(
   output: CompletedStudyTimeEntry[],
   recordDate: string,
+  completionDate: string,
   item: StudyItem,
   minutes: number,
   fallbackSubject?: SubjectTimeSubject,
@@ -347,7 +356,7 @@ function addCompletedTime(
   const itemLabel = studyItemTimeLabel(item, fallbackLabel);
   output.push({
     key: stableTimeKey(recordDate, item, itemLabel, childKey),
-    date: recordDate,
+    date: completionDate,
     subject,
     itemLabel,
     minutes,
@@ -360,33 +369,35 @@ function collectCompletedTime(
   output: CompletedStudyTimeEntry[],
   fallbackSubject?: SubjectTimeSubject,
   fallbackLabel = '',
+  inheritedCompletionDate?: string,
 ): void {
   // A confirmed deferral belongs to its final target date, never its old date.
   if (confirmedDeferred(item)) return;
   const itemSubject = normalizedTimeSubject(item, fallbackSubject);
   const itemLabel = studyItemTimeLabel(item, fallbackLabel);
+  const completionDate = completedTimeDate(item, inheritedCompletionDate ?? recordDate);
   const grouped = groupedChildren(item);
   if (grouped.length) {
-    grouped.forEach(child => collectCompletedTime(child, recordDate, output, itemSubject, itemLabel));
+    grouped.forEach(child => collectCompletedTime(child, recordDate, output, itemSubject, itemLabel, completionDate));
     return;
   }
   const interactive = childItems(item, 'interactiveEntries');
   if (interactive.length) {
-    interactive.forEach(child => collectCompletedTime(child, recordDate, output, itemSubject, itemLabel));
+    interactive.forEach(child => collectCompletedTime(child, recordDate, output, itemSubject, itemLabel, completionDate));
     return;
   }
   const integration = childItems(item, 'calendarIntegrationEntries');
   if (integration.length) {
-    integration.forEach(child => collectCompletedTime(child, recordDate, output, itemSubject, itemLabel));
+    integration.forEach(child => collectCompletedTime(child, recordDate, output, itemSubject, itemLabel, completionDate));
     return;
   }
   if (isSaturdayMakeup(item)) {
-    childItems(item, 'makeupEntries').forEach(child => collectCompletedTime(child, recordDate, output, itemSubject, itemLabel));
+    childItems(item, 'makeupEntries').forEach(child => collectCompletedTime(child, recordDate, output, itemSubject, itemLabel, completionDate));
     return;
   }
   const reviewEntries = childItems(item, 'reviewEntries');
   if (reviewEntries.length) {
-    reviewEntries.forEach(child => collectCompletedTime(child, recordDate, output, itemSubject, itemLabel));
+    reviewEntries.forEach(child => collectCompletedTime(child, recordDate, output, itemSubject, itemLabel, completionDate));
     return;
   }
   if (!item.done) return;
@@ -397,14 +408,14 @@ function collectCompletedTime(
     entries.forEach((entry, index) => {
       const label = text(entry?.name) || itemLabel;
       addCompletedTime(
-        output, recordDate, item, numericMinutes(entry?.minutes), itemSubject, label,
+        output, recordDate, completionDate, item, numericMinutes(entry?.minutes), itemSubject, label,
         `magazine:${text(entry?.id) || `${label}:${index}`}`,
       );
     });
     return;
   }
   const minutes = numericMinutes(item.minutes);
-  addCompletedTime(output, recordDate, item, minutes, fallbackSubject, fallbackLabel);
+  addCompletedTime(output, recordDate, completionDate, item, minutes, fallbackSubject, fallbackLabel);
 }
 
 /** Deduplicates the same saved/deferred/Calendar task and keeps its strongest completed record. */
@@ -516,21 +527,24 @@ export function summarizeLearningPeriod(records: StudyRecord[], period: SummaryP
   const allUnits = periodRecords
     .filter(includesCompletionInPeriod)
     .flatMap(summaryCompletionUnitsForRecord);
-  const timeEntries = completedStudyTimeEntries(periodRecords);
+  // A task can be checked from another date's card. Its minutes belong to the
+  // actual check date, so source records outside this period must also be read.
+  const timeEntries = completedStudyTimeEntries(records)
+    .filter(entry => entry.date >= period.start && entry.date <= period.end);
   const timeEntriesByDate = new Map<string, CompletedStudyTimeEntry[]>();
   timeEntries.forEach(entry => timeEntriesByDate.set(entry.date, [...(timeEntriesByDate.get(entry.date) ?? []), entry]));
   const wakeValues: number[] = [];
   const days = period.dates.map(date => {
     const record = byDate.get(date);
+    const subjectTime = summarizeSubjectTime(timeEntriesByDate.get(date) ?? []);
     if (!record) {
       return {
         date, dayNumber: parseDate(date).getDate(), weekday: ['日', '一', '二', '三', '四', '五', '六'][parseDate(date).getDay()],
-        hasRecord: false, mood: '', totalMinutes: 0, completionPercent: 0,
-        completionIncludedInPeriod: true, wakeMinutes: null,
+        hasRecord: subjectTime.totalMinutes > 0, mood: '', totalMinutes: subjectTime.totalMinutes, completionPercent: 0,
+        completionIncludedInPeriod: false, wakeMinutes: null,
       };
     }
     const completion = summarizeCompletionUnits(summaryCompletionUnitsForRecord(record));
-    const subjectTime = summarizeSubjectTime(timeEntriesByDate.get(date) ?? []);
     const wakeMinutes = wakeTimeMinutes(record.wakeTime);
     if (wakeMinutes !== null) wakeValues.push(wakeMinutes);
     return {
@@ -548,7 +562,7 @@ export function summarizeLearningPeriod(records: StudyRecord[], period: SummaryP
     subjectTime: summarizeSubjectTime(timeEntries),
     timeEntries,
     averageWakeMinutes: wakeValues.length ? Math.round(wakeValues.reduce((sum, value) => sum + value, 0) / wakeValues.length) : null,
-    recordedDayCount: periodRecords.length,
+    recordedDayCount: new Set([...periodRecords.map(record => record.date), ...timeEntries.map(entry => entry.date)]).size,
   };
 }
 

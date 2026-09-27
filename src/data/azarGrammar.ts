@@ -323,3 +323,9 @@ export function azarGrammarPageSummary(startValue: unknown, endValue?: unknown):
     return `${chapter.label}${sections ? `｜${sections}` : ''}`;
   }).join('；');
 }
+
+export function azarGrammarChapterSummary(startValue: unknown, endValue?: unknown): string {
+  const chapters = azarGrammarChaptersForPages(startValue, endValue);
+  if (!chapters.length) return '頁碼未對應到第 1～14 章';
+  return chapters.map(chapter => chapter.label).join('；');
+}

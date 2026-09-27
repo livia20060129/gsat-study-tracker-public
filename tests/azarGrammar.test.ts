@@ -8,9 +8,12 @@ import {
   AZAR_GRAMMAR_BOOK_TITLE,
   AZAR_GRAMMAR_CHAPTERS,
   AZAR_GRAMMAR_SECTIONS,
+  azarGrammarChapterSummary,
   azarGrammarChaptersForPages,
   isAzarGrammarIdentifier,
 } from '../src/data/azarGrammar.ts';
+import { mergeAzarSectionProgress } from '../src/study/azarChapterCards.ts';
+import type { StudyItem } from '../src/types.ts';
 
 function row(title: string, description: string, category = 'other'): CalendarTaskRow {
   return {
@@ -87,7 +90,7 @@ test('recognizes the deployed title without 系列 and maps p.18–29 to the two
   );
 });
 
-test('identifier alone still selects Azar and builds a separate Tracker row for every section', () => {
+test('identifier alone still selects Azar and builds one Tracker row for the chapter', () => {
   const parsed = parseCalendarTask(row(
     '英文文法｜本日進度',
     '【頁碼範圍】31–39\n【識別碼】GAST-AZAR-2026-002',
@@ -100,7 +103,7 @@ test('identifier alone still selects Azar and builds a separate Tracker row for 
     AZAR_GRAMMAR_BOOK_TITLE,
     calendarParsedByDate: { '2026-09-11': [parsed] },
   });
-  for (const name of ['calendarEventToken', 'calendarIdentifierToken', 'calendarAzarSectionDef', 'presetDef', 'cloudCalendarDefsForDate']) {
+  for (const name of ['calendarEventToken', 'calendarIdentifierToken', 'calendarAzarChapterDef', 'presetDef', 'cloudCalendarDefsForDate']) {
     const start = runtime.indexOf(`function ${name}(`);
     const relativeEnd = runtime.slice(start + 1).search(/\n(?:async )?function /);
     assert.ok(start >= 0 && relativeEnd >= 0, name);
@@ -108,14 +111,54 @@ test('identifier alone still selects Azar and builds a separate Tracker row for 
   }
 
   const definitions = context.cloudCalendarDefsForDate('2026-09-11');
-  assert.equal(definitions.length, 3);
+  assert.equal(definitions.length, 1);
   assert.deepEqual(
     Array.from(definitions, (definition: { title: string }) => String(definition.title)),
-    [
-      'Azar英文文法（中階）｜Ch.2 過去式｜2-1過去簡單式：規則變化動詞',
-      'Azar英文文法（中階）｜Ch.2 過去式｜2-2表達過去的時間：過去簡單式、不規則變化動詞',
-      'Azar英文文法（中階）｜Ch.2 過去式｜2-3常見的不規則變化動詞：參考表',
-    ],
+    ['Azar英文文法（中階）｜Ch.2 過去式'],
   );
   assert.ok(definitions.every((definition: { f: { groupedWorkEntries?: unknown } }) => !definition.f.groupedWorkEntries));
+});
+
+test('old Azar subsection progress migrates to one chapter card only once', () => {
+  const chapter = {
+    id: 'chapter', type: 'extra', done: true, minutes: '12', required: true,
+    f: { title: AZAR_GRAMMAR_BOOK_TITLE, azarSectionCode: '1-6', round: '1-6' },
+  } as StudyItem;
+  const sections = [
+    { id: 'old-1', type: 'extra', done: true, checkedOn: '2026-09-11', minutes: '12', required: true, f: { azarSectionCode: '1-6' } },
+    { id: 'old-2', type: 'extra', done: false, minutes: '8', required: true, f: { azarSectionCode: '1-7' } },
+  ] as StudyItem[];
+
+  assert.equal(mergeAzarSectionProgress(chapter, sections, false), true);
+  assert.equal(chapter.done, false);
+  assert.equal(chapter.minutes, '20');
+  assert.equal(chapter.checkedOn, undefined);
+  assert.equal(chapter.f.azarSectionCode, undefined);
+  assert.equal((chapter.f.azarLegacySections as StudyItem[]).length, 2);
+  assert.equal(mergeAzarSectionProgress(chapter, sections, true), false);
+  assert.equal(chapter.minutes, '20');
+
+  const alreadyEdited = {
+    id: 'edited-chapter', type: 'extra', done: true, minutes: '45', required: true,
+    checkedOn: '2026-09-12', f: { title: AZAR_GRAMMAR_BOOK_TITLE },
+  } as StudyItem;
+  assert.equal(mergeAzarSectionProgress(alreadyEdited, sections, true), true);
+  assert.equal(alreadyEdited.minutes, '45');
+  assert.equal(alreadyEdited.done, true);
+  assert.equal(alreadyEdited.checkedOn, '2026-09-12');
+
+  const editedRange = {
+    id: 'edited-range', type: 'extra', done: false, minutes: '', required: true,
+    f: { title: AZAR_GRAMMAR_BOOK_TITLE, start: '18', end: '21' },
+  } as StudyItem;
+  const editedSections = sections.map(section => structuredClone(section));
+  editedSections[0].f.start = '19';
+  editedSections[0].f.end = '20';
+  editedSections[0].f.dailyWorkUserFields = { start: '19' };
+  editedSections[1].f.start = '21';
+  editedSections[1].f.end = '21';
+  mergeAzarSectionProgress(editedRange, editedSections, false);
+  assert.deepEqual([editedRange.f.start, editedRange.f.end], ['19', '21']);
+  assert.deepEqual(editedRange.f.dailyWorkUserFields, { start: '19', end: '21' });
+  assert.equal(azarGrammarChapterSummary('18', '21'), '第一章：現在式');
 });

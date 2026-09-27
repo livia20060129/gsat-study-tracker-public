@@ -232,6 +232,24 @@ test('three-way merge combines changes to different fields and flags the same fi
   assert.equal(recordSyncConflicts(conflict.record).length, 1);
 });
 
+test('a stale tab cannot undo a completion saved by another tab', () => {
+  const base = markRecordSynced({
+    date: '2026-08-16',
+    items: [item('scheduled-item')],
+  });
+  const staleTab = structuredClone(base);
+  const latestStored = structuredClone(base);
+  latestStored.items[0].done = true;
+  latestStored.items[0].checkedOn = '2026-08-19';
+  latestStored.localDirty = true;
+
+  const merged = mergeStudyRecordsThreeWay(staleTab, latestStored, base);
+
+  assert.equal(merged.conflicts.length, 0);
+  assert.equal(merged.record.items[0].done, true);
+  assert.equal(merged.record.items[0].checkedOn, '2026-08-19');
+});
+
 test('delete versus edit becomes a visible conflict instead of resurrecting silently', () => {
   const base = markRecordSynced({ date: '2026-09-12', items: [item('essay', '20')] });
   const local = structuredClone(base);
