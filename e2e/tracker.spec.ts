@@ -62,6 +62,45 @@ test('material progress only shows checked materials and keeps the selection', a
   await expect(physicsGroup).not.toContainText('自然｜物理');
 });
 
+test('manual material selectors use My Materials and keep existing records editable', async ({ page }) => {
+  await page.selectOption('#itemType', 'mathLecture');
+  await expect(page.locator('#manualMaterialHint')).toContainText('尚未在「我的教材」勾選數學教材');
+  await expect(page.locator('#manageMaterialsLink')).toHaveAttribute('href', './material.progress.html#math');
+
+  await page.evaluate(() => {
+    localStorage.setItem('study-v11:guest:material-selection', JSON.stringify([
+      'math:對話式:1',
+      'english:ace',
+    ]));
+  });
+  await page.reload();
+  await page.selectOption('#itemType', 'mathLecture');
+  await expect(page.locator('#manualMaterialHint')).toContainText('數學已選 1 本教材');
+  await page.click('#addItemBtn');
+
+  const mathCard = page.locator('#itemList [data-item]').last();
+  const material = mathCard.locator('[data-field="material"]');
+  await expect(material.locator('option')).toHaveText(['請選擇', '對話式']);
+  await material.selectOption('對話式');
+  const book = mathCard.locator('[data-field="book"]');
+  await expect(book.locator('option')).toHaveText(['請選擇', '1']);
+  await book.selectOption('1');
+
+  await page.evaluate(() => localStorage.setItem('study-v11:guest:material-selection', '[]'));
+  await page.reload();
+  const existingMathCard = page.locator('#itemList [data-item]').last();
+  await expect(existingMathCard.locator('[data-field="material"]')).toHaveValue('對話式');
+  await expect(existingMathCard.locator('[data-field="material"]')).toContainText('對話式（目前紀錄）');
+  await expect(existingMathCard.locator('[data-field="book"]')).toHaveValue('1');
+
+  await page.selectOption('#itemType', 'general');
+  await page.click('#addItemBtn');
+  const customCard = page.locator('#itemList [data-item]').last();
+  await expect(customCard.locator('[data-field="subject"]')).toBeVisible();
+  await expect(customCard.locator('[data-field="title"]')).toBeVisible();
+  await expect(customCard.locator('[data-field="progress"]')).toBeVisible();
+});
+
 test('whole-card deletion requires confirmation and small-row deletion can be undone', async ({ page }) => {
   await page.selectOption('#itemType', 'extra');
   await page.click('#addItemBtn');

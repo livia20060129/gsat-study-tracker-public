@@ -216,27 +216,54 @@ test('Calendar math cards lock the supplied lecture version while manual cards k
   assert.match(manual, /<select data-field="material">/);
 });
 
-test('manual added-item selectors expose all newly mapped lectures', () => {
+test('manual added-item selectors expose checked materials and preserve an existing value', () => {
   const selected = (value: unknown, current: unknown) => String(value) === String(current) ? ' selected' : '';
   const esc = (value: unknown) => String(value ?? '');
+  const unique = (values: string[]) => values.filter((value, index) => Boolean(value) && values.indexOf(value) === index);
+  const choices = {
+    math: [
+      { subject: 'math', value: '對話式', book: '1' },
+      { subject: 'math', value: '新關鍵', book: '1~2' },
+    ],
+    natural: [
+      { subject: 'natural', value: '逆轉勝', book: '物理' },
+      { subject: 'natural', value: '領航', book: '化學' },
+    ],
+    english: [
+      { subject: 'english', value: '學測週計畫' },
+      { subject: 'english', value: 'Azar英文文法（中階）' },
+    ],
+  };
+  const activeManualMaterialChoices = (subject: keyof typeof choices) => choices[subject] ?? [];
   const manualOptionGroup = runtimeFunction<(label: string, values: string[], current: string, labelFor?: (value: string) => string) => string>(
     'manualOptionGroup',
     { selected, esc },
   );
-  const mathOptions = runtimeFunction<(current: string) => string>('mathMaterialOptions', {
-    MATH_GRAND_SLAM_MATERIAL: '新大滿貫',
-    manualOptionGroup,
-  });
-  const mathBookOptions = runtimeFunction<(material: string, current: string) => string>('mathBookOptions', { selected });
   const manualOptions = runtimeFunction<(values: string[], current: string, labelFor?: (value: string) => string) => string>(
     'manualOptions',
     { selected, esc },
   );
-  const scienceOptions = runtimeFunction<(subject: string, current: string) => string>('scienceMaterialOptions', {
-    CHEMISTRY_NAVIGATOR_MATERIAL: '領航',
-    PHYSICS_ADVANTAGE_MATERIAL: '優勢',
-    PHYSICS_COMEBACK_MATERIAL: '逆轉勝',
+  const manualExistingOption = (values: string[], current: string) => current && !values.includes(current)
+    ? `<optgroup label="既有紀錄"><option value="${current}" selected>${current}（目前紀錄）</option></optgroup>`
+    : '';
+  const mathOptions = runtimeFunction<(current: string) => string>('mathMaterialOptions', {
+    MATH_GRAND_SLAM_MATERIAL: '新大滿貫',
+    manualOptionGroup,
+    manualExistingOption,
+    activeManualMaterialChoices,
+    unique,
+  });
+  const mathBookOptions = runtimeFunction<(material: string, current: string) => string>('mathBookOptions', {
+    activeManualMaterialChoices,
     manualOptions,
+    manualExistingOption,
+    unique,
+  });
+  const scienceOptions = runtimeFunction<(subject: string, current: string) => string>('scienceMaterialOptions', {
+    activeManualMaterialChoices,
+    manualOptions,
+    manualExistingOption,
+    unique,
   });
   const englishMaterialOptionGroups = runtimeFunction<(values: string[], current: string) => string>('englishMaterialOptionGroups', {
     ENGLISH_WEEKLY_PLAN_BOOK: '學測週計畫',
@@ -245,71 +272,49 @@ test('manual added-item selectors expose all newly mapped lectures', () => {
     ENGLISH_TOPIC_READING_BOOK: '主題百匯：篇章結構·閱讀測驗',
     ENGLISH_TOPIC_CLOZE_BOOK: '主題百匯：克漏字',
     manualOptionGroup,
+    manualExistingOption,
   });
   const readingOptions = runtimeFunction<(current: string) => string>('readingOptions', {
-    EXTRA_READING_TITLES: [
-      '雜誌',
-      '學測週計畫',
-      '混合題30篇實戰演練',
-      'ACE Reading',
-      '大考英聽A攻略',
-      '主題百匯：篇章結構·閱讀測驗',
-      '主題百匯：克漏字',
-      '英文寫作測驗',
-      '英文文法總複習講義',
-      '英文字彙王: 核心單字2001~ 4000',
-      '英文字彙王: 核心單字4001~ 6000',
-    ],
+    activeManualMaterialChoices,
     englishMaterialOptionGroups,
+    unique,
   });
   const reviewEnglishOptions = runtimeFunction<(current: string) => string>('reviewEnglishOptions', {
-    ENGLISH_WEEKLY_PLAN_BOOK: '學測週計畫',
-    ENGLISH_MIXED_30_BOOK: '混合題30篇實戰演練',
-    LISTENING_TEST_BOOK_TITLE: '大考英聽A攻略',
-    AZAR_GRAMMAR_BOOK_TITLE: 'Azar英文文法（中階）',
+    activeManualMaterialChoices,
     englishMaterialOptionGroups,
+    unique,
   });
 
   assert.match(mathOptions(''), /<optgroup label="分冊講義"><option value="對話式"/);
-  assert.match(mathOptions(''), /<option value="教學講義"/);
   assert.match(mathOptions(''), /<optgroup label="複習講義">/);
-  assert.match(mathOptions(''), /<option value="對話式複習講義"/);
-  assert.match(mathOptions(''), /新大滿貫（數學A）/);
-  assert.doesNotMatch(mathOptions(''), /新增講義|其他講義/);
+  assert.match(mathOptions(''), /<option value="新關鍵"/);
+  assert.doesNotMatch(mathOptions(''), /教學講義|新大滿貫/);
+  assert.match(mathOptions('教學講義'), /既有紀錄/);
+  assert.match(mathOptions('教學講義'), /教學講義（目前紀錄）/);
   assert.deepEqual(
     [...mathBookOptions('對話式', '').matchAll(/<option value="([^"]+)"/g)].map(match => match[1]).filter(Boolean),
-    ['1', '2', '3A', '4A'],
+    ['1'],
   );
   assert.deepEqual(
-    [...mathBookOptions('對話式複習講義', '').matchAll(/<option value="([^"]+)"/g)].map(match => match[1]).filter(Boolean),
-    ['1~2', '3A~4A'],
+    [...mathBookOptions('新關鍵', '').matchAll(/<option value="([^"]+)"/g)].map(match => match[1]).filter(Boolean),
+    ['1~2'],
   );
   assert.match(scienceOptions('化學', ''), /<option value="領航"/);
-  assert.match(scienceOptions('物理', ''), /<option value="優勢"/);
   assert.match(scienceOptions('物理', ''), /<option value="逆轉勝"/);
-  assert.doesNotMatch(scienceOptions('物理', ''), /<optgroup|新增講義|其他講義/);
+  assert.doesNotMatch(scienceOptions('物理', ''), /優勢|123日的淬鍊/);
   assert.match(scienceOptions('', ''), /請先選擇科目/);
   const readingMarkup = readingOptions('');
   assert.match(readingMarkup, /<option value="學測週計畫"/);
-  assert.match(readingMarkup, /<option value="混合題30篇實戰演練"/);
   assert.match(readingMarkup, /<optgroup label="學測">/);
   assert.match(readingMarkup, /<optgroup label="課外補充">/);
-  assert.match(readingMarkup, /<option value="主題百匯：篇章結構·閱讀測驗"/);
-  assert.match(readingMarkup, /<option value="英文字彙王: 核心單字4001~ 6000"/);
-  const readingExamGroup = optionGroupContents(readingMarkup, '學測');
-  assert.match(readingExamGroup, /<option value="英文寫作測驗"/);
-  assert.match(readingExamGroup, /<option value="英文文法總複習講義"/);
-  assert.doesNotMatch(readingMarkup, /新增講義|其他英文項目/);
+  assert.match(readingMarkup, /<option value="Azar英文文法（中階）"/);
+  assert.doesNotMatch(readingMarkup, /ACE Reading|混合題30篇實戰演練/);
+  assert.match(readingOptions('ACE Reading'), /ACE Reading（目前紀錄）/);
 
   const reviewMarkup = reviewEnglishOptions('');
-  assert.match(reviewMarkup, /<option value="大考英聽A攻略"/);
   assert.match(reviewMarkup, /<option value="Azar英文文法（中階）"/);
   assert.match(reviewMarkup, /<optgroup label="學測">/);
   assert.match(reviewMarkup, /<optgroup label="課外補充">/);
-  const reviewExamGroup = optionGroupContents(reviewMarkup, '學測');
-  assert.match(reviewExamGroup, /<option value="英文寫作測驗"/);
-  assert.match(reviewExamGroup, /<option value="英文文法總複習講義"/);
-  assert.doesNotMatch(reviewMarkup, /新增講義|其他英文項目/);
 });
 
 test('manual natural lecture is cleared when the subject no longer matches', () => {
@@ -624,6 +629,13 @@ test('mixed writing places both quarter-width scores beside one spanning priorit
 });
 
 test('Chinese page-mapped books are selected directly from 國文項目 without another book selector', () => {
+  const selectedChinese = () => [
+    { value: 'reading' },
+    { value: DEEP_FIFTEEN_BOOK },
+    { value: CHINESE_TOPIC_BOOK },
+  ];
+  const manualOptions = (values: string[], current: string, labelFor: (value: string) => string) => values
+    .map(value => `<option value="${value}"${value === current ? ' selected' : ''}>${labelFor(value)}</option>`).join('');
   const render = runtimeFunction<(x: StudyItem, reviewMode: boolean) => string>('renderChineseFields', {
     isCalendarGujin: () => false,
     isCalendarPageMappedBook: () => false,
@@ -634,6 +646,10 @@ test('Chinese page-mapped books are selected directly from 國文項目 without 
     selected: (left: unknown, right: unknown) => left === right ? ' selected' : '',
     checked: (value: unknown) => value ? ' checked' : '',
     bookPageAutoField: () => '<div data-book-page-auto>fixture</div>',
+    activeManualMaterialChoices: selectedChinese,
+    manualOptions,
+    manualExistingOption: () => '',
+    unique: (values: string[]) => [...new Set(values)],
   });
   const html = render(item({
     type: 'chineseReading',
@@ -653,6 +669,13 @@ test('Chinese page-mapped books are selected directly from 國文項目 without 
 });
 
 test('manual Chinese item fields use the requested half and quarter widths', () => {
+  const selectedChinese = () => [
+    { value: 'reading' },
+    { value: DEEP_FIFTEEN_BOOK },
+    { value: CHINESE_TOPIC_BOOK },
+  ];
+  const manualOptions = (values: string[], current: string, labelFor: (value: string) => string) => values
+    .map(value => `<option value="${value}"${value === current ? ' selected' : ''}>${labelFor(value)}</option>`).join('');
   const render = runtimeFunction<(x: StudyItem, reviewMode: boolean) => string>('renderChineseFields', {
     isCalendarGujin: () => false,
     isCalendarPageMappedBook: () => false,
@@ -663,6 +686,10 @@ test('manual Chinese item fields use the requested half and quarter widths', () 
     checked: (value: unknown) => value ? ' checked' : '',
     reasonField: () => '',
     esc: (value: unknown) => String(value ?? ''),
+    activeManualMaterialChoices: selectedChinese,
+    manualOptions,
+    manualExistingOption: () => '',
+    unique: (values: string[]) => [...new Set(values)],
   });
   const html = render(item({
     type: 'chineseReading',
@@ -686,6 +713,13 @@ test('manual Chinese item fields use the requested half and quarter widths', () 
 });
 
 test('manual Chinese writing uses the three-row half-quarter layout', () => {
+  const selectedChinese = () => [
+    { value: 'reading' },
+    { value: DEEP_FIFTEEN_BOOK },
+    { value: CHINESE_TOPIC_BOOK },
+  ];
+  const manualOptions = (values: string[], current: string, labelFor: (value: string) => string) => values
+    .map(value => `<option value="${value}"${value === current ? ' selected' : ''}>${labelFor(value)}</option>`).join('');
   const render = runtimeFunction<(x: StudyItem, reviewMode: boolean) => string>('renderChineseFields', {
     isCalendarGujin: () => false,
     isCalendarPageMappedBook: () => false,
@@ -696,6 +730,10 @@ test('manual Chinese writing uses the three-row half-quarter layout', () => {
     checked: (value: unknown) => value ? ' checked' : '',
     reasonField: () => '',
     esc: (value: unknown) => String(value ?? ''),
+    activeManualMaterialChoices: selectedChinese,
+    manualOptions,
+    manualExistingOption: () => '',
+    unique: (values: string[]) => [...new Set(values)],
   });
   const html = render(item({
     type: 'chineseReading',
