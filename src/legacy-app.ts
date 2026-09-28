@@ -81,7 +81,9 @@ import {
   ENGLISH_TOPIC_READING_BOOK,
   ENGLISH_MIXED_30_BOOK,
   ENGLISH_WEEKLY_PLAN_BOOK,
+  ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK,
   isEnglishPageMappedBook,
+  pageMappedBookUsesScopeSelection,
   pageMappedBookSocialSubject,
   pageMappedBookSubject,
 } from './data/bookPageMaps.ts';
@@ -585,6 +587,7 @@ var EXTRA_READING_TITLES=[
  ENGLISH_TOPIC_CLOZE_BOOK,
  ENGLISH_WEEKLY_PLAN_BOOK,
  ENGLISH_MIXED_30_BOOK,
+ ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK,
  '英文寫作測驗',
  '英文文法總複習講義',
  'Prism Reading',
@@ -1477,8 +1480,10 @@ function normalizeItem(it,date){
   var normalizedEnglishBook=canonicalPageMappedBook(it.f.title||it.f.book||it.title);
   if(normalizedEnglishBook&&pageMappedBookSubject(normalizedEnglishBook)==='英文'){
    it.f.title=normalizedEnglishBook;it.f.book=normalizedEnglishBook;
-   delete it.f.start;delete it.f.end;
-   if(it.f.dailyWorkUserFields&&typeof it.f.dailyWorkUserFields==='object'){delete it.f.dailyWorkUserFields.start;delete it.f.dailyWorkUserFields.end}
+   if(pageMappedBookUsesScopeSelection(normalizedEnglishBook)){
+    delete it.f.start;delete it.f.end;
+    if(it.f.dailyWorkUserFields&&typeof it.f.dailyWorkUserFields==='object'){delete it.f.dailyWorkUserFields.start;delete it.f.dailyWorkUserFields.end}
+   }
   }
  if(it.type==='general'){
   var normalizedSocialBook=canonicalPageMappedBook(it.f.book||it.f.title||it.title);
@@ -2807,7 +2812,7 @@ function applyChineseItemSelection(item,value){
  apply(item);return{kind:item.f.kind,book:item.f.book}
 }
 function englishMaterialOptionGroups(values,v){
- var examTitles=[ENGLISH_WEEKLY_PLAN_BOOK,ENGLISH_MIXED_30_BOOK,'ACE Reading',LISTENING_TEST_BOOK_TITLE,ENGLISH_TOPIC_READING_BOOK,ENGLISH_TOPIC_CLOZE_BOOK,'英文寫作測驗','英文文法總複習講義','英文字彙王: 核心單字2001~ 4000','英文字彙王: 核心單字4001~ 6000'];
+ var examTitles=[ENGLISH_WEEKLY_PLAN_BOOK,ENGLISH_MIXED_30_BOOK,ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK,'ACE Reading',LISTENING_TEST_BOOK_TITLE,ENGLISH_TOPIC_READING_BOOK,ENGLISH_TOPIC_CLOZE_BOOK,'英文寫作測驗','英文文法總複習講義','英文字彙王: 核心單字2001~ 4000','英文字彙王: 核心單字4001~ 6000'];
  var exam=values.filter(function(title){return examTitles.indexOf(title)>=0});
  var supplemental=values.filter(function(title){return examTitles.indexOf(title)<0});
  return manualOptionGroup('學測',exam,v)+manualOptionGroup('課外補充',supplemental,v)+manualExistingOption(values,v);

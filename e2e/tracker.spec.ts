@@ -46,6 +46,7 @@ test('material progress only shows checked materials and keeps the selection', a
   const englishOtherGroup = page.locator('[data-material-group="english-other"]');
   await expect(englishExamGroup).toContainText('學測週計畫');
   await expect(englishExamGroup).toContainText('混合題30篇實戰演練');
+  await expect(englishExamGroup).toContainText('英語高頻字彙完全攻略');
   await expect(englishExamGroup).toContainText('英文寫作測驗');
   await expect(englishExamGroup).toContainText('英文文法總複習講義');
   await expect(englishOtherGroup).not.toContainText('英文寫作測驗');

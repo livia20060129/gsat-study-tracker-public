@@ -26,6 +26,7 @@ const ENGLISH_EXAM_MATERIAL_IDS: ReadonlySet<string> = new Set([
   'english:listening',
   'book:學測週計畫',
   'book:混合題30篇實戰演練',
+  'book:英語高頻字彙完全攻略',
   'book:主題百匯：篇章結構·閱讀測驗',
   'book:主題百匯：克漏字',
   'english:writing',

@@ -18,6 +18,7 @@ import {
   ENGLISH_TOPIC_READING_BOOK,
   ENGLISH_MIXED_30_BOOK,
   ENGLISH_WEEKLY_PLAN_BOOK,
+  ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK,
   GEOGRAPHY_WEEKLY_PLAN_BOOK,
   HISTORY_WEEKLY_PLAN_BOOK,
   pageMappedBookSocialSubject,
@@ -35,6 +36,9 @@ test('identifies every supported book from punctuation and surrounding Calendar 
   assert.equal(canonicalPageMappedBook('英文｜混合題30篇 實戰演練'), ENGLISH_MIXED_30_BOOK);
   assert.equal(canonicalPageMappedBook('【識別碼】GSAT-ENG-WEEKPLAN'), ENGLISH_WEEKLY_PLAN_BOOK);
   assert.equal(canonicalPageMappedBook('GSAT-ENG-MIXED30'), ENGLISH_MIXED_30_BOOK);
+  assert.equal(canonicalPageMappedBook('【識別碼】GSAT-ENG-HIGHFREQ-VOCAB-20260928-U01'), ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK);
+  assert.equal(canonicalPageMappedBook('英文高頻字彙完全攻略'), ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK);
+  assert.equal(canonicalPageMappedBook('英語 高頻字彙 完全攻略'), ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK);
   assert.equal(canonicalPageMappedBook('GSAT-GEO-WEEKPLAN-20260924-01'), GEOGRAPHY_WEEKLY_PLAN_BOOK);
   assert.equal(canonicalPageMappedBook('【識別碼】GSAT-HIST-WEEKPLAN'), HISTORY_WEEKLY_PLAN_BOOK);
   assert.equal(canonicalPageMappedBook('GSAT-CIVICS-WEEKPLAN'), CIVICS_WEEKLY_PLAN_BOOK);
@@ -87,6 +91,23 @@ test('uses the supplied endings for the two new English lecture books', () => {
   );
   assert.equal(bookPageText(ENGLISH_MIXED_30_BOOK, 71, 71), '附錄｜測驗用答案紙（p.71）');
   assert.equal(bookPageText(ENGLISH_MIXED_30_BOOK, 72, 72), '頁碼不在已建立的教材本文範圍內。');
+});
+
+test('maps every photographed High-Frequency Vocabulary section and keeps the unknown index ending open', () => {
+  assert.equal(
+    bookPageText(ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK, 8, 12),
+    'Part 1 Basic｜Unit 1｜The Melting Ice Caps｜極地冰冠融化中（p.8–12）',
+  );
+  assert.equal(
+    bookPageText(ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK, 224, 230),
+    'Part 2 Advanced｜Unit 16｜Watching Your Words: The Issue of Political Correctness｜政治正確語言，使用對了嗎？（p.224–230）',
+  );
+  assert.equal(
+    bookPageText(ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK, 245, 253),
+    '附錄｜學測模擬試題（p.245–253）',
+  );
+  assert.equal(bookPageText(ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK, 254, 260), '附錄｜單字索引（p.254–260）');
+  assert.equal(BOOK_PAGE_MAPS[ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK].length, 38);
 });
 
 test('looks up the requested topic and lesson, level, or round', () => {

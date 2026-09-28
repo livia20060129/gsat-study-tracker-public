@@ -6,6 +6,7 @@ export const ENGLISH_TOPIC_READING_BOOK = '主題百匯：篇章結構·閱讀�
 export const ENGLISH_TOPIC_CLOZE_BOOK = '主題百匯：克漏字';
 export const ENGLISH_WEEKLY_PLAN_BOOK = '學測週計畫';
 export const ENGLISH_MIXED_30_BOOK = '混合題30篇實戰演練';
+export const ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK = '英語高頻字彙完全攻略';
 export const GEOGRAPHY_WEEKLY_PLAN_BOOK = '地理｜學測週計畫';
 export const HISTORY_WEEKLY_PLAN_BOOK = '歷史｜學測週計畫';
 export const CIVICS_WEEKLY_PLAN_BOOK = '公民｜學測週計畫';
@@ -19,6 +20,7 @@ export type PageMappedBook =
   | typeof ENGLISH_TOPIC_CLOZE_BOOK
   | typeof ENGLISH_WEEKLY_PLAN_BOOK
   | typeof ENGLISH_MIXED_30_BOOK
+  | typeof ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK
   | typeof GEOGRAPHY_WEEKLY_PLAN_BOOK
   | typeof HISTORY_WEEKLY_PLAN_BOOK
   | typeof CIVICS_WEEKLY_PLAN_BOOK;
@@ -150,6 +152,61 @@ const englishMixed30 = groupedSections([
 
 const OPEN_ENDED_SECTION = Number.MAX_SAFE_INTEGER;
 
+const englishHighFrequencyVocabulary = [
+  ...groupedSections([
+    {
+      topic: 'Part 1 Basic',
+      starts: [
+        ['Unit 1｜The Melting Ice Caps｜極地冰冠融化中', 8],
+        ['Unit 2｜Mutual Dependence in the Animal Kingdom｜互助共生的動物', 13],
+        ["Unit 3｜NFTs: The World's Hottest New Asset｜非同質化代幣：全球最夯的新資產", 18],
+        ['Unit 4｜The Beauty of Norway｜挪威之美', 24],
+        ['Unit 5｜The Empire of the Incas｜印加帝國', 30],
+        ['Unit 6｜The Importance of Moderation｜適度的重要性', 36],
+        ['Unit 7｜The Railway in Taiwan｜台灣鐵路史', 42],
+        ['Unit 8｜Waterproofing the Road｜防水路面', 49],
+        ["Unit 9｜Japan's National Flowers｜日本國花", 56],
+        ['Unit 10｜Therapy Dogs｜療癒犬', 62],
+        ['Unit 11｜The First Ferris Wheel｜浪漫摩天輪', 68],
+        ['Unit 12｜Insects: The Future of Food?｜蟲蟲大餐成為未來趨勢？', 74],
+        ['Unit 13｜The Secrets of Yoga｜瑜珈的祕密', 80],
+        ['Unit 14｜Ingestible Origami Robot｜微型摺紙機器人', 86],
+        ['Unit 15｜Idioms from Greek Mythology｜源自希臘神話的英文成語', 91],
+        ['Unit 16｜The New Buzz about Robot Bees｜機器人蜜蜂新話題', 97],
+        ['Unit 17｜Deadly Charm: Our Fascination with Vampires｜致命的吸引力：吸血鬼奇想', 103],
+        ['Unit 18｜A Healthy Attitude to Fitness｜健康的健身態度', 109],
+      ],
+      end: 117,
+    },
+    {
+      topic: 'Part 2 Advanced',
+      starts: [
+        ['Unit 1｜Anxiety Disorder｜焦慮症', 118],
+        ['Unit 2｜New Treaty Offers Hope for the Environment｜新協議為環境帶來新希望', 125],
+        ['Unit 3｜The Benefits of Speaking a Second Language｜學第二語言讓你變聰明！', 131],
+        ['Unit 4｜Finding Happiness in Denmark｜丹麥：發展綠能的幸福國度', 137],
+        ['Unit 5｜Nitrogen Footprint｜被遺忘的酸雨幫兇「氮足跡」', 144],
+        ['Unit 6｜Going Whole Hog on Transplants｜器官移植的強大豬隊友', 151],
+        ['Unit 7｜Cologne: A Cultural Capital｜德國文化之都：科隆', 158],
+        ['Unit 8｜Olympics Out of the Ordinary｜古怪奧運賽事一籮筐', 166],
+        ['Unit 9｜The Benefits of Conserving Water｜省水好處多', 172],
+        ['Unit 10｜Stellar Navigating Skills｜黃金龜的超凡導航技巧', 180],
+        ["Unit 11｜Tips for Remembering What You've Learned｜幫助記憶的訣竅", 187],
+        ['Unit 12｜The War against Food Waste｜終結剩食大作戰', 194],
+        ['Unit 13｜To Tip, or Not to Tip?｜改變中的美國小費文化', 200],
+        ['Unit 14｜Smartphone Snoopers｜智慧型手機正在監聽你？', 207],
+        ['Unit 15｜A Red Light for Coffee｜咖啡紅綠燈', 214],
+        ['Unit 16｜Watching Your Words: The Issue of Political Correctness｜政治正確語言，使用對了嗎？', 224],
+        ['Unit 17｜Eating Yourself to Death｜小胖威利症：吃到你沒命', 231],
+        ['Unit 18｜The Metaverse: Virtually Blurred Lines｜元宇宙：虛擬世界的模糊界線', 238],
+      ],
+      end: 244,
+    },
+  ]),
+  { start: 245, end: 253, topic: '附錄', detail: '學測模擬試題' },
+  { start: 254, end: OPEN_ENDED_SECTION, topic: '附錄', detail: '單字索引' },
+];
+
 function weeklyPlanSections(
   topic: string,
   starts: Array<[string, number]>,
@@ -221,6 +278,7 @@ export const BOOK_PAGE_MAPS: Record<PageMappedBook, BookPageSection[]> = {
   [ENGLISH_TOPIC_CLOZE_BOOK]: englishCloze,
   [ENGLISH_WEEKLY_PLAN_BOOK]: englishWeeklyPlan,
   [ENGLISH_MIXED_30_BOOK]: englishMixed30,
+  [ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK]: englishHighFrequencyVocabulary,
   [GEOGRAPHY_WEEKLY_PLAN_BOOK]: geographyWeeklyPlan,
   [HISTORY_WEEKLY_PLAN_BOOK]: historyWeeklyPlan,
   [CIVICS_WEEKLY_PLAN_BOOK]: civicsWeeklyPlan,
@@ -251,6 +309,7 @@ export function canonicalPageMappedBook(value: unknown): PageMappedBook | null {
   const identifier = title.toUpperCase();
   if (identifier.includes(LECTURE_IDENTIFIERS.englishWeeklyPlan)) return ENGLISH_WEEKLY_PLAN_BOOK;
   if (identifier.includes(LECTURE_IDENTIFIERS.englishMixed30)) return ENGLISH_MIXED_30_BOOK;
+  if (identifier.includes(LECTURE_IDENTIFIERS.englishHighFrequencyVocabulary)) return ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK;
   if (identifier.includes(LECTURE_IDENTIFIERS.geographyWeeklyPlan)) return GEOGRAPHY_WEEKLY_PLAN_BOOK;
   if (identifier.includes(LECTURE_IDENTIFIERS.historyWeeklyPlan)) return HISTORY_WEEKLY_PLAN_BOOK;
   if (identifier.includes(LECTURE_IDENTIFIERS.civicsWeeklyPlan)) return CIVICS_WEEKLY_PLAN_BOOK;
@@ -262,6 +321,7 @@ export function canonicalPageMappedBook(value: unknown): PageMappedBook | null {
   if (socialWeeklyPlan) return socialWeeklyPlan;
   if (/學測週計[畫劃]/.test(title.replace(/\s+/g, ''))) return ENGLISH_WEEKLY_PLAN_BOOK;
   if (title.replace(/\s+/g, '').includes('混合題30篇實戰演練')) return ENGLISH_MIXED_30_BOOK;
+  if (title.replace(/\s+/g, '').includes('高頻字彙完全攻略')) return ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK;
   return null;
 }
 

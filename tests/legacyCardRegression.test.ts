@@ -268,6 +268,7 @@ test('manual added-item selectors expose checked materials and preserve an exist
   const englishMaterialOptionGroups = runtimeFunction<(values: string[], current: string) => string>('englishMaterialOptionGroups', {
     ENGLISH_WEEKLY_PLAN_BOOK: '學測週計畫',
     ENGLISH_MIXED_30_BOOK: '混合題30篇實戰演練',
+    ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK: '英語高頻字彙完全攻略',
     LISTENING_TEST_BOOK_TITLE: '大考英聽A攻略',
     ENGLISH_TOPIC_READING_BOOK: '主題百匯：篇章結構·閱讀測驗',
     ENGLISH_TOPIC_CLOZE_BOOK: '主題百匯：克漏字',

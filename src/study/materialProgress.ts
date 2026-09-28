@@ -7,6 +7,7 @@ import {
   ENGLISH_TOPIC_READING_BOOK,
   ENGLISH_MIXED_30_BOOK,
   ENGLISH_WEEKLY_PLAN_BOOK,
+  ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK,
   pageMappedBookSubject,
   type PageMappedBook,
 } from '../data/bookPageMaps.ts';
@@ -235,7 +236,9 @@ function bookDefinition(book: PageMappedBook): MaterialDefinition {
     unitLabel: '篇',
     segments: BOOK_PAGE_MAPS[book].map((section, index) => ({
       key: String(index + 1),
-      label: `${section.topic}｜${section.detail}（p.${section.start}–${section.end}）`,
+      label: section.end === Number.MAX_SAFE_INTEGER
+        ? `${section.topic}｜${section.detail}（p.${section.start} 起）`
+        : `${section.topic}｜${section.detail}（p.${section.start}${section.start === section.end ? '' : `–${section.end}`}）`,
       start: section.start,
       end: section.end,
       topic: section.topic,
@@ -279,6 +282,7 @@ const MATERIAL_DEFINITIONS: MaterialDefinition[] = [
   bookDefinition(ENGLISH_TOPIC_CLOZE_BOOK),
   bookDefinition(ENGLISH_WEEKLY_PLAN_BOOK),
   bookDefinition(ENGLISH_MIXED_30_BOOK),
+  bookDefinition(ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK),
   ...Object.entries(TEACHING_MATH_PAGE_MAP).map(([book, rows]) => mathDefinition('教學講義', book, rows)),
   ...Object.entries(TEACHING_MATH_PAGE_MAP).map(([book, rows]) => mathDefinition('對話式', book, rows)),
   mathDefinition('對話式複習講義', '1~2', DIALOGUE_REVIEW_12_PAGE_MAP),

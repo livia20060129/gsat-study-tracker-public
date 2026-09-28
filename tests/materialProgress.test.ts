@@ -114,6 +114,15 @@ test('adds all four Dialogue split books and the two review books to material pr
   assert.ok(rows.some(row => row.id === 'math:對話式複習講義:3A~4A'));
 });
 
+test('adds High-Frequency Vocabulary as an English material with the photographed unit ranges', () => {
+  const vocabulary = materialProgressRows([]).find(row => row.id === 'book:英語高頻字彙完全攻略');
+  assert.ok(vocabulary);
+  assert.equal(vocabulary.title, '英語高頻字彙完全攻略');
+  assert.equal(vocabulary.total, 38);
+  assert.equal(vocabulary.segments[0].label, 'Part 1 Basic｜Unit 1｜The Melting Ice Caps｜極地冰冠融化中（p.8–12）');
+  assert.equal(vocabulary.segments.at(-1)?.label, '附錄｜單字索引（p.254 起）');
+});
+
 test('uses the scanned Dialogue review contents through the final textbook pages', () => {
   assert.deepEqual(DIALOGUE_REVIEW_12_PAGE_MAP, [
     [1, 20, '數與式'],

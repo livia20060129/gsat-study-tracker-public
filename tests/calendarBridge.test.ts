@@ -330,13 +330,22 @@ test('reads the new English lecture books from actual Calendar page ranges', () 
     '【講義版本】混合題30篇 實戰演練\n【頁碼範圍】p.62–63\n【識別碼】mixed-30-26',
     'studyItem',
   ));
+  const vocabulary = parseCalendarTask(row(
+    '英文｜英語高頻字彙完全攻略｜Part 2｜Unit 16',
+    '【頁碼範圍】p.224–230\n【識別碼】GSAT-ENG-HIGHFREQ-VOCAB-20260928-U16',
+    'studyItem',
+  ));
 
-  for (const parsed of [weekly, mixed]) {
+  for (const parsed of [weekly, mixed, vocabulary]) {
     assert.equal(parsed.kind, 'bookPages');
     if (parsed.kind === 'bookPages') assert.equal(parsed.subject, '英文');
   }
   if (weekly.kind === 'bookPages') assert.deepEqual([weekly.book, weekly.startPage, weekly.endPage], ['學測週計畫', 146, 155]);
   if (mixed.kind === 'bookPages') assert.deepEqual([mixed.book, mixed.startPage, mixed.endPage], ['混合題30篇實戰演練', 62, 63]);
+  if (vocabulary.kind === 'bookPages') assert.deepEqual(
+    [vocabulary.book, vocabulary.startPage, vocabulary.endPage],
+    ['英語高頻字彙完全攻略', 224, 230],
+  );
 });
 
 test('reads New Grand Slam, Navigator and Advantage lecture names from standardized notes', () => {

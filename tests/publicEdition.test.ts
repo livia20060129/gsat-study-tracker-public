@@ -52,3 +52,11 @@ test('Calendar prompt publishes separate identifiers and page-map guidance for t
   assert.match(calendarPrompt, /只有唯一命中時才可寫入/);
   assert.match(calendarPrompt, /照片未提供末頁，不得自行猜測/);
 });
+
+test('Calendar prompt publishes the High-Frequency Vocabulary identifier and photographed ranges', () => {
+  assert.ok(calendarPrompt.includes(LECTURE_IDENTIFIERS.englishHighFrequencyVocabulary));
+  assert.match(calendarPrompt, /英語高頻字彙完全攻略/);
+  assert.match(calendarPrompt, /Unit 1 極地冰冠融化中 p\.8–12/);
+  assert.match(calendarPrompt, /Unit 18 元宇宙：虛擬世界的模糊界線 p\.238–244/);
+  assert.match(calendarPrompt, /單字索引 p\.254 起（照片未提供末頁，不得自行猜測）/);
+});
