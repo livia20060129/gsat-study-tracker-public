@@ -23,6 +23,9 @@ test('辨識 Tracker 主要科目', () => {
   assert.equal(studyItemSubject(item('c', 'chineseReading', '古今悅讀一百')), '國文');
   assert.equal(studyItemSubject(item('s', 'scienceReview', '自然')), '自然');
   assert.equal(studyItemSubject(item('social', 'general', '歷史複習', '社會')), '社會');
+  assert.equal(studyItemSubject(item('civics', 'socialStudy', '學測週計畫', '公民')), '公民');
+  assert.equal(studyItemSubject(item('history', 'socialStudy', '學測週計畫', '歷史')), '歷史');
+  assert.equal(studyItemSubject(item('geography', 'socialStudy', '學測週計畫', '地理')), '地理');
   assert.equal(studyItemSubject(item('mock', 'mock', '歷屆／模考', '數學A')), '數學');
 });
 
@@ -46,6 +49,9 @@ test('每個主要科目使用固定淡色類別且自然整合沿用自然色',
   assert.equal(studyItemSubjectClass(item('e', 'extra', 'Essential Grammar in Use')), 'subject-card subject-english');
   assert.equal(studyItemSubjectClass(item('s', 'scienceReview', '自然')), 'subject-card subject-natural');
   assert.equal(studyItemSubjectClass(item('si', 'scienceReview', '自然整合', '混合')), 'subject-card subject-natural');
-  assert.equal(studyItemSubjectClass(item('social', 'general', '地理｜學測週計畫', '地理')), 'subject-card subject-social');
+  assert.equal(studyItemSubjectClass(item('civics', 'socialStudy', '公民｜學測週計畫', '公民')), 'subject-card subject-civics');
+  assert.equal(studyItemSubjectClass(item('history', 'socialStudy', '歷史｜學測週計畫', '歷史')), 'subject-card subject-history');
+  assert.equal(studyItemSubjectClass(item('geography', 'general', '地理｜學測週計畫', '地理')), 'subject-card subject-geography');
+  assert.equal(studyItemSubjectClass(item('social', 'general', '社會自訂', '社會')), 'subject-card subject-social');
   assert.equal(studyItemSubjectClass(item('o', 'general', '自訂項目')), 'subject-card subject-other');
 });

@@ -18,9 +18,11 @@ const SUBJECT_LABELS: Record<MaterialProgressSubject, string> = {
   english: '英文',
   math: '數學',
   natural: '自然',
+  social: '社會',
 };
 
 const NATURAL_SUBJECT_ORDER = ['物理', '化學', '地科', '生物'] as const;
+const SOCIAL_SUBJECT_ORDER = ['公民', '歷史', '地理'] as const;
 const ENGLISH_EXAM_MATERIAL_IDS: ReadonlySet<string> = new Set([
   'english:ace',
   'english:listening',
@@ -95,11 +97,16 @@ function renderRow(row: MaterialProgressRow): HTMLElement {
 function materialLabel(row: MaterialProgressRow): string {
   const parts = row.title.split('｜');
   if (row.subject === 'natural' && parts.length >= 3) return parts.slice(2).join('｜');
-  return row.title.replace(/^(?:國文|英文|數學|自然)｜/, '');
+  if (row.subject === 'social' && parts.length >= 2) return parts.slice(1).join('｜');
+  return row.title.replace(/^(?:國文|英文|數學|自然|社會)｜/, '');
 }
 
 function naturalSubject(row: MaterialProgressRow): string {
   return row.id.split(':')[1] ?? '';
+}
+
+function socialSubject(row: MaterialProgressRow): string {
+  return row.title.split('｜')[0] ?? '';
 }
 
 function renderMaterialOption(row: MaterialProgressRow): HTMLElement {
@@ -151,6 +158,15 @@ function renderMaterialOptions(availableRows: MaterialProgressRow[]): HTMLElemen
       const subjectRows = availableRows.filter(row => naturalSubject(row) === subject);
       return renderMaterialGroup(subject, subjectRows, `natural-${subject}`).map(group => {
         group.dataset.naturalSubject = subject;
+        return group;
+      });
+    });
+  }
+  if (activeSubject === 'social') {
+    return SOCIAL_SUBJECT_ORDER.flatMap(subject => {
+      const subjectRows = availableRows.filter(row => socialSubject(row) === subject);
+      return renderMaterialGroup(subject, subjectRows, `social-${subject}`).map(group => {
+        group.dataset.socialSubject = subject;
         return group;
       });
     });

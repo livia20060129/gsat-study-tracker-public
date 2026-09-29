@@ -112,8 +112,19 @@ test('a single subject uses a complete two-part circle path', () => {
 
 test('uses one clear character for every subject label on the ring', () => {
   assert.deepEqual(SUBJECT_TIME_SHORT_LABELS, {
-    數學: '數', 國文: '國', 英文: '英', 物理: '物', 化學: '化', 生物: '生', 地科: '地', 自然: '自', 其他: '社',
+    數學: '數', 國文: '國', 英文: '英', 物理: '物', 化學: '化', 生物: '生', 地科: '地', 自然: '自',
+    公民: '公', 歷史: '史', 地理: '地', 社會: '社', 其他: '其',
   });
+});
+
+test('keeps civics, history, and geography as separate colored summary slices', () => {
+  const summary = mergeNaturalScienceSubjectTime(summarizeSubjectTime([
+    { subject: '公民', minutes: 20 },
+    { subject: '歷史', minutes: 30 },
+    { subject: '地理', minutes: 40 },
+  ]));
+  assert.deepEqual(summary.slices.map(slice => slice.subject), ['公民', '歷史', '地理']);
+  assert.equal(new Set(summary.slices.map(slice => slice.color)).size, 3);
 });
 
 test('wires the donut into the today-minutes panel and renders minutes in its center', () => {

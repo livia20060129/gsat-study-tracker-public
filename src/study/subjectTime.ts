@@ -1,4 +1,4 @@
-export const SUBJECT_TIME_SUBJECTS = ['數學', '國文', '英文', '物理', '化學', '生物', '地科', '自然', '其他'] as const;
+export const SUBJECT_TIME_SUBJECTS = ['數學', '國文', '英文', '物理', '化學', '生物', '地科', '自然', '公民', '歷史', '地理', '社會', '其他'] as const;
 
 export const NATURAL_SCIENCE_SUBJECTS = ['物理', '化學', '生物', '地科'] as const;
 
@@ -13,6 +13,10 @@ export const SUBJECT_TIME_COLORS: Record<SubjectTimeSubject, string> = {
   生物: '#a8b78e',
   地科: '#b8a58d',
   自然: '#8eaea1',
+  公民: '#d28f83',
+  歷史: '#c49a6c',
+  地理: '#6fa7a0',
+  社會: '#b69b74',
   其他: '#aab3bd',
 };
 
@@ -25,7 +29,11 @@ export const SUBJECT_TIME_SHORT_LABELS: Record<SubjectTimeSubject, string> = {
   生物: '生',
   地科: '地',
   自然: '自',
-  其他: '社',
+  公民: '公',
+  歷史: '史',
+  地理: '地',
+  社會: '社',
+  其他: '其',
 };
 
 export interface SubjectTimeEntry {
@@ -54,7 +62,7 @@ export interface SubjectTimeDonutSlice extends SubjectTimeSlice {
   labelY: number;
 }
 
-const SUBJECT_OVERVIEW_ORDER: SubjectTimeSubject[] = ['數學', '國文', '英文', '自然', '其他'];
+const SUBJECT_OVERVIEW_ORDER: SubjectTimeSubject[] = ['數學', '國文', '英文', '自然', '公民', '歷史', '地理', '社會', '其他'];
 
 function pointOnCircle(percent: number, radius: number, center: number): [number, number] {
   const angle = (percent / 100) * Math.PI * 2 - Math.PI / 2;

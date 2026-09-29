@@ -50,6 +50,17 @@ export function manualMaterialChoice(row: MaterialProgressRow): ManualMaterialCh
     };
   }
 
+  if (row.subject === 'social') {
+    const [socialSubject = '', material = ''] = row.title.split('｜');
+    if (!socialSubject || !material) return null;
+    return {
+      id: row.id,
+      subject: row.subject,
+      value: row.title,
+      book: socialSubject,
+    };
+  }
+
   return null;
 }
 

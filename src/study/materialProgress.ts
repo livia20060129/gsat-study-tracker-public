@@ -2,12 +2,15 @@ import {
   BOOK_PAGE_MAPS,
   canonicalPageMappedBook,
   CHINESE_TOPIC_BOOK,
+  CIVICS_WEEKLY_PLAN_BOOK,
   DEEP_FIFTEEN_BOOK,
   ENGLISH_TOPIC_CLOZE_BOOK,
   ENGLISH_TOPIC_READING_BOOK,
   ENGLISH_MIXED_30_BOOK,
   ENGLISH_WEEKLY_PLAN_BOOK,
   ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK,
+  GEOGRAPHY_WEEKLY_PLAN_BOOK,
+  HISTORY_WEEKLY_PLAN_BOOK,
   pageMappedBookSubject,
   type PageMappedBook,
 } from '../data/bookPageMaps.ts';
@@ -37,7 +40,7 @@ import { recordedPageRangeFields } from './recordedPageRange.ts';
 
 export { ACTIVE_RECORD_PREFIX_KEY } from '../storage/local.ts';
 
-export const MATERIAL_PROGRESS_SUBJECTS = ['chinese', 'english', 'math', 'natural'] as const;
+export const MATERIAL_PROGRESS_SUBJECTS = ['chinese', 'english', 'math', 'natural', 'social'] as const;
 export type MaterialProgressSubject = (typeof MATERIAL_PROGRESS_SUBJECTS)[number];
 
 export interface MaterialProgressSegment {
@@ -228,12 +231,13 @@ function largeTopicSegments(rows: readonly PageMapRow[]): SegmentDefinition[] {
 }
 
 function bookDefinition(book: PageMappedBook): MaterialDefinition {
-  const subject = pageMappedBookSubject(book) === '國文' ? 'chinese' : 'english';
+  const mappedSubject = pageMappedBookSubject(book);
+  const subject = mappedSubject === '國文' ? 'chinese' : mappedSubject === '社會' ? 'social' : 'english';
   return {
     id: `book:${book}`,
     subject,
     title: book,
-    unitLabel: '篇',
+    unitLabel: subject === 'social' ? '單元' : '篇',
     segments: BOOK_PAGE_MAPS[book].map((section, index) => ({
       key: String(index + 1),
       label: section.end === Number.MAX_SAFE_INTEGER
@@ -283,6 +287,9 @@ const MATERIAL_DEFINITIONS: MaterialDefinition[] = [
   bookDefinition(ENGLISH_WEEKLY_PLAN_BOOK),
   bookDefinition(ENGLISH_MIXED_30_BOOK),
   bookDefinition(ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK),
+  bookDefinition(CIVICS_WEEKLY_PLAN_BOOK),
+  bookDefinition(HISTORY_WEEKLY_PLAN_BOOK),
+  bookDefinition(GEOGRAPHY_WEEKLY_PLAN_BOOK),
   ...Object.entries(TEACHING_MATH_PAGE_MAP).map(([book, rows]) => mathDefinition('教學講義', book, rows)),
   ...Object.entries(TEACHING_MATH_PAGE_MAP).map(([book, rows]) => mathDefinition('對話式', book, rows)),
   mathDefinition('對話式複習講義', '1~2', DIALOGUE_REVIEW_12_PAGE_MAP),
@@ -458,6 +465,12 @@ function markStudyItem(recorded: Map<string, MaterialCoverage>, item: StudyItem)
       const subject = normalizeNaturalSubject(fields.subject);
       const material = normalizeNaturalMaterial(fields.material);
       markRange(recorded, `natural:${subject}:${material}`, fields.start, fields.end);
+    }
+
+    if (type === 'socialStudy' || type === 'general') {
+      if (mappedBook && pageMappedBookSubject(mappedBook) === '社會') {
+        markBookSelection(recorded, mappedBook, fields);
+      }
     }
   }
 

@@ -1,4 +1,4 @@
-export type StudySubject = '國文' | '英文' | '數學A' | '自然' | '物理' | '化學' | '生物' | '地科' | '混合';
+export type StudySubject = '國文' | '英文' | '數學A' | '自然' | '物理' | '化學' | '生物' | '地科' | '公民' | '歷史' | '地理' | '社會' | '混合';
 
 export type StudyItemType =
   | 'mathStudy'
@@ -11,6 +11,7 @@ export type StudyItemType =
   | 'englishMixedWriting'
   | 'biologyInteractive'
   | 'scienceReview'
+  | 'socialStudy'
   | 'chineseReading'
   | 'mock'
   | 'general'

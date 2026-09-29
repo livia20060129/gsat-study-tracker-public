@@ -8,6 +8,11 @@ import {
 } from '../src/study/materialProgress.ts';
 import { PHYSICS_COMEBACK_PAGE_MAP } from '../src/data/lecturePageMaps.ts';
 import {
+  CIVICS_WEEKLY_PLAN_BOOK,
+  GEOGRAPHY_WEEKLY_PLAN_BOOK,
+  HISTORY_WEEKLY_PLAN_BOOK,
+} from '../src/data/bookPageMaps.ts';
+import {
   DIALOGUE_REVIEW_12_PAGE_MAP,
   DIALOGUE_REVIEW_34_PAGE_MAP,
 } from '../src/data/mathMaterialPageMaps.ts';
@@ -121,6 +126,28 @@ test('adds High-Frequency Vocabulary as an English material with the photographe
   assert.equal(vocabulary.total, 38);
   assert.equal(vocabulary.segments[0].label, 'Part 1 Basic｜Unit 1｜The Melting Ice Caps｜極地冰冠融化中（p.8–12）');
   assert.equal(vocabulary.segments.at(-1)?.label, '附錄｜單字索引（p.254 起）');
+});
+
+test('adds separate civics, history, and geography materials and records their page ranges', () => {
+  const completed = item({
+    id: 'civics-pages',
+    type: 'socialStudy',
+    done: true,
+    f: { subject: '公民', book: CIVICS_WEEKLY_PLAN_BOOK, start: '16', end: '31', progress: true },
+  });
+  const rows = materialProgressRows([record([completed])]);
+  const socialRows = rows.filter(row => row.subject === 'social');
+  assert.deepEqual(socialRows.map(row => row.title), [
+    CIVICS_WEEKLY_PLAN_BOOK,
+    HISTORY_WEEKLY_PLAN_BOOK,
+    GEOGRAPHY_WEEKLY_PLAN_BOOK,
+  ]);
+  assert.ok(socialRows.every(row => row.unitLabel === '單元'));
+  const civics = socialRows.find(row => row.title === CIVICS_WEEKLY_PLAN_BOOK);
+  assert.ok(civics);
+  assert.equal(civics.segments.filter(segment => segment.recorded).length, 2);
+  assert.equal(civics.segments[1].completionPercent, 100);
+  assert.equal(civics.segments[2].completionPercent, 8);
 });
 
 test('uses the scanned Dialogue review contents through the final textbook pages', () => {

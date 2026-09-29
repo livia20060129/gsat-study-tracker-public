@@ -130,6 +130,17 @@ test('learning summary separates natural science into physics, chemistry, biolog
   assert.deepEqual(summary.subjectTime.slices.map(slice => slice.subject), ['物理', '化學', '生物', '地科']);
 });
 
+test('learning summary keeps civics, history, and geography separate', () => {
+  const studyRecord = record('2026-09-15', [
+    { id: 'civics', type: 'socialStudy', done: true, minutes: '15', required: true, f: { subject: '公民', book: '公民｜學測週計畫' } },
+    { id: 'history', type: 'socialStudy', done: true, minutes: '20', required: true, f: { subject: '歷史', book: '歷史｜學測週計畫' } },
+    { id: 'geography', type: 'general', done: true, minutes: '25', required: true, f: { subject: '地理', book: '地理｜學測週計畫' } },
+  ]);
+  const summary = summarizeLearningPeriod([studyRecord], summaryPeriod('2026-09-15', 'week'));
+  assert.deepEqual(summary.subjectTime.slices.map(slice => slice.subject), ['公民', '歷史', '地理']);
+  assert.equal(summary.subjectTime.totalMinutes, 60);
+});
+
 test('all overview blocks derive from the same requested period', () => {
   const period = summaryPeriod('2026-09-17', 'week');
   const summary = summarizeLearningPeriod([

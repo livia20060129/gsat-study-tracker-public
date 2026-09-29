@@ -61,6 +61,12 @@ test('material progress only shows checked materials and keeps the selection', a
   await expect(physicsGroup).toContainText('優勢');
   await expect(physicsGroup).toContainText('逆轉勝');
   await expect(physicsGroup).not.toContainText('自然｜物理');
+
+  await page.getByRole('tab', { name: '社會' }).click();
+  await expect(page.locator('#materialSelectionList .material-selection-group > h3')).toHaveText(['公民', '歷史', '地理']);
+  await expect(page.locator('[data-social-subject="公民"]')).toContainText('學測週計畫');
+  await expect(page.locator('[data-social-subject="歷史"]')).toContainText('學測週計畫');
+  await expect(page.locator('[data-social-subject="地理"]')).toContainText('學測週計畫');
 });
 
 test('manual material selectors use My Materials and keep existing records editable', async ({ page }) => {
@@ -72,6 +78,7 @@ test('manual material selectors use My Materials and keep existing records edita
     localStorage.setItem('study-v11:guest:material-selection', JSON.stringify([
       'math:對話式:1',
       'english:ace',
+      'book:公民｜學測週計畫',
     ]));
   });
   await page.reload();
@@ -87,9 +94,22 @@ test('manual material selectors use My Materials and keep existing records edita
   await expect(book.locator('option')).toHaveText(['請選擇', '1']);
   await book.selectOption('1');
 
+  await page.selectOption('#itemType', 'socialStudy');
+  await expect(page.locator('#manualMaterialHint')).toContainText('社會已選 1 本教材');
+  await expect(page.locator('#manageMaterialsLink')).toHaveAttribute('href', './material.progress.html#social');
+  await page.click('#addItemBtn');
+  const socialCard = page.locator('#itemList [data-item]').last();
+  await expect(socialCard).toHaveClass(/subject-civics|subject-other/);
+  await expect(socialCard.locator('[data-field="subject"] option')).toHaveText(['請選擇', '公民']);
+  await socialCard.locator('[data-field="subject"]').selectOption('公民');
+  await expect(socialCard.locator('[data-field="book"] option')).toHaveText(['請選擇', '學測週計畫']);
+  await socialCard.locator('[data-field="book"]').selectOption('公民｜學測週計畫');
+  await expect(socialCard).toHaveClass(/subject-civics/);
+  await expect(socialCard.locator('[data-book-topic-auto]')).toBeVisible();
+
   await page.evaluate(() => localStorage.setItem('study-v11:guest:material-selection', '[]'));
   await page.reload();
-  const existingMathCard = page.locator('#itemList [data-item]').last();
+  const existingMathCard = page.locator('#itemList [data-item]').filter({ has: page.locator('[data-field="material"]') }).last();
   await expect(existingMathCard.locator('[data-field="material"]')).toHaveValue('對話式');
   await expect(existingMathCard.locator('[data-field="material"]')).toContainText('對話式（目前紀錄）');
   await expect(existingMathCard.locator('[data-field="book"]')).toHaveValue('1');

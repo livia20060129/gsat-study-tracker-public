@@ -264,7 +264,7 @@ function normalizedTimeSubject(item: StudyItem, fallback?: SubjectTimeSubject): 
   if (/生物|biology/i.test(scienceIdentity)) return '生物';
   if (/地科|地球科學|earth/i.test(scienceIdentity)) return '地科';
   const subject = studyItemSubject(item);
-  if (subject !== '其他' && ['數學', '國文', '英文', '自然'].includes(subject)) {
+  if (subject !== '其他' && ['數學', '國文', '英文', '自然', '公民', '歷史', '地理', '社會'].includes(subject)) {
     return subject as SubjectTimeSubject;
   }
   return fallback ?? '其他';
@@ -272,7 +272,7 @@ function normalizedTimeSubject(item: StudyItem, fallback?: SubjectTimeSubject): 
 
 function withoutSubjectPrefix(value: unknown): string {
   return text(value)
-    .replace(/^(?:數學\s*A?|數\s*A|國文|英文|自然|社會|物理|化學|生物|地科)\s*(?:[｜|：:·\-–—]\s*)?/i, '')
+    .replace(/^(?:數學\s*A?|數\s*A|國文|英文|自然|社會|公民|歷史|地理|物理|化學|生物|地科)\s*(?:[｜|：:·\-–—]\s*)?/i, '')
     .trim();
 }
 
@@ -312,6 +312,7 @@ function studyItemTimeLabel(item: StudyItem, fallback = ''): string {
   if (item.type === 'mathPractice') return lectureVersion ? `${lectureVersion}｜題目` : '講義題目';
   if (item.type === 'mathOral' || item.type === 'biologyInteractive') return '互動題';
   if (item.type === 'scienceReview') return lectureVersion || explicit || fallbackLabel || '講義複習';
+  if (item.type === 'socialStudy') return withoutSubjectPrefix(item.f?.book) || explicit || fallbackLabel || '社會教材';
   if (item.type === 'chineseReading') return explicit || fallbackLabel || '閱讀';
   if (item.type === 'mock') return explicit || '歷屆／模考';
   if (item.type === 'englishPractice') return explicit || fallbackLabel || '閱讀／練習';

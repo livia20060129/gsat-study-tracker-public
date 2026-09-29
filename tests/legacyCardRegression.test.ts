@@ -868,6 +868,35 @@ test('Calendar social weekly plans render fixed subject, book, pages, and mapped
   assert.doesNotMatch(html, /<input|<select/);
 });
 
+test('manual social study summaries retain subject, page range, mapped unit, and completion fields', () => {
+  const details = runtimeFunction<(x: StudyItem) => string>('itemDetails', {
+    isGroupedWork: () => false,
+    canonicalPageMappedBook,
+    bookPageText: () => '第3單元｜公平正義與多元文化',
+    line: (value: unknown) => String(value ?? '') || '—',
+  });
+  const summary = details(item({
+    type: 'socialStudy',
+    f: {
+      subject: '公民',
+      book: '公民｜學測週計畫',
+      start: '31',
+      end: '42',
+      progress: true,
+      graded: true,
+      corrected: true,
+      reason: '重新整理多元文化概念',
+    },
+  }));
+
+  assert.match(summary, /科目：公民/);
+  assert.match(summary, /教材：學測週計畫/);
+  assert.match(summary, /頁碼：第31頁～第42頁/);
+  assert.match(summary, /對應：第3單元｜公平正義與多元文化/);
+  assert.match(summary, /進度：✓｜批改：✓｜訂正：✓/);
+  assert.match(summary, /錯因／不熟觀念：重新整理多元文化概念/);
+});
+
 test('manual English topic selection keeps a compatible round and never creates page fields', () => {
   const applySelection = runtimeFunction<(x: StudyItem, field: string, value: string) => boolean>('applyEnglishPageBookSelection', {
     canonicalPageMappedBook,
