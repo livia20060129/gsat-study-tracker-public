@@ -515,6 +515,30 @@ test('infers New Key math from standardized notes and normalizes grouped book sp
   }
 });
 
+test('natural New Key identifiers restore all four subjects from shortened Calendar titles', () => {
+  const cases = [
+    ['GSAT-BIO-NEWKEY', '生物', 38, 41],
+    ['GSAT-CHEM-NEWKEY', '化學', 146, 155],
+    ['GSAT-PHYS-NEWKEY', '物理', 131, 136],
+    ['GSAT-EARTH-NEWKEY', '地科', 213, 218],
+  ] as const;
+
+  for (const [identifier, subject, start, end] of cases) {
+    const parsed = parseCalendarTask(row(
+      '複習指定範圍',
+      `【講義版本】新關鍵
+【頁碼範圍】p.${start}–${end}
+【識別碼】${identifier}-20260930-01`,
+      'studyItem',
+    ));
+    assert.equal(parsed.kind, 'natural');
+    if (parsed.kind !== 'natural') throw new Error('Expected natural Calendar item');
+    assert.equal(parsed.subject, subject);
+    assert.equal(parsed.material, '新關鍵');
+    assert.deepEqual([parsed.startPage, parsed.endPage], [start, end]);
+  }
+});
+
 test('removes Calendar line wrapping and whitespace from standardized identifiers', () => {
   const note = calendarStructuredNote(
     '【單元進度】第29回 【重點】分詞、比較與目的 【識別碼】 GSAT-\n WRITING-TEST-2026-17 ',

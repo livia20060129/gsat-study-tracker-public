@@ -19,6 +19,7 @@ import {
   summarizeSleepPeriod,
   type SleepPeriodSummary,
 } from './study/sleep.ts';
+import { subjectFamilyDetailColor } from './study/detailColors.ts';
 import {
   NATURAL_SCIENCE_SUBJECTS,
   SUBJECT_TIME_COLORS,
@@ -90,13 +91,6 @@ function formatDateLabel(value: string): string {
   return `${year} 年 ${month} 月 ${day} 日`;
 }
 
-function tintHex(hex: string, ratio: number): string {
-  const value = hex.replace('#', '');
-  const channels = [0, 2, 4].map(index => Number.parseInt(value.slice(index, index + 2), 16));
-  const tinted = channels.map(channel => Math.round(channel + (255 - channel) * ratio));
-  return `#${tinted.map(channel => channel.toString(16).padStart(2, '0')).join('')}`;
-}
-
 function opaqueStudyTimeColor(intensity: number): string {
   const empty = [247, 250, 253];
   const full = [82, 139, 208];
@@ -141,7 +135,14 @@ function subjectDonutMarkup(subjectTime: SubjectTimeSummary): string {
 
 function detailDonutMarkup(
   totalMinutes: number,
-  slices: Array<{ label: string; minutes: number; percent: number; color: string; ringLabel?: string }>,
+  slices: Array<{
+    label: string;
+    minutes: number;
+    percent: number;
+    color: string;
+    ringLabel?: string;
+    ringLabelPercent?: number;
+  }>,
 ): string {
   let cursor = 0;
   const labels: string[] = [];
@@ -149,7 +150,8 @@ function detailDonutMarkup(
     const startPercent = cursor;
     cursor = index === slices.length - 1 ? 100 : Math.min(100, cursor + slice.percent);
     if (slice.ringLabel) {
-      const angle = ((startPercent + cursor) / 2) / 100 * Math.PI * 2 - Math.PI / 2;
+      const labelPercent = slice.ringLabelPercent ?? (startPercent + cursor) / 2;
+      const angle = labelPercent / 100 * Math.PI * 2 - Math.PI / 2;
       const left = 50 + Math.cos(angle) * 35;
       const top = 50 + Math.sin(angle) * 35;
       labels.push(`<span class="summary-donut-detail-label" style="left:${left}%;top:${top}%">${escapeHtml(slice.ringLabel)}</span>`);
@@ -167,28 +169,35 @@ function detailDonutMarkup(
 
 function naturalScienceDetail(summary: LearningPeriodSummary): {
   totalMinutes: number;
-  donutSlices: Array<{ label: string; minutes: number; percent: number; color: string; ringLabel: string }>;
+  donutSlices: Array<{
+    label: string;
+    minutes: number;
+    percent: number;
+    color: string;
+    ringLabel?: string;
+    ringLabelPercent?: number;
+  }>;
   list: string;
   itemCount: number;
 } {
   const acceptedSubjects = new Set<SubjectTimeSubject>([...NATURAL_SCIENCE_SUBJECTS, '自然']);
   const entries = summary.timeEntries.filter(entry => acceptedSubjects.has(entry.subject));
   const subjectTime = summarizeSubjectTime(entries);
-  const donutSlices = subjectTime.slices.map(slice => ({
-    label: slice.subject,
-    minutes: slice.minutes,
-    percent: slice.percent,
-    color: slice.color,
-    ringLabel: SUBJECT_TIME_SHORT_LABELS[slice.subject],
-  }));
+  let subjectCursor = 0;
   const items = subjectTime.slices.flatMap(subjectSlice => {
     const detail = summarizeStudyItemTime(entries, subjectSlice.subject);
-    return detail.slices.map(slice => ({
+    const ringLabelPercent = subjectCursor + subjectSlice.percent / 2;
+    subjectCursor += subjectSlice.percent;
+    return detail.slices.map((slice, index) => ({
       subject: subjectSlice.subject,
       label: slice.label,
       minutes: slice.minutes,
       percent: Math.round(slice.minutes / Math.max(1, subjectTime.totalMinutes) * 1000) / 10,
-      color: subjectSlice.color,
+      color: subjectFamilyDetailColor(subjectSlice.color, index, detail.slices.length),
+      ...(index === 0 ? {
+        ringLabel: SUBJECT_TIME_SHORT_LABELS[subjectSlice.subject],
+        ringLabelPercent,
+      } : {}),
     }));
   });
   const list = items.map(item => `<li>
@@ -196,7 +205,7 @@ function naturalScienceDetail(summary: LearningPeriodSummary): {
     <span class="summary-subject-detail-name"><strong class="summary-natural-subject-name">${escapeHtml(item.subject)}</strong><span class="summary-natural-item-name">${escapeHtml(item.label)}</span></span>
     <span class="summary-subject-detail-value">${item.percent}%｜${formatHours(item.minutes)} hr</span>
   </li>`).join('');
-  return { totalMinutes: subjectTime.totalMinutes, donutSlices, list, itemCount: items.length };
+  return { totalMinutes: subjectTime.totalMinutes, donutSlices: items, list, itemCount: items.length };
 }
 
 function renderCalendar(summary: LearningPeriodSummary): void {
@@ -249,10 +258,9 @@ function renderSubjectDistribution(summary: LearningPeriodSummary): void {
     const naturalDetail = isNaturalScience ? naturalScienceDetail(summary) : null;
     title.textContent = `科目分配｜${selectedSubject}`;
     const baseColor = SUBJECT_TIME_COLORS[selectedSubject];
-    const maxPercent = Math.max(1, ...detail.slices.map(slice => slice.percent));
-    const slices = detail.slices.map(slice => ({
+    const slices = detail.slices.map((slice, index) => ({
       ...slice,
-      color: tintHex(baseColor, 0.58 * (1 - slice.percent / maxPercent)),
+      color: subjectFamilyDetailColor(baseColor, index, detail.slices.length),
     }));
     const displayedCount = naturalDetail?.itemCount ?? slices.length;
     const detailRows = Math.max(1, Math.min(4, displayedCount));

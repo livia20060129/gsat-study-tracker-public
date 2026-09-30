@@ -9,6 +9,12 @@ import {
   HISTORY_WEEKLY_PLAN_BOOK,
 } from '../src/data/bookPageMaps.ts';
 import { LECTURE_IDENTIFIERS, PHYSICS_COMEBACK_PAGE_MAP } from '../src/data/lecturePageMaps.ts';
+import {
+  BIOLOGY_NEW_KEY_PAGE_MAP,
+  CHEMISTRY_NEW_KEY_PAGE_MAP,
+  EARTH_SCIENCE_NEW_KEY_PAGE_MAP,
+  PHYSICS_NEW_KEY_PAGE_MAP,
+} from '../src/data/naturalMaterialPageMaps.ts';
 
 const runtime = readFileSync(new URL('../src/legacy-app.ts', import.meta.url), 'utf8');
 const calendarPrompt = readFileSync(new URL('../public/gpt.prompt.html', import.meta.url), 'utf8');
@@ -59,4 +65,20 @@ test('Calendar prompt publishes the High-Frequency Vocabulary identifier and pho
   assert.match(calendarPrompt, /Unit 1 極地冰冠融化中 p\.8–12/);
   assert.match(calendarPrompt, /Unit 18 元宇宙：虛擬世界的模糊界線 p\.238–244/);
   assert.match(calendarPrompt, /單字索引 p\.254 起（照片未提供末頁，不得自行猜測）/);
+});
+
+test('Calendar prompt publishes identifiers and full page-map boundaries for all four New Key science books', () => {
+  const books = [
+    [LECTURE_IDENTIFIERS.biologyNewKey, BIOLOGY_NEW_KEY_PAGE_MAP, '生物'],
+    [LECTURE_IDENTIFIERS.chemistryNewKey, CHEMISTRY_NEW_KEY_PAGE_MAP, '化學'],
+    [LECTURE_IDENTIFIERS.physicsNewKey, PHYSICS_NEW_KEY_PAGE_MAP, '物理'],
+    [LECTURE_IDENTIFIERS.earthScienceNewKey, EARTH_SCIENCE_NEW_KEY_PAGE_MAP, '地科'],
+  ] as const;
+
+  for (const [identifier, rows, subject] of books) {
+    assert.ok(calendarPrompt.includes(identifier), identifier);
+    assert.ok(calendarPrompt.includes(`${subject}《新關鍵》`), subject);
+    assert.ok(calendarPrompt.includes(`p.${rows[0][0]}–${rows[0][1]}`), `${subject} first range`);
+    assert.ok(calendarPrompt.includes(`p.${rows.at(-1)?.[0]}–${rows.at(-1)?.[1]}`), `${subject} final range`);
+  }
 });

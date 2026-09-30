@@ -305,6 +305,8 @@ function studyItemTimeLabel(item: StudyItem, fallback = ''): string {
   const explicit = withoutRoundSuffix(withoutSubjectPrefix(text(item.f?.title) || text(item.title)), item.f?.round);
   const fallbackLabel = withoutRoundSuffix(withoutSubjectPrefix(fallback), item.f?.round);
   const lectureVersion = lectureVersionLabel(item);
+  if (/^歷屆[／/]模考(?:$|[：:｜|])/i.test(explicit)
+    || /^歷屆[／/]模考(?:$|[：:｜|])/i.test(fallbackLabel)) return '歷屆／模考';
   if (item.type === 'magazine') return normalizedMagazineLabel(fallbackLabel || explicit) || '雜誌';
   if (item.type === 'englishVocabInteractive') return '單字／片語';
   if (item.type === 'englishMixedWriting') return '混合題與作文';
@@ -314,7 +316,7 @@ function studyItemTimeLabel(item: StudyItem, fallback = ''): string {
   if (item.type === 'scienceReview') return lectureVersion || explicit || fallbackLabel || '講義複習';
   if (item.type === 'socialStudy') return withoutSubjectPrefix(item.f?.book) || explicit || fallbackLabel || '社會教材';
   if (item.type === 'chineseReading') return explicit || fallbackLabel || '閱讀';
-  if (item.type === 'mock') return explicit || '歷屆／模考';
+  if (item.type === 'mock') return '歷屆／模考';
   if (item.type === 'englishPractice') return explicit || fallbackLabel || '閱讀／練習';
   return explicit || fallbackLabel || '其他項目';
 }

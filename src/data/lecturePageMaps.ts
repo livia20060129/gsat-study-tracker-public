@@ -14,12 +14,16 @@ export const LECTURE_IDENTIFIERS = {
   geographyWeeklyPlan: 'GSAT-GEO-WEEKPLAN',
   historyWeeklyPlan: 'GSAT-HIST-WEEKPLAN',
   civicsWeeklyPlan: 'GSAT-CIVICS-WEEKPLAN',
+  biologyNewKey: 'GSAT-BIO-NEWKEY',
+  chemistryNewKey: 'GSAT-CHEM-NEWKEY',
+  physicsNewKey: 'GSAT-PHYS-NEWKEY',
+  earthScienceNewKey: 'GSAT-EARTH-NEWKEY',
   physicsComeback: 'GSAT-PHYS-NIZHUANSHENG',
   mathGrandSlamA: 'GSAT-MATHA-NEW-DAMANFEN',
 } as const;
 
 export type LectureIdentifierMatch =
-  | { kind: 'natural'; subject: '化學' | '物理'; material: string }
+  | { kind: 'natural'; subject: '化學' | '物理' | '生物' | '地科'; material: string }
   | { kind: 'englishBook'; book: '學測週計畫' | '混合題30篇實戰演練' | '英語高頻字彙完全攻略' }
   | { kind: 'socialBook'; subject: '地理' | '歷史' | '公民'; book: '地理｜學測週計畫' | '歷史｜學測週計畫' | '公民｜學測週計畫' }
   | { kind: 'math'; material: '新大滿貫'; book: 'A' };
@@ -30,6 +34,10 @@ export function lectureIdentifierMatch(value: unknown): LectureIdentifierMatch |
   if (matches(LECTURE_IDENTIFIERS.chemistryNavigator)) return { kind: 'natural', subject: '化學', material: CHEMISTRY_NAVIGATOR_MATERIAL };
   if (matches(LECTURE_IDENTIFIERS.physicsAdvantage)) return { kind: 'natural', subject: '物理', material: PHYSICS_ADVANTAGE_MATERIAL };
   if (matches(LECTURE_IDENTIFIERS.physicsComeback)) return { kind: 'natural', subject: '物理', material: PHYSICS_COMEBACK_MATERIAL };
+  if (matches(LECTURE_IDENTIFIERS.biologyNewKey)) return { kind: 'natural', subject: '生物', material: '新關鍵' };
+  if (matches(LECTURE_IDENTIFIERS.chemistryNewKey)) return { kind: 'natural', subject: '化學', material: '新關鍵' };
+  if (matches(LECTURE_IDENTIFIERS.physicsNewKey)) return { kind: 'natural', subject: '物理', material: '新關鍵' };
+  if (matches(LECTURE_IDENTIFIERS.earthScienceNewKey)) return { kind: 'natural', subject: '地科', material: '新關鍵' };
   if (matches(LECTURE_IDENTIFIERS.englishWeeklyPlan)) return { kind: 'englishBook', book: '學測週計畫' };
   if (matches(LECTURE_IDENTIFIERS.englishMixed30)) return { kind: 'englishBook', book: '混合題30篇實戰演練' };
   if (matches(LECTURE_IDENTIFIERS.englishHighFrequencyVocabulary)) return { kind: 'englishBook', book: '英語高頻字彙完全攻略' };

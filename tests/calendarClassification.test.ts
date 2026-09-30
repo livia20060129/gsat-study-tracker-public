@@ -36,6 +36,10 @@ test('lecture identifiers classify shortened math and natural titles', () => {
   assert.equal(classifyCalendarEvent('酸鹼反應', '【識別碼】GSAT-CHEM-LINGHANG'), 'natural');
   assert.equal(classifyCalendarEvent('原子光譜', '【識別碼】GSAT-PHYS-YOUSHI'), 'natural');
   assert.equal(classifyCalendarEvent('複習', '【識別碼】GSAT-PHYS-NIZHUANSHENG'), 'natural');
+  assert.equal(classifyCalendarEvent('細胞構造', '【識別碼】GSAT-BIO-NEWKEY-20260930-01'), 'natural');
+  assert.equal(classifyCalendarEvent('酸鹼反應', '【識別碼】GSAT-CHEM-NEWKEY-20260930-01'), 'natural');
+  assert.equal(classifyCalendarEvent('量子現象', '【識別碼】GSAT-PHYS-NEWKEY-20260930-01'), 'natural');
+  assert.equal(classifyCalendarEvent('大氣', '【識別碼】GSAT-EARTH-NEWKEY-20260930-01'), 'natural');
 });
 
 test('social weekly-plan identifiers remain readable study items', () => {

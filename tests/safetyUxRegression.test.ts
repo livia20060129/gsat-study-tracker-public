@@ -98,10 +98,10 @@ test('Cloud records render before Calendar reconciliation and failures preserve 
   assert.match(runtime, /if\(!opts\.skipPresetReconcile\)changed=ensureDailyPresets/);
 });
 
-test('Biology and Chemistry New Key cards display their mapped unit and topic', () => {
+test('all four natural-science New Key cards display their mapped unit and topic', () => {
   assert.match(runtime, /import \{ naturalNewKeyPageText \} from '\.\/data\/naturalMaterialPageMaps\.ts'/);
   assert.match(runtime, /新關鍵｜頁碼對應單元／主題/);
-  assert.match(runtime, /\(f\.subject==='生物'\|\|f\.subject==='化學'\)&&f\.material==='新關鍵'/);
+  assert.match(runtime, /\['物理','化學','生物','地科'\]\.indexOf\(f\.subject\)>=0&&f\.material==='新關鍵'/);
 });
 
 test('material progress navigation stays in the current browser tab', () => {

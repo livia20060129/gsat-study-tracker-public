@@ -33,7 +33,12 @@ import {
   PHYSICS_ADVANTAGE_PAGE_MAP,
   PHYSICS_COMEBACK_PAGE_MAP,
 } from '../data/lecturePageMaps.ts';
-import { BIOLOGY_NEW_KEY_PAGE_MAP, CHEMISTRY_NEW_KEY_PAGE_MAP } from '../data/naturalMaterialPageMaps.ts';
+import {
+  BIOLOGY_NEW_KEY_PAGE_MAP,
+  CHEMISTRY_NEW_KEY_PAGE_MAP,
+  EARTH_SCIENCE_NEW_KEY_PAGE_MAP,
+  PHYSICS_NEW_KEY_PAGE_MAP,
+} from '../data/naturalMaterialPageMaps.ts';
 import { ACTIVE_RECORD_PREFIX_KEY } from '../storage/local.ts';
 import type { CalendarNaturalIntegrationEntry, StudyItem, StudyRecord } from '../types.ts';
 import { recordedPageRangeFields } from './recordedPageRange.ts';
@@ -315,6 +320,14 @@ const MATERIAL_DEFINITIONS: MaterialDefinition[] = [
   {
     id: 'natural:化學:新關鍵', subject: 'natural',
     title: '自然｜化學｜新關鍵', unitLabel: '大主題', segments: largeTopicSegments(CHEMISTRY_NEW_KEY_PAGE_MAP),
+  },
+  {
+    id: 'natural:物理:新關鍵', subject: 'natural',
+    title: '自然｜物理｜新關鍵', unitLabel: '大主題', segments: largeTopicSegments(PHYSICS_NEW_KEY_PAGE_MAP),
+  },
+  {
+    id: 'natural:地科:新關鍵', subject: 'natural',
+    title: '自然｜地科｜新關鍵', unitLabel: '大主題', segments: largeTopicSegments(EARTH_SCIENCE_NEW_KEY_PAGE_MAP),
   },
   { id: 'natural:化學:領航', subject: 'natural', title: '自然｜化學｜領航', unitLabel: '分項', segments: mappedSegments(CHEMISTRY_NAVIGATOR_PAGE_MAP) },
   { id: 'natural:物理:優勢', subject: 'natural', title: '自然｜物理｜優勢', unitLabel: '分項', segments: mappedSegments(PHYSICS_ADVANTAGE_PAGE_MAP) },

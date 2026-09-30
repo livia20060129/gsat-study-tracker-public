@@ -248,6 +248,17 @@ test('CNN Interactive English and Ivy magazine time merge into one magazine item
   assert.deepEqual(detail.slices, [{ label: '雜誌', minutes: 60, percent: 100 }]);
 });
 
+test('all completed past-paper and mock-exam variants merge into one drilldown item', () => {
+  const entries = completedStudyTimeEntries([record('2026-09-16', [
+    { id: 'timed-mock', type: 'mock', title: '英文歷屆／模考：限時作答', done: true, minutes: '40', required: true, source: 'preset', f: { subject: '英文' } },
+    { id: 'mock-review', type: 'mock', title: '英文歷屆／模考：批改與訂正', done: true, minutes: '25', required: true, source: 'preset', f: { subject: '英文' } },
+    { id: 'legacy-mock', type: 'englishPractice', title: '歷屆/模考', done: true, minutes: '15', required: true, source: 'custom', f: { subject: '英文' } },
+  ])]);
+  const detail = summarizeStudyItemTime(entries, '英文');
+
+  assert.deepEqual(detail.slices, [{ label: '歷屆／模考', minutes: 80, percent: 100 }]);
+});
+
 test('fixed remarks are deterministic and use the requested five-percent thresholds', () => {
   const stable = fixedPeriodRemarks(104, 100, 74, 70);
   assert.equal(stable.timeState, 'stable');
