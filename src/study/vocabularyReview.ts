@@ -25,6 +25,7 @@ export interface VocabularyWordEdits {
   partsOfSpeech?: ReadonlySet<VocabularyPartOfSpeechField>;
   translation?: string;
   contentKind?: VocabularyRecordKind;
+  text?: string;
 }
 
 export interface VocabularyReviewEntry {
@@ -203,6 +204,10 @@ function updateItemWords(
       }
       if (edits.translation !== undefined && word.translation !== edits.translation) {
         word.translation = edits.translation;
+        changed = true;
+      }
+      if (edits.text !== undefined && word.text !== edits.text) {
+        word.text = edits.text;
         changed = true;
       }
       if (edits.contentKind !== undefined) {

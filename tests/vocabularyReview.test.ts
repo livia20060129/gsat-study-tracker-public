@@ -114,6 +114,24 @@ test('changes every matching occurrence between word, combination, and sentence'
   assert.deepEqual(vocabularyReviewEntries(records)[0].contentKinds, ['單字']);
 });
 
+test('renames every matching occurrence and rebuilds the review key', () => {
+  const records = [
+    record('2026-09-19', [item('one', [{ text: 'Leverage', noun: true }])]),
+    record('2026-09-20', [item('two', [{ text: ' leverage ', verb: true }])]),
+  ];
+
+  for (const current of records) {
+    assert.equal(updateVocabularyWordEntries(current, 'leverage', { text: 'leverage power' }), true);
+  }
+
+  const entries = vocabularyReviewEntries(records);
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].key, 'leverage power');
+  assert.equal(entries[0].text, 'leverage power');
+  assert.equal(entries[0].occurrenceCount, 2);
+  assert.deepEqual(entries[0].tags, ['Noun', 'Verb']);
+});
+
 test('uses the longest useful English run for an Oxford search link', () => {
   assert.equal(oxfordLookupQuery('leverage + 資源 + to V'), 'leverage');
   assert.equal(oxfordLookupQuery('pay an insurance premium'), 'pay an insurance premium');

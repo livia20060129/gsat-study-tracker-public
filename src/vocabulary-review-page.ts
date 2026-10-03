@@ -4,6 +4,7 @@ import { readMaterialProgressRecords } from './study/materialProgress.ts';
 import {
   updateVocabularyWordEntries,
   VOCABULARY_PARTS_OF_SPEECH,
+  vocabularyEntryKey,
   vocabularyReviewEntries,
   type VocabularyPartOfSpeechField,
   type VocabularyRecordKind,
@@ -85,7 +86,10 @@ function createWordLink(entry: VocabularyReviewEntry): HTMLElement {
   return link;
 }
 
-function saveEntryEdits(entry: VocabularyReviewEntry, edits: VocabularyWordEdits): void {
+function saveEntryEdits(
+  entry: VocabularyReviewEntry,
+  edits: VocabularyWordEdits,
+): VocabularyReviewEntry | undefined {
   let changed = false;
   try {
     loadedRecords = loadedRecords.map(record => {
@@ -96,14 +100,18 @@ function saveEntryEdits(entry: VocabularyReviewEntry, edits: VocabularyWordEdits
       changed = true;
       return edited;
     });
-    if (!changed) return;
+    if (!changed) return entry;
     allEntries = vocabularyReviewEntries(loadedRecords);
+    const updatedKey = edits.text === undefined ? entry.key : vocabularyEntryKey(edits.text);
+    const updatedEntry = allEntries.find(candidate => candidate.key === updatedKey);
     const status = element<HTMLParagraphElement>('vocabularySaveStatus');
-    status.textContent = `已儲存「${entry.text}」的整理資料，回到 Tracker 後會接續雲端同步。`;
+    status.textContent = `已儲存「${updatedEntry?.text ?? entry.text}」的整理資料，回到 Tracker 後會接續雲端同步。`;
+    return updatedEntry;
   } catch {
     const error = element<HTMLParagraphElement>('vocabularyError');
     error.textContent = `無法儲存「${entry.text}」的修改，請確認瀏覽器儲存權限後再試一次。`;
     error.hidden = false;
+    return undefined;
   }
 }
 
@@ -168,6 +176,21 @@ function createTranslationEditor(entry: VocabularyReviewEntry): HTMLLabelElement
   return label;
 }
 
+function createTextEditor(entry: VocabularyReviewEntry): HTMLLabelElement {
+  const label = document.createElement('label');
+  label.className = 'vocabulary-text-editor';
+  const title = document.createElement('span');
+  title.textContent = '英文內容';
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = entry.text;
+  input.placeholder = '輸入英文單字、組合或句子';
+  input.autocomplete = 'off';
+  input.dataset.vocabularyText = entry.key;
+  label.append(title, input);
+  return label;
+}
+
 function createVocabularyRow(entry: VocabularyReviewEntry): HTMLElement {
   const article = document.createElement('article');
   article.className = 'vocabulary-row';
@@ -205,6 +228,7 @@ function createVocabularyRow(entry: VocabularyReviewEntry): HTMLElement {
   if (editingEntryKeys.has(entry.key)) {
     const editors = document.createElement('div');
     editors.className = 'vocabulary-editors';
+    editors.append(createTextEditor(entry));
     editors.append(createContentKindEditor(entry));
     const partsOfSpeechEditor = createPartsOfSpeechEditor(entry);
     partsOfSpeechEditor.hidden = activeContentKind !== '單字';
@@ -378,6 +402,33 @@ element<HTMLDivElement>('vocabularyList').addEventListener('change', event => {
   const row = target.closest<HTMLElement>('[data-entry-key]');
   const entry = allEntries.find(candidate => candidate.key === row?.dataset.entryKey);
   if (!entry) return;
+  if (target.matches('[data-vocabulary-text]')) {
+    const text = target.value.normalize('NFKC').trim().replace(/\s+/g, ' ');
+    if (!text) {
+      target.value = entry.text;
+      const error = element<HTMLParagraphElement>('vocabularyError');
+      error.textContent = '英文內容不可空白，原內容已保留。';
+      error.hidden = false;
+      return;
+    }
+    const previousKey = entry.key;
+    const updatedEntry = saveEntryEdits(entry, { text });
+    if (!row || !updatedEntry) return;
+    row.dataset.entryKey = updatedEntry.key;
+    editingEntryKeys.delete(previousKey);
+    editingEntryKeys.add(updatedEntry.key);
+    const editButton = row.querySelector<HTMLButtonElement>('[data-edit-entry]');
+    if (editButton) {
+      editButton.dataset.editEntry = updatedEntry.key;
+      editButton.setAttribute('aria-label', `完成「${updatedEntry.text}」`);
+    }
+    const word = row.querySelector<HTMLElement>('.vocabulary-word-link, .vocabulary-word-text');
+    if (word) word.replaceWith(createWordLink(updatedEntry));
+    target.value = updatedEntry.text;
+    target.dataset.vocabularyText = updatedEntry.key;
+    element<HTMLParagraphElement>('vocabularyError').hidden = true;
+    return;
+  }
   if (target.matches('[data-vocabulary-pos]')) {
     const fieldset = target.closest<HTMLElement>('.vocabulary-pos-editor');
     if (fieldset) saveEntryEdits(entry, { partsOfSpeech: selectedPartsOfSpeech(fieldset) });

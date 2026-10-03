@@ -115,6 +115,28 @@ test('English vocabulary review sorts entries and persists editable parts of spe
   await page.getByRole('button', { name: '單字', exact: true }).click();
   await expect(page.locator('.vocabulary-word-link')).toHaveText(['Leverage']);
 
+  await leverageRow.getByRole('button', { name: '編輯「Leverage」' }).click();
+  const englishText = leverageRow.getByLabel('英文內容');
+  await englishText.fill('   ');
+  await englishText.press('Tab');
+  await expect(page.getByText('英文內容不可空白，原內容已保留。')).toBeVisible();
+  await expect(englishText).toHaveValue('Leverage');
+  await englishText.fill('leverage power');
+  await englishText.press('Tab');
+  const renamedRow = page.locator('.vocabulary-row[data-entry-key="leverage power"]');
+  await expect(renamedRow.locator('.vocabulary-word-link')).toHaveText('leverage power');
+  await renamedRow.getByRole('button', { name: '完成「leverage power」' }).click();
+  const renamedWords = await page.evaluate(() => ['2026-09-19', '2026-09-20'].map(date => {
+    const record = JSON.parse(localStorage.getItem(`study-v11:guest:${date}`) ?? '{}');
+    return record.items?.[0]?.f?.words?.find((candidate: { text?: string }) => (
+      candidate.text === 'leverage power'
+    ));
+  }));
+  expect(renamedWords).toEqual([
+    expect.objectContaining({ text: 'leverage power' }),
+    expect.objectContaining({ text: 'leverage power' }),
+  ]);
+
   await page.setViewportSize({ width: 390, height: 844 });
   const bounds = await page.locator('.vocabulary-panel, .vocabulary-page-header').evaluateAll(nodes => nodes.map(node => {
     const rect = node.getBoundingClientRect();
