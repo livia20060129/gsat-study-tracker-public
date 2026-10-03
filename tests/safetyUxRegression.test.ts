@@ -44,6 +44,14 @@ test('English review text stays in memory while typing and saves after leaving t
   assert.match(runtime, /function handleChange\(e\)\{[\s\S]*?if\(t\.matches\('\[data-word-text\]'\)&&x\)\{updateEnglishReviewWordText\(t,x\);persist\(false\);return\}/);
 });
 
+test('English review separates parts of speech from the animated content-kind switch', () => {
+  assert.match(runtime, /var primaryTags=\[\['noun','Noun'\][\s\S]*?\['conjunction','Conjunction'\]\]/);
+  assert.match(runtime, /\[\['word','單字'\],\['combination','組合'\],\['sentence','句子'\]\]/);
+  assert.match(runtime, /renderEnglishReviewWordTagRow\(w,i,primaryTags,'word-pos-primary'\)\+renderEnglishReviewWordKind\(w,i\)/);
+  assert.match(runtime, /current\.fixedCombination=kind==='combination';current\.beautifulSentences=kind==='sentence'/);
+  assert.match(styles, /\.word-kind-indicator\{[\s\S]*?transition:transform/);
+});
+
 test('other notes save only after leaving the field', () => {
   assert.match(runtime, /function notesInput\(\)\{data\.notes=id\('notes'\)\.value\}/);
   assert.match(runtime, /id\('notes'\)\.addEventListener\('input',notesInput\);id\('notes'\)\.addEventListener\('change',headerChange\)/);

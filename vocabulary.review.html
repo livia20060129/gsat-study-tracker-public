@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f5f8fc" />
+  <link rel="icon" type="image/png" href="./book.png" />
+  <link rel="apple-touch-icon" href="./book.png" />
+  <title>每日讀書完成度紀錄卡</title>
+</head>
+<body>
+  <main class="vocabulary-page">
+    <header class="vocabulary-page-header">
+      <div>
+        <h1>英文單字複習</h1>
+        <p>彙整 Tracker 中自行新增的單字、組合與句子，可依字母或詞性檢視。</p>
+      </div>
+      <a class="vocabulary-back header-action-link" href="./index.html">回到 Tracker</a>
+    </header>
+
+    <section class="vocabulary-panel" aria-labelledby="vocabularyTitle">
+      <div class="vocabulary-panel-head">
+        <div>
+          <h2 id="vocabularyTitle">已整理內容</h2>
+          <p id="vocabularySource">正在讀取本機紀錄…</p>
+        </div>
+        <button id="refreshVocabulary" type="button">重新讀取</button>
+      </div>
+
+      <div class="vocabulary-panel-body">
+        <div class="vocabulary-overview">
+          <label class="vocabulary-search" for="vocabularySearch">
+            <span>搜尋單字或詞性</span>
+            <input id="vocabularySearch" type="search" autocomplete="off" placeholder="例如 leverage、Verb" />
+          </label>
+          <div class="vocabulary-counts" aria-live="polite">
+            <strong id="totalVocabularyCount">0 個不重複單字／片語</strong>
+            <span>目前顯示 <b id="visibleVocabularyCount">0 個</b></span>
+          </div>
+        </div>
+
+        <div id="vocabularyContentKind" class="vocabulary-content-kind-switch" data-active="0" role="group" aria-label="複習內容類型">
+          <span class="vocabulary-content-kind-indicator" aria-hidden="true"></span>
+          <button type="button" data-content-kind="單字" aria-pressed="true">單字</button>
+          <button type="button" data-content-kind="組合" aria-pressed="false">組合</button>
+          <button type="button" data-content-kind="句子" aria-pressed="false">句子</button>
+        </div>
+        <div id="vocabularyGrouping" class="vocabulary-grouping-switch" data-active="0" role="group" aria-label="單字排列方式">
+          <span class="vocabulary-grouping-indicator" aria-hidden="true"></span>
+          <button type="button" data-grouping-mode="alphabetical" aria-pressed="true">字母排序</button>
+          <button type="button" data-grouping-mode="partOfSpeech" aria-pressed="false">詞性</button>
+        </div>
+        <p class="vocabulary-help">字母排序直接顯示 A～Z 清單；詞性模式可使用詞性索引。按「編輯」後可修改單字／組合／句子分類、詞性與中文翻譯。</p>
+        <div id="vocabularyPartOfSpeechIndex" class="vocabulary-pos-index" aria-label="按詞性篩選單字" hidden></div>
+        <div id="vocabularyList" class="vocabulary-list"></div>
+        <p id="vocabularyEmpty" class="vocabulary-empty" hidden></p>
+        <p id="vocabularyError" class="vocabulary-error" role="alert" hidden></p>
+        <p id="vocabularySaveStatus" class="vocabulary-save-status" aria-live="polite"></p>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="/src/vocabulary-review-page.ts"></script>
+</body>
+</html>

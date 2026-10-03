@@ -3109,10 +3109,23 @@ function renderMagazineFields(x){
  }
  return h+'<button class="secondary" data-action="mag-add" style="margin-top:8px">新增雜誌紀錄</button>';
 }
+function renderEnglishReviewWordTagRow(word,index,tags,className){
+ return'<div class="checkline '+className+'">'+tags.map(function(tag){return'<label><input type="checkbox" data-word-pos="'+tag[0]+'" data-index="'+index+'"'+checked(word[tag[0]])+'> '+tag[1]+'</label>'}).join('')+'</div>';
+}
+function englishReviewWordKind(word){
+ if(word&&word.beautifulSentences)return'sentence';
+ if(word&&word.fixedCombination)return'combination';
+ return'word';
+}
+function renderEnglishReviewWordKind(word,index){
+ var kind=englishReviewWordKind(word),active=kind==='word'?0:(kind==='combination'?1:2);
+ return'<div class="word-kind-field"><span class="word-kind-label">內容類型</span><div class="word-kind-switch" data-word-kind-switch data-active="'+active+'" role="group" aria-label="單字內容類型"><span class="word-kind-indicator" aria-hidden="true"></span>'+[['word','單字'],['combination','組合'],['sentence','句子']].map(function(option){return'<button type="button" data-action="word-kind-select" data-word-kind="'+option[0]+'" data-index="'+index+'" aria-pressed="'+(kind===option[0]?'true':'false')+'">'+option[1]+'</button>'}).join('')+'</div></div>';
+}
 function renderEnglishReview(x){
  var a=x.f.words;if(!Array.isArray(a))a=x.f.words=[];
+ var primaryTags=[['noun','Noun'],['verb','Verb'],['adjective','Adjective'],['adverb','Adverb'],['preposition','Preposition'],['conjunction','Conjunction']];
  var h='<div><label>今日單字</label>';if(!a.length)h+='<div class="small">尚未新增今日單字。</div>';
- for(var i=0;i<a.length;i++){var w=typeof a[i]==='string'?{text:a[i]}:(a[i]||{});h+='<div class="field" style="margin-top:8px"><div class="inline"><input data-word-text data-index="'+i+'" value="'+esc(w.text||'')+'" placeholder="輸入今天整理的單字／搭配詞"><button class="delete" data-action="word-delete" data-index="'+i+'">刪除</button></div><div class="checkline" style="margin-top:8px">'+[['noun','Noun'],['verb','Verb'],['adjective','Adjective'],['adverb','Adverb'],['preposition','Preposition'],['conjunction','Conjunction'],['fixedCombination','Fixed combination'],['beautifulSentences','Beautiful sentences']].map(function(p){return'<label><input type="checkbox" data-word-pos="'+p[0]+'" data-index="'+i+'"'+checked(w[p[0]])+'> '+p[1]+'</label>'}).join('')+'</div></div>'}
+ for(var i=0;i<a.length;i++){var w=typeof a[i]==='string'?{text:a[i]}:(a[i]||{});h+='<div class="field" style="margin-top:8px"><div class="inline"><input data-word-text data-index="'+i+'" value="'+esc(w.text||'')+'" placeholder="輸入今天整理的單字／搭配詞"><button class="delete" data-action="word-delete" data-index="'+i+'">刪除</button></div><div class="word-review-controls">'+renderEnglishReviewWordTagRow(w,i,primaryTags,'word-pos-primary')+renderEnglishReviewWordKind(w,i)+'</div></div>'}
  return h+'</div><button class="secondary" data-action="word-add" style="margin-top:8px">新增單字</button>';
 }
 function renderNestedEntry(x,kind){
@@ -3426,6 +3439,18 @@ function updateEnglishReviewWordText(target,item){
  words[index].text=target.value;
  propagateDailyWorkField(item,'words',words);
 }
+function selectEnglishReviewWordKind(item,control){
+ var words=item.f.words||(item.f.words=[]),index=Number(control.getAttribute('data-index')),current=words[index];
+ if(typeof current==='string')current=words[index]={text:current};
+ if(!current||typeof current!=='object')current=words[index]={};
+ var kind=control.getAttribute('data-word-kind');
+ if(['word','combination','sentence'].indexOf(kind)<0)return;
+ current.fixedCombination=kind==='combination';current.beautifulSentences=kind==='sentence';
+ propagateDailyWorkField(item,'words',words);persist(false);
+ var switcher=control.closest('[data-word-kind-switch]');if(!switcher)return;
+ switcher.dataset.active=kind==='word'?'0':(kind==='combination'?'1':'2');
+ switcher.querySelectorAll('[data-word-kind]').forEach(function(button){button.setAttribute('aria-pressed',button.getAttribute('data-word-kind')===kind?'true':'false')});
+}
 function updateMagazineField(target,item){
  var entries=ensureMagazineEntries(item),index=Number(target.getAttribute('data-index'));
  if(!entries[index])entries[index]={};
@@ -3632,6 +3657,7 @@ function handleClick(e){
  else if(action==='delete-item'&&x){if(!window.confirm('確定要刪除「'+itemTitle(x)+'」嗎？刪除後會同步到雲端。'))return;var deletingPointer=readTimerPointer();if(deletingPointer&&deletingPointer.itemId===x.id)pauseActiveTimer();clearPendingDeferred(x);clearDeferredLimitPrompt(x);data.items=data.items.filter(function(i){return i.id!==x.id});render();persist(false)}
  else if(action==='mag-add'&&x){var entries=ensureMagazineEntries(x);entries.push({id:uid('mag'),name:'',month:magazineMonthForDate(data.date),magazineMonthInitialized:true,unit:'',minutes:''});propagateDailyWorkField(x,'entries',entries);render();persist(false)}
  else if(action==='mag-delete'&&x){var a=ensureMagazineEntries(x),magIndex=Number(b.getAttribute('data-index')),removed=a[magIndex],pointer=readTimerPointer();if(removed&&pointer&&pointer.entryId===removed.id&&pointer.itemId===x.id)pauseActiveTimer();if(a.length>1&&removeSmallEntryWithUndo(x,'entries',magIndex,'雜誌列')){render();persist(false)}}
+ else if(action==='word-kind-select'&&x){e.preventDefault();selectEnglishReviewWordKind(x,b)}
  else if(action==='word-add'&&x){var words=x.f.words||(x.f.words=[]);words.push({id:uid('word'),text:'',noun:false,verb:false,adjective:false,adverb:false,preposition:false,conjunction:false,fixedCombination:false,beautifulSentences:false});propagateDailyWorkField(x,'words',words);render();persist(false)}
  else if(action==='word-delete'&&x){if(removeSmallEntryWithUndo(x,'words',Number(b.getAttribute('data-index')),'單字列')){render();persist(false)}}
  else if(action==='makeup-add'&&x){ensureEntryArray(x,'makeupEntries').push(newItem('','makeup'));render();persist(false)}

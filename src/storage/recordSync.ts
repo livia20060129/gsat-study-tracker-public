@@ -265,6 +265,36 @@ export function markRecordSynced(record: StudyRecord): StudyRecord {
   return synced;
 }
 
+/** Keeps local vocabulary edits queued for sync without discarding an existing conflict. */
+export function markRecordLocallyEdited(
+  record: StudyRecord,
+  previous?: StudyRecord | null,
+): StudyRecord {
+  const edited = normalizedRecord(record);
+  edited.localDirty = true;
+  if (previous) {
+    edited.serverRevision = Number(previous.serverRevision || 0);
+    edited.serverUpdatedAt = previous.serverUpdatedAt || '';
+    if (previous.syncBase) edited.syncBase = cloneValue(previous.syncBase);
+  }
+
+  if (!previous?.syncConflict) {
+    edited.syncConflict = false;
+    delete edited.syncConflictDetails;
+    delete edited.syncConflictLocal;
+    delete edited.syncConflictCloud;
+    return edited;
+  }
+
+  edited.syncConflict = true;
+  edited.syncConflictDetails = cloneValue(previous.syncConflictDetails ?? []);
+  edited.syncConflictCloud = previous.syncConflictCloud
+    ? stripRecordSyncMeta(previous.syncConflictCloud)
+    : undefined;
+  edited.syncConflictLocal = stripRecordSyncMeta(edited);
+  return edited;
+}
+
 export function mergeStudyRecordsThreeWay(
   local: StudyRecord, cloud: StudyRecord, explicitBase?: StudyRecord | null,
 ): StudyRecordMergeResult {

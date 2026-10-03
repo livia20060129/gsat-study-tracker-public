@@ -8,6 +8,7 @@ export default defineConfig({
         tracker: './index.html',
         learningSummary: './summary.html',
         materialProgress: './material.progress.html',
+        vocabularyReview: './vocabulary.review.html',
       },
     },
   },

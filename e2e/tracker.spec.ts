@@ -12,6 +12,117 @@ test('public edition starts without built-in schedule cards', async ({ page }) =
   await expect(page.locator('#dailyItemList')).toContainText('今日沒有項目');
 });
 
+test('English vocabulary review sorts entries and persists editable parts of speech and translations', async ({ page }) => {
+  await page.evaluate(() => {
+    const prefix = 'study-v11:guest:';
+    localStorage.setItem('study-v11:meta:active-record-prefix', prefix);
+    localStorage.setItem(`${prefix}2026-09-19`, JSON.stringify({
+      date: '2026-09-19',
+      items: [{
+        id: 'words-one', type: 'englishVocabInteractive', done: false, minutes: '', required: false,
+        f: { words: [{ text: 'novelty', noun: true }, { text: 'Leverage', verb: true }] },
+      }],
+    }));
+    localStorage.setItem(`${prefix}2026-09-20`, JSON.stringify({
+      date: '2026-09-20',
+      items: [{
+        id: 'words-two', type: 'general', done: false, minutes: '', required: false,
+        f: { words: [
+          { text: ' leverage ', noun: true },
+          { text: 'pay an insurance premium', fixedCombination: true },
+          { text: 'Practice makes perfect.', beautifulSentences: true },
+        ] },
+      }],
+    }));
+  });
+
+  await page.getByRole('link', { name: '英文單字複習' }).click();
+  await expect(page.getByRole('heading', { name: '英文單字複習' })).toBeVisible();
+  const links = page.locator('.vocabulary-word-link');
+  await expect(links).toHaveCount(2);
+  await expect(links).toHaveText(['Leverage', 'novelty']);
+  await expect(page.locator('.vocabulary-letter-group')).toHaveCount(0);
+  await expect(page.getByLabel('按詞性篩選單字')).toBeHidden();
+  await expect(links.first()).toHaveAttribute(
+    'href',
+    'https://www.oxfordlearnersdictionaries.com/search/english/?q=Leverage',
+  );
+  await expect(links.first()).toHaveAttribute('target', '_blank');
+  await page.getByRole('button', { name: '組合', exact: true }).click();
+  await expect(links).toHaveText(['pay an insurance premium']);
+  await expect(page.getByRole('group', { name: '單字排列方式' })).toBeHidden();
+  const combinationRow = page.locator('.vocabulary-row[data-entry-key="pay an insurance premium"]');
+  await expect(combinationRow.locator('.vocabulary-readonly-details')).not.toContainText('詞性');
+  await combinationRow.getByRole('button', { name: '編輯「pay an insurance premium」' }).click();
+  await expect(combinationRow.locator('.vocabulary-pos-editor')).toBeHidden();
+  await expect(combinationRow.locator('[data-vocabulary-translation]')).toHaveCount(1);
+  await combinationRow.getByRole('button', { name: '單字', exact: true }).click();
+  await expect(combinationRow.locator('[data-vocabulary-pos]')).toHaveCount(6);
+  await expect(combinationRow.locator('.vocabulary-pos-editor')).toBeVisible();
+  await combinationRow.getByRole('button', { name: '句子', exact: true }).click();
+  await expect(combinationRow.locator('.vocabulary-pos-editor')).toBeHidden();
+  await combinationRow.getByRole('button', { name: '組合', exact: true }).click();
+  await expect(combinationRow.locator('.vocabulary-pos-editor')).toBeHidden();
+  await combinationRow.getByRole('button', { name: '完成「pay an insurance premium」' }).click();
+  await page.getByRole('button', { name: '句子', exact: true }).click();
+  await expect(links).toHaveText(['Practice makes perfect.']);
+  await expect(page.locator('.vocabulary-row [data-vocabulary-pos]')).toHaveCount(0);
+  await page.getByRole('button', { name: '單字', exact: true }).click();
+  await expect(links).toHaveText(['Leverage', 'novelty']);
+  await expect(page.getByText('已整理 2 次')).toBeVisible();
+  await expect(page.getByText('最近紀錄')).toHaveCount(0);
+  const leverageRow = page.locator('.vocabulary-row[data-entry-key="leverage"]');
+  await expect(leverageRow.locator('[data-vocabulary-pos], [data-vocabulary-translation]')).toHaveCount(0);
+  await expect(leverageRow.locator('.vocabulary-readonly-details')).toContainText('Noun、Verb');
+  await leverageRow.getByRole('button', { name: '編輯「Leverage」' }).click();
+  await expect(leverageRow.getByLabel('Noun', { exact: true })).toBeChecked();
+  await expect(leverageRow.getByLabel('Verb', { exact: true })).toBeChecked();
+  await leverageRow.getByLabel('Adjective', { exact: true }).check();
+  await leverageRow.getByLabel('中文翻譯').fill('運用；影響力');
+  await leverageRow.getByLabel('中文翻譯').press('Tab');
+  await expect(page.getByText('已儲存「Leverage」的整理資料')).toBeVisible();
+  await leverageRow.getByRole('button', { name: '完成「Leverage」' }).click();
+  await expect(leverageRow.locator('[data-vocabulary-pos], [data-vocabulary-translation]')).toHaveCount(0);
+  await expect(leverageRow.locator('.vocabulary-readonly-details')).toContainText('運用；影響力');
+  const storedWords = await page.evaluate(() => ['2026-09-19', '2026-09-20'].map(date => {
+    const record = JSON.parse(localStorage.getItem(`study-v11:guest:${date}`) ?? '{}');
+    const word = record.items?.[0]?.f?.words?.find((candidate: { text?: string }) => (
+      candidate.text?.trim().toLowerCase() === 'leverage'
+    ));
+    return { word, localDirty: record.localDirty };
+  }));
+  expect(storedWords).toEqual([
+    { word: expect.objectContaining({ text: 'Leverage', noun: true, verb: true, adjective: true, translation: '運用；影響力' }), localDirty: true },
+    { word: expect.objectContaining({ text: ' leverage ', noun: true, verb: true, adjective: true, translation: '運用；影響力' }), localDirty: true },
+  ]);
+
+  await page.getByRole('button', { name: '詞性', exact: true }).click();
+  await expect(page.getByLabel('按詞性篩選單字')).toBeVisible();
+  await page.getByRole('button', { name: 'Noun', exact: true }).click();
+  await expect(page.locator('#vocabulary-group-noun .vocabulary-word-link')).toHaveText(['Leverage', 'novelty']);
+  await expect(page.locator('#vocabulary-group-verb')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Verb', exact: true }).click();
+  await expect(page.locator('#vocabulary-group-verb .vocabulary-word-link')).toHaveText(['Leverage']);
+  await expect(page.locator('#vocabulary-group-noun')).toHaveCount(0);
+  await page.getByRole('button', { name: '全部', exact: true }).click();
+  await page.getByRole('button', { name: '字母排序', exact: true }).click();
+  await expect(page.getByLabel('按詞性篩選單字')).toBeHidden();
+
+  await page.getByRole('button', { name: '組合', exact: true }).click();
+  await expect(page.locator('.vocabulary-word-link')).toHaveText(['pay an insurance premium']);
+  await page.getByLabel('搜尋單字或詞性').fill('verb');
+  await expect(page.locator('.vocabulary-word-link')).toHaveCount(0);
+  await page.getByRole('button', { name: '單字', exact: true }).click();
+  await expect(page.locator('.vocabulary-word-link')).toHaveText(['Leverage']);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const bounds = await page.locator('.vocabulary-panel, .vocabulary-page-header').evaluateAll(nodes => nodes.map(node => {
+    const rect = node.getBoundingClientRect();
+    return { left: rect.left, right: rect.right };
+  }));
+  expect(bounds.every(rect => rect.left >= 0 && rect.right <= 390)).toBe(true);
+});
+
 test('material progress only shows checked materials and keeps the selection', async ({ page }) => {
   await page.goto('/material.progress.html');
   await expect(page).toHaveTitle('每日讀書完成度紀錄卡');
