@@ -226,7 +226,7 @@ function editingApp(day: string, separated: boolean | 'biology', deferred = fals
   runInContext(runtime.slice(mapStart, runtime.indexOf('function day123PageMap(', mapStart)), ctx);
   loadRuntime(ctx, ['pad', 'dateString', 'parseDate', 'mondayOf', 'findRecursive', 'findItem',
     'isWeeklyCalendarItem', 'studyRecordForOverview', 'completionMetricsForWeek', 'renderWeeklyItems',
-    'day123PageMap', 'day123Matches', 'day123Text', 'normalizeScience', 'reasonField',
+    'day123PageMap', 'day123Matches', 'day123Text', 'normalizeScience', 'reasonField', 'refreshCorrectionReasonField',
     'renderScienceFields', 'refreshAuto', 'handleInput', 'handleChange']);
   ctx.ensureDailyPresets(ctx.data, day);
   if (deferred) {
@@ -248,7 +248,20 @@ function editingApp(day: string, separated: boolean | 'biology', deferred = fals
     .find((x: any) => x.f.calendarEventKey === current.event_key && !x.deferredCarry);
   ctx.targetId = target.id;
   const chapter = { textContent: '' };
-  const card = { getAttribute: () => ctx.targetId, querySelector: () => chapter };
+  const correctionInner = {
+    classList: { contains: (value: string) => value === 'inner' },
+    insertAdjacentHTML: (_position: string, html: string) => { ctx.html = html; },
+  };
+  const card = {
+    children: [correctionInner],
+    getAttribute: () => ctx.targetId,
+    querySelector: (selector: string) => {
+      if (selector !== '[data-correction-reason]') return chapter;
+      return String(ctx.html ?? '').includes('data-correction-reason')
+        ? { remove: () => { ctx.html = ''; } }
+        : null;
+    },
+  };
   const control = (kind: 'field' | 'check', key: string, value: string | boolean) => ({
     target: {
       closest: () => card,

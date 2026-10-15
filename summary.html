@@ -67,7 +67,16 @@
     <section class="summary-card summary-conclusion-card" aria-labelledby="conclusionTitle">
       <div class="summary-section-head"><h2 id="conclusionTitle">本期小結</h2></div>
       <section class="summary-period-comparison" aria-labelledby="comparisonTitle">
-        <h3 id="comparisonTitle">與上期比較</h3>
+        <div class="summary-period-comparison-head">
+          <h3 id="comparisonTitle">與上期比較</h3>
+          <div class="summary-total-completion"><span>總完成率</span><strong id="summaryTotalCompletion">0%</strong></div>
+        </div>
+        <label class="summary-status-completion-toggle" for="includeStatusDaysCompletion">
+          <span class="summary-status-completion-label">外出／身體不適日</span>
+          <input id="includeStatusDaysCompletion" type="checkbox" role="switch" aria-describedby="statusDaysCompletionState">
+          <span class="summary-status-completion-track" aria-hidden="true"></span>
+          <strong id="statusDaysCompletionState">不列入</strong>
+        </label>
         <dl id="summaryComparison" class="summary-comparison"></dl>
       </section>
       <div id="summaryConclusion" class="summary-conclusion"></div>

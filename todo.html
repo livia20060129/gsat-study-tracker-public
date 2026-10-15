@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f5f8fc" />
+  <link rel="icon" type="image/png" href="./book.png" />
+  <link rel="apple-touch-icon" href="./book.png" />
+  <title>待辦事項｜每日讀書完成度紀錄卡</title>
+</head>
+<body>
+  <main class="todo-page">
+    <header class="todo-page-header">
+      <div>
+        <h1>待辦事項</h1>
+        <p>集中查看已排程、已過期且尚未完成的項目。</p>
+      </div>
+      <a class="todo-back header-action-link" href="./index.html">回到 Tracker</a>
+    </header>
+
+    <section class="todo-panel" aria-labelledby="todoTitle">
+      <div class="todo-panel-head">
+        <div>
+          <h2 id="todoTitle">逾期未完成</h2>
+          <p id="recordSource">正在讀取本機紀錄…</p>
+        </div>
+        <button id="refreshTodo" type="button">重新讀取</button>
+      </div>
+
+      <div class="todo-panel-body">
+        <div class="subject-switch" id="subjectSwitch" role="tablist" aria-label="依科目篩選待辦事項" data-active="0">
+          <span class="subject-switch-indicator" aria-hidden="true"></span>
+          <button type="button" role="tab" data-subject="all" aria-selected="true">全部</button>
+          <button type="button" role="tab" data-subject="chinese" aria-selected="false" tabindex="-1">國文</button>
+          <button type="button" role="tab" data-subject="english" aria-selected="false" tabindex="-1">英文</button>
+          <button type="button" role="tab" data-subject="math" aria-selected="false" tabindex="-1">數學</button>
+          <button type="button" role="tab" data-subject="natural" aria-selected="false" tabindex="-1">自然</button>
+          <button type="button" role="tab" data-subject="other" aria-selected="false" tabindex="-1">其他</button>
+        </div>
+
+        <div class="todo-summary">
+          <strong id="todoSummary"></strong>
+          <span>「跳過」只會移除待辦提醒，不會把原項目標記為完成。</span>
+        </div>
+
+        <div id="todoList" class="todo-list" role="tabpanel"></div>
+        <p id="todoEmpty" class="todo-empty" hidden>目前沒有符合條件的待辦事項。</p>
+        <div id="todoFeedback" class="todo-feedback" role="status" aria-live="polite" hidden>
+          <span id="todoFeedbackText"></span>
+          <button id="undoSkip" type="button" hidden>復原</button>
+        </div>
+        <p id="todoError" class="todo-error" role="alert" hidden></p>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="/src/todo-page.ts"></script>
+</body>
+</html>

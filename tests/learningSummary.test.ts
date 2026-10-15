@@ -190,6 +190,14 @@ test('outside and unwell days keep daily progress but are excluded from week and
   assert.deepEqual(summary.days.slice(0, 3).map(day => day.completionIncludedInPeriod), [true, false, false]);
   assert.equal(summary.completion.settlementPercent, 50);
   assert.equal(summary.subjectTime.totalMinutes, 55);
+
+  const included = summarizeLearningPeriod(
+    [ordinary, unwell, outside],
+    summaryPeriod('2026-09-14', 'week'),
+    { includeStatusDaysInCompletion: true },
+  );
+  assert.deepEqual(included.days.slice(0, 3).map(day => day.completionIncludedInPeriod), [true, true, true]);
+  assert.equal(included.completion.settlementPercent, 50);
 });
 
 test('completed time deduplicates deferred copies and item drilldown totals', () => {
@@ -286,6 +294,9 @@ test('summary page has one global week/month switch and no separate total-hours 
   const sharedHeaderActions = readFileSync(new URL('../src/header-action-link.css', import.meta.url), 'utf8');
   assert.equal((html.match(/id="summaryModeSwitch"/g) || []).length, 1);
   assert.equal((html.match(/data-summary-mode=/g) || []).length, 2);
+  assert.match(html, /id="summaryTotalCompletion"/);
+  assert.match(html, /id="includeStatusDaysCompletion"/);
+  assert.match(html, /id="statusDaysCompletionState"/);
   assert.doesNotMatch(html, /summary-heading-icon/);
   assert.doesNotMatch(html, /總時數/);
   assert.match(html, /圓內深淺＝當日學習時數/);
@@ -299,9 +310,12 @@ test('summary page has one global week/month switch and no separate total-hours 
   assert.doesNotMatch(runtime, /fetch\(|openai|anthropic|gemini/i);
   assert.match(runtime, /data-summary-back/);
   assert.match(runtime, /function returnToSubjectOverview\(\)/);
+  assert.match(runtime, /STATUS_DAY_COMPLETION_STORAGE_KEY/);
+  assert.match(runtime, /summarizeLearningPeriod\(records, period, completionOptions\)/);
   assert.match(runtime, /summary-donut-return-overlay/);
   assert.match(runtime, /destinationRect\.left - sourceRect\.left/);
   assert.match(styles, /\.summary-donut-return-overlay\{/);
+  assert.match(styles, /\.summary-status-completion-toggle\{/);
   assert.doesNotMatch(styles, /pointer-events:bounding-box/);
   assert.match(runtime, /--day-time-color:\$\{timeColor\}/);
   assert.match(runtime, /summaryMoodClass\(day\.mood\)/);

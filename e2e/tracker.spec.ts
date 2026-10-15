@@ -12,6 +12,132 @@ test('public edition starts without built-in schedule cards', async ({ page }) =
   await expect(page.locator('#dailyItemList')).toContainText('今日沒有項目');
 });
 
+test('overdue task page filters subjects and persists skip without marking completion', async ({ page }) => {
+  await page.goto('/summary.html');
+  await page.evaluate(() => {
+    const now = new Date();
+    const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 12);
+    const date = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+    const prefix = 'study-v11:guest:';
+    localStorage.setItem('study-v11:meta:active-record-prefix', prefix);
+    localStorage.setItem(`${prefix}${date}`, JSON.stringify({
+      date,
+      items: [
+        {
+          id: 'todo-english', type: 'englishPractice', title: '英文閱讀', done: false,
+          minutes: '', required: true, source: 'preset', f: { subject: '英文' },
+        },
+        {
+          id: 'todo-math', type: 'mathStudy', title: '數學講義', done: false,
+          minutes: '', required: true, source: 'preset', f: { subject: '數學A' },
+        },
+        {
+          id: 'todo-done', type: 'scienceReview', title: '已完成自然', done: true,
+          minutes: '', required: true, source: 'preset', f: { subject: '物理' },
+        },
+        {
+          id: 'todo-deferred', type: 'chineseReading', title: '已延期國文', done: false,
+          minutes: '', required: true, source: 'preset', deferred: true, deferredTargetDay: 5,
+          f: { subject: '國文' },
+        },
+      ],
+    }));
+  });
+
+  await page.goto('/');
+  await page.getByRole('link', { name: '待辦事項' }).click();
+  await expect(page.getByRole('heading', { name: '待辦事項' })).toBeVisible();
+  await expect(page.locator('.todo-card')).toHaveCount(2);
+  await expect(page.locator('#todoSummary')).toHaveText('共有 2 項待辦');
+
+  await page.getByRole('tab', { name: '英文' }).click();
+  await expect(page.locator('.todo-card')).toHaveCount(1);
+  await expect(page.locator('.todo-card')).toContainText('英文閱讀');
+  await page.getByRole('button', { name: '跳過 英文閱讀' }).click();
+  await expect(page.locator('#todoEmpty')).toBeVisible();
+  await expect(page.locator('#todoFeedback')).toContainText('原排程日期仍保留未完成紀錄');
+
+  await expect.poll(async () => page.evaluate(() => {
+    for (const key of Object.keys(localStorage).filter(value => value.startsWith('study-v11:guest:2026-'))) {
+      const record = JSON.parse(localStorage.getItem(key) ?? '{}');
+      const item = record.items?.find((entry: { id: string }) => entry.id === 'todo-english');
+      if (item) return { skipped: Boolean(item.f?.overdueSkippedOn), done: item.done, localDirty: record.localDirty };
+    }
+    return null;
+  })).toEqual({ skipped: true, done: false, localDirty: true });
+
+  await page.getByRole('button', { name: '復原' }).click();
+  await expect(page.locator('.todo-card')).toHaveCount(1);
+  await page.getByRole('button', { name: '跳過 英文閱讀' }).click();
+  await page.reload();
+  await expect(page.getByRole('tab', { name: '英文' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#todoEmpty')).toBeVisible();
+
+  await page.getByRole('tab', { name: '數學' }).click();
+  await expect(page.locator('.todo-card')).toContainText('數學講義');
+  await page.getByRole('tab', { name: '自然' }).click();
+  await expect(page.locator('#todoEmpty')).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const switchBounds = await page.locator('#subjectSwitch').evaluate(node => {
+    const rect = node.getBoundingClientRect();
+    return { left: rect.left, right: rect.right, viewport: document.documentElement.clientWidth };
+  });
+  expect(switchBounds.left).toBeGreaterThanOrEqual(0);
+  expect(switchBounds.right).toBeLessThanOrEqual(switchBounds.viewport);
+});
+
+test('checking correction preserves every other card and saves before revealing the reason field', async ({ page }) => {
+  await page.evaluate(() => {
+    const prefix = 'study-v11:guest:';
+    localStorage.setItem('study-v11:meta:active-record-prefix', prefix);
+    localStorage.setItem(`${prefix}2026-10-02`, JSON.stringify({
+      date: '2026-10-02',
+      items: [
+        {
+          id: 'correction-target', type: 'extra', title: '訂正測試', done: false, minutes: '', required: false, source: 'custom',
+          f: { title: 'ACE Reading', round: '3', progress: true, graded: true, corrected: false, reason: '' },
+        },
+        {
+          id: 'correction-sibling', type: 'general', title: '其他項目', done: false, minutes: '18', required: false, source: 'custom',
+          f: { progress: '必須保留' },
+        },
+      ],
+    }));
+  });
+  await page.locator('#studyDate').fill('2026-10-02');
+  await page.locator('#studyDate').dispatchEvent('change');
+
+  const target = page.locator('#itemList [data-item="correction-target"]');
+  const sibling = page.locator('#itemList [data-item="correction-sibling"]');
+  await expect(target).toBeVisible();
+  await expect(sibling.locator('[data-field="progress"]')).toHaveValue('必須保留');
+  await sibling.evaluate(node => { node.setAttribute('data-render-sentinel', 'preserved'); });
+
+  await target.locator('[data-check="corrected"]').check();
+  await expect(target.locator('[data-correction-reason]')).toBeVisible();
+  await expect(sibling).toHaveAttribute('data-render-sentinel', 'preserved');
+  await expect(sibling.locator('[data-field="progress"]')).toHaveValue('必須保留');
+  await expect.poll(async () => page.evaluate(() => {
+    const record = JSON.parse(localStorage.getItem('study-v11:guest:2026-10-02') ?? '{}');
+    return record.items?.filter((item: { id: string }) => item.id.startsWith('correction-'))
+      .map((item: { id: string; f: { corrected?: boolean; progress?: string | boolean } }) => ({
+        id: item.id,
+        corrected: item.f.corrected,
+        progress: item.f.progress,
+      }));
+  })).toEqual([
+    { id: 'correction-target', corrected: true, progress: true },
+    { id: 'correction-sibling', corrected: undefined, progress: '必須保留' },
+  ]);
+
+  await page.reload();
+  await page.locator('#studyDate').fill('2026-10-02');
+  await page.locator('#studyDate').dispatchEvent('change');
+  await expect(target.locator('[data-check="corrected"]')).toBeChecked();
+  await expect(sibling.locator('[data-field="progress"]')).toHaveValue('必須保留');
+});
+
 test('English vocabulary review sorts entries and persists editable parts of speech and translations', async ({ page }) => {
   await page.evaluate(() => {
     const prefix = 'study-v11:guest:';
@@ -546,17 +672,31 @@ test('learning summary uses one week/month control for the complete page', async
     const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const previous = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 12);
     const previousDate = `${previous.getFullYear()}-${String(previous.getMonth() + 1).padStart(2, '0')}-${String(previous.getDate()).padStart(2, '0')}`;
+    const normalDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (now.getDay() === 1 ? 1 : -1), 12);
+    const normalDate = `${normalDay.getFullYear()}-${String(normalDay.getMonth() + 1).padStart(2, '0')}-${String(normalDay.getDate()).padStart(2, '0')}`;
     const prefix = 'study-v11:guest:';
+    const normalCompletionItem = {
+      id: 'summary-normal-completion', type: 'general', title: '一般完成項目', done: true,
+      minutes: '', required: true, source: 'preset', f: { subject: '數學' },
+    };
     localStorage.setItem('study-v11:meta:active-record-prefix', prefix);
     localStorage.setItem(`${prefix}${previousDate}`, JSON.stringify({
       schemaVersion: 2,
       date: previousDate,
       bedtime: { time: '23:45', dateTime: `${previousDate}T23:45`, nextDay: false },
-      items: [],
+      items: normalDate === previousDate ? [normalCompletionItem] : [],
     }));
+    if (normalDate !== previousDate) {
+      localStorage.setItem(`${prefix}${normalDate}`, JSON.stringify({
+        schemaVersion: 2,
+        date: normalDate,
+        items: [normalCompletionItem],
+      }));
+    }
     localStorage.setItem(`${prefix}${date}`, JSON.stringify({
       schemaVersion: 2,
       date,
+      mood: '身體不適',
       wakeTime: '06:30',
       items: [
         { id: 'summary-math', type: 'mathStudy', done: true, minutes: '45', required: true, source: 'preset', f: { subject: '數學' } },
@@ -569,6 +709,7 @@ test('learning summary uses one week/month control for the complete page', async
         { id: 'summary-chemistry', type: 'scienceReview', title: '化學｜反應', done: true, minutes: '15', required: true, source: 'preset', f: { subject: '化學' } },
         { id: 'summary-biology', type: 'scienceReview', title: '生物｜細胞', done: true, minutes: '15', required: true, source: 'preset', f: { subject: '生物' } },
         { id: 'summary-earth', type: 'scienceReview', title: '地科｜地質', done: true, minutes: '15', required: true, source: 'preset', f: { subject: '地科' } },
+        { id: 'summary-unwell-open', type: 'general', title: '尚未完成項目', done: false, minutes: '', required: true, source: 'preset', f: { subject: '數學' } },
       ],
     }));
   });
@@ -581,13 +722,24 @@ test('learning summary uses one week/month control for the complete page', async
   await expect(page.locator('#averageWakeTime')).toHaveText('06:30');
   await expect(page.locator('#validSleepCount')).toContainText('1／7 晚');
   await expect(page.locator('#sleepTrend')).toBeVisible();
+  await expect(page.locator('#summaryTotalCompletion')).toHaveText('100%');
   await expect(page.locator('#summarySubjectDistribution .summary-donut-center strong')).toHaveText('3.0');
   await expect(page.locator('#summarySubjectDistribution .summary-donut-center span')).toHaveText('hr');
+  const includeStatusDays = page.locator('#includeStatusDaysCompletion');
+  await expect(includeStatusDays).not.toBeChecked();
+  await expect(page.locator('#statusDaysCompletionState')).toHaveText('不列入');
+  await includeStatusDays.check();
+  await expect(page.locator('#summaryTotalCompletion')).toHaveText('92%');
+  await expect(page.locator('#statusDaysCompletionState')).toHaveText('列入');
+  await page.reload();
+  await expect(page.locator('#includeStatusDaysCompletion')).toBeChecked();
+  await expect(page.locator('#summaryTotalCompletion')).toHaveText('92%');
   await expect(page.locator('[data-summary-subject="自然"]')).toHaveCount(1);
   await expect(page.locator('[data-summary-subject="物理"], [data-summary-subject="化學"], [data-summary-subject="生物"], [data-summary-subject="地科"]')).toHaveCount(0);
-  await page.locator('#summaryCalendar .summary-day.has-record [data-summary-day]').last().click();
+  await page.locator('#summaryCalendar .summary-day.is-mood-unwell [data-summary-day]').click();
   await expect(page.locator('#summaryCalendar .summary-day.is-tooltip-open .summary-day-tooltip')).toContainText('學習時間');
   await expect(page.locator('#summaryCalendar .summary-day.is-tooltip-open .summary-day-tooltip')).toContainText('完成率');
+  await expect(page.locator('#summaryCalendar .summary-day.is-tooltip-open .summary-day-tooltip')).toContainText('列入週／月完成率');
   await expect.poll(() => page.locator('#summaryCalendar .summary-day.is-tooltip-open .summary-day-tooltip').evaluate(node => getComputedStyle(node).opacity)).toBe('1');
   await page.locator('[data-summary-subject="自然"]').click();
   await expect(page.locator('#subjectTitle')).toHaveText('科目分配｜自然');

@@ -2542,7 +2542,19 @@ function renderMathFields(x,reviewMode){
  }
  return h;
 }
-function reasonField(f){return'<div class="field" style="margin-top:10px"><label>錯因／不熟觀念</label><textarea rows="3" data-field="reason" placeholder="記錄錯因、仍不熟的觀念或需要再複習的內容">'+esc(f.reason||'')+'</textarea></div>'}
+function reasonField(f){return'<div class="field" data-correction-reason style="margin-top:10px"><label>錯因／不熟觀念</label><textarea rows="3" data-field="reason" placeholder="記錄錯因、仍不熟的觀念或需要再複習的內容">'+esc(f.reason||'')+'</textarea></div>'}
+
+function refreshCorrectionReasonField(card,item){
+ if(!card||!item)return false;
+ var children=card.children||[],inner=null;
+ for(var i=0;i<children.length;i++)if(children[i].classList&&children[i].classList.contains('inner')){inner=children[i];break}
+ var existing=card.querySelector&&card.querySelector('[data-correction-reason]');
+ if(!item.f||!item.f.corrected){if(existing){existing.remove();return true}return !!inner}
+ if(existing)return true;
+ if(!inner||!inner.insertAdjacentHTML)return false;
+ inner.insertAdjacentHTML('beforeend',reasonField(item.f));
+ return true;
+}
 
 function scienceMaterialOptions(subject,v){
  if(!subject)return'<option value="">請先選擇科目</option>';
@@ -3568,7 +3580,7 @@ function handleChange(e){
   if(x.done&&confirmedDeferred(x)){propagateDailyWorkDeferred(x,false);persist(false);rebuildDeferredForWeek(data.date)}
   persist(false);updateSummary();maybeCelebrateCompletion(previousWorkloadPercent,t.checked);render();return
  }
- if(t.matches('[data-check]')&&x){var k=t.getAttribute('data-check');if(k==='progress'&&x.type==='scienceReview'){markCalendarNaturalProgressByUser(x,t.checked);propagateDailyWorkField(x,'calendarProgressSetByUser',true);propagateDailyWorkField(x,'calendarProgressUserValue',t.checked)}propagateDailyWorkField(x,k,t.checked);if(k==='corrected'&&(x.type==='mathLecture'||x.type==='scienceReview'||x.type==='socialStudy'||x.type==='extra')){render();persist(false);return}updateSummary();persist(false);return}
+ if(t.matches('[data-check]')&&x){var k=t.getAttribute('data-check');if(k==='progress'&&x.type==='scienceReview'){markCalendarNaturalProgressByUser(x,t.checked);propagateDailyWorkField(x,'calendarProgressSetByUser',true);propagateDailyWorkField(x,'calendarProgressUserValue',t.checked)}propagateDailyWorkField(x,k,t.checked);if(k==='corrected'&&(x.type==='mathLecture'||x.type==='scienceReview'||x.type==='socialStudy'||x.type==='extra')){var correctionItemId=x.id;persist(false);var savedCorrectionItem=findItem(correctionItemId)||x;if(!refreshCorrectionReasonField(card,savedCorrectionItem))render();else updateSummary();return}updateSummary();persist(false);return}
  if(t.matches('[data-chinese-kind]')&&x&&x.type==='chineseReading'){
   if(isCalendarPageMappedBook(x)){render();return}
   applyChineseItemSelection(x,t.value);render();persist(false);return

@@ -39,6 +39,8 @@ export interface StudyItemFields {
   dailyWorkSourceItems?: StudyItem[];
   /** Manual/timer mode and resumable elapsed-time state for this item. */
   timeTracking?: StudyTimerState;
+  /** Local date when this unfinished item was dismissed from the overdue list. */
+  overdueSkippedOn?: string;
 }
 
 export interface EnglishReviewWordEntry extends Record<string, unknown> {
@@ -137,6 +139,8 @@ export interface StudyRecord {
   biggestBlock?: string;
   firstThingTomorrow?: string;
   notes?: string;
+  /** Active choice when scheduled mixed writing and a timed mock overlap. */
+  englishTaskChoice?: 'mixed' | 'mock';
   items: StudyItem[];
 }
 

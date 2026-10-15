@@ -6,6 +6,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         tracker: './index.html',
+        todo: './todo.html',
         learningSummary: './summary.html',
         materialProgress: './material.progress.html',
         vocabularyReview: './vocabulary.review.html',
