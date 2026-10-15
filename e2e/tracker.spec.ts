@@ -25,7 +25,8 @@ test('overdue task page filters subjects and persists skip without marking compl
       items: [
         {
           id: 'todo-english', type: 'englishPractice', title: '英文閱讀', done: false,
-          minutes: '', required: true, source: 'preset', f: { subject: '英文' },
+          minutes: '', required: true, source: 'preset',
+          f: { subject: '英文', book: 'ACE Reading', round: '12', topic: '閱讀測驗', progress: true },
         },
         {
           id: 'todo-math', type: 'mathStudy', title: '數學講義', done: false,
@@ -53,6 +54,47 @@ test('overdue task page filters subjects and persists skip without marking compl
   await page.getByRole('tab', { name: '英文' }).click();
   await expect(page.locator('.todo-card')).toHaveCount(1);
   await expect(page.locator('.todo-card')).toContainText('英文閱讀');
+  await expect(page.locator('.todo-record-grid')).toContainText('ACE Reading');
+  await expect(page.locator('.todo-record-grid')).toContainText('閱讀測驗');
+  const progress = page.locator('[data-todo-progress="progress"]');
+  await expect(progress).toBeChecked();
+  await progress.uncheck();
+  await expect.poll(async () => page.evaluate(() => {
+    for (const key of Object.keys(localStorage).filter(value => value.startsWith('study-v11:guest:2026-'))) {
+      const record = JSON.parse(localStorage.getItem(key) ?? '{}');
+      const item = record.items?.find((entry: { id: string }) => entry.id === 'todo-english');
+      if (item) return item.f?.progress;
+    }
+    return null;
+  })).toBe(false);
+
+  await page.getByRole('button', { name: '計時' }).click();
+  await page.getByRole('button', { name: '開始' }).click();
+  await page.waitForTimeout(1_100);
+  await expect(page.locator('[data-todo-timer-display]')).not.toHaveText('00:00');
+  await page.getByRole('button', { name: '完成計時' }).click();
+
+  const minutes = page.getByLabel('英文閱讀的學習時間');
+  await minutes.fill('25.5');
+  await minutes.dispatchEvent('change');
+  await expect(page.locator('#todoFeedback')).toContainText('25.5 分鐘');
+  const completionDate = await page.getByLabel('英文閱讀的完成日期').inputValue();
+  await page.getByRole('button', { name: '標記完成 英文閱讀' }).click();
+  await expect(page.locator('#todoEmpty')).toBeVisible();
+  await expect(page.locator('#todoFeedback')).toContainText(`完成日期為 ${completionDate}`);
+  await expect(page.locator('#todoHistoryList')).toContainText('英文閱讀');
+  await expect.poll(async () => page.evaluate(() => {
+    for (const key of Object.keys(localStorage).filter(value => value.startsWith('study-v11:guest:2026-'))) {
+      const record = JSON.parse(localStorage.getItem(key) ?? '{}');
+      const item = record.items?.find((entry: { id: string }) => entry.id === 'todo-english');
+      if (item) return { done: item.done, checkedOn: item.checkedOn, minutes: item.minutes };
+    }
+    return null;
+  })).toEqual({ done: true, checkedOn: completionDate, minutes: '25.5' });
+
+  await page.getByRole('button', { name: '復原' }).click();
+  await expect(page.locator('.todo-card')).toHaveCount(1);
+  await expect(page.getByLabel('英文閱讀的學習時間')).toHaveValue('25.5');
   await page.getByRole('button', { name: '跳過 英文閱讀' }).click();
   await expect(page.locator('#todoEmpty')).toBeVisible();
   await expect(page.locator('#todoFeedback')).toContainText('原排程日期仍保留未完成紀錄');
@@ -72,6 +114,8 @@ test('overdue task page filters subjects and persists skip without marking compl
   await page.reload();
   await expect(page.getByRole('tab', { name: '英文' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('#todoEmpty')).toBeVisible();
+  await expect(page.locator('#todoHistoryList')).toContainText('英文閱讀');
+  await expect(page.getByRole('button', { name: '復原 英文閱讀' })).toBeVisible();
 
   await page.getByRole('tab', { name: '數學' }).click();
   await expect(page.locator('.todo-card')).toContainText('數學講義');

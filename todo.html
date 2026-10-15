@@ -13,7 +13,7 @@
     <header class="todo-page-header">
       <div>
         <h1>待辦事項</h1>
-        <p>集中查看已排程、已過期且尚未完成的項目。</p>
+        <p>直接查看並完成舊日期的排程，不必回原日期尋找紀錄卡。</p>
       </div>
       <a class="todo-back header-action-link" href="./index.html">回到 Tracker</a>
     </header>
@@ -40,16 +40,29 @@
 
         <div class="todo-summary">
           <strong id="todoSummary"></strong>
-          <span>「跳過」只會移除待辦提醒，不會把原項目標記為完成。</span>
+          <span>時間、計時與進度會直接回寫原紀錄；「跳過」不會視為完成。</span>
         </div>
 
         <div id="todoList" class="todo-list" role="tabpanel"></div>
         <p id="todoEmpty" class="todo-empty" hidden>目前沒有符合條件的待辦事項。</p>
         <div id="todoFeedback" class="todo-feedback" role="status" aria-live="polite" hidden>
           <span id="todoFeedbackText"></span>
-          <button id="undoSkip" type="button" hidden>復原</button>
         </div>
         <p id="todoError" class="todo-error" role="alert" hidden></p>
+      </div>
+    </section>
+
+    <section class="todo-panel todo-history-panel" aria-labelledby="todoHistoryTitle">
+      <div class="todo-panel-head">
+        <div>
+          <h2 id="todoHistoryTitle">最近處理</h2>
+          <p>完成或跳過的項目可在 3 天內復原；超過 72 小時會自動從此清單移除。</p>
+        </div>
+        <strong id="todoHistoryCount">0 項可復原</strong>
+      </div>
+      <div class="todo-panel-body">
+        <div id="todoHistoryList" class="todo-history-list"></div>
+        <p id="todoHistoryEmpty" class="todo-empty">目前沒有可復原的項目。</p>
       </div>
     </section>
   </main>

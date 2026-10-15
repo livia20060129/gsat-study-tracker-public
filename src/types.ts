@@ -41,6 +41,11 @@ export interface StudyItemFields {
   timeTracking?: StudyTimerState;
   /** Local date when this unfinished item was dismissed from the overdue list. */
   overdueSkippedOn?: string;
+  /** Recent action shown in the overdue-task undo list for at most 72 hours. */
+  overdueTodoAction?: {
+    kind: 'complete' | 'skip';
+    handledAt: string;
+  };
 }
 
 export interface EnglishReviewWordEntry extends Record<string, unknown> {
