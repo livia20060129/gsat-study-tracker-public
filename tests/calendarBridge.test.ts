@@ -430,6 +430,21 @@ test('social weekly-plan identifiers select separate geography, history, and civ
   }
 });
 
+test('Haohaoxue History identifier selects its own material and final mapped range', () => {
+  const parsed = parseCalendarTask(row(
+    '歷史｜好好學｜單元9 世界變遷與現代性',
+    '【頁碼範圍】252–281\n【識別碼】GSAT-HIST-HAOHAOXUE-20261023-U09',
+    'studyItem',
+  ));
+  assert.equal(parsed.kind, 'bookPages');
+  if (parsed.kind === 'bookPages') {
+    assert.deepEqual(
+      [parsed.subject, parsed.socialSubject, parsed.book, parsed.startPage, parsed.endPage],
+      ['社會', '歷史', '歷史｜好好學', 252, 281],
+    );
+  }
+});
+
 test('social weekly-plan subject is inferred from a uniquely matching unit name', () => {
   const geography = parseCalendarTask(row('東亞文化圈的形成與發展', '【頁碼範圍】60–67', 'studyItem'));
   const history = parseCalendarTask(row('歐洲文化與現代世界', '【頁碼範圍】178–218', 'studyItem'));

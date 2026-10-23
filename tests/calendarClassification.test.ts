@@ -46,4 +46,5 @@ test('social weekly-plan identifiers remain readable study items', () => {
   assert.equal(classifyCalendarEvent('氣候系統', '【識別碼】GSAT-GEO-WEEKPLAN-20260924-03'), 'studyItem');
   assert.equal(classifyCalendarEvent('現代化的歷程', '【識別碼】GSAT-HIST-WEEKPLAN-20260924-06'), 'studyItem');
   assert.equal(classifyCalendarEvent('市場機能', '【識別碼】GSAT-CIVICS-WEEKPLAN-20260924-15'), 'studyItem');
+  assert.equal(classifyCalendarEvent('世界變遷與現代性', '【識別碼】GSAT-HIST-HAOHAOXUE-20261023-U09'), 'studyItem');
 });

@@ -9,6 +9,7 @@ export const ENGLISH_MIXED_30_BOOK = '混合題30篇實戰演練';
 export const ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK = '英語高頻字彙完全攻略';
 export const GEOGRAPHY_WEEKLY_PLAN_BOOK = '地理｜學測週計畫';
 export const HISTORY_WEEKLY_PLAN_BOOK = '歷史｜學測週計畫';
+export const HISTORY_HAOHAOXUE_BOOK = '歷史｜好好學';
 export const CIVICS_WEEKLY_PLAN_BOOK = '公民｜學測週計畫';
 
 export type SocialStudiesSubject = '地理' | '歷史' | '公民';
@@ -23,6 +24,7 @@ export type PageMappedBook =
   | typeof ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK
   | typeof GEOGRAPHY_WEEKLY_PLAN_BOOK
   | typeof HISTORY_WEEKLY_PLAN_BOOK
+  | typeof HISTORY_HAOHAOXUE_BOOK
   | typeof CIVICS_WEEKLY_PLAN_BOOK;
 
 export interface BookPageSection {
@@ -271,6 +273,23 @@ const historyWeeklyPlan = weeklyPlanSections('歷史學測週計畫', [
   ['單元9｜世界變遷與現代性', 252],
 ]);
 
+/** 《好好學 歷史》，依使用者提供的目錄與全書末頁 p.281。 */
+const historyHaohaoxue = groupedSections([{
+  topic: '好好學 歷史',
+  starts: [
+    ['單元1｜多元族群社會的形成', 2],
+    ['單元2｜現代國家的形塑', 25],
+    ['單元3｜經濟與文化的多樣性', 50],
+    ['單元4｜國家與社會', 78],
+    ['單元5｜人群的移動與交流', 114],
+    ['單元6｜現代化的歷程', 146],
+    ['單元7｜歐洲文化與現代世界', 178],
+    ['單元8｜文化的交會與多元世界的發展', 219],
+    ['單元9｜世界變遷與現代性', 252],
+  ],
+  end: 281,
+}]);
+
 export const BOOK_PAGE_MAPS: Record<PageMappedBook, BookPageSection[]> = {
   [DEEP_FIFTEEN_BOOK]: deepFifteen,
   [CHINESE_TOPIC_BOOK]: chineseTopics,
@@ -281,6 +300,7 @@ export const BOOK_PAGE_MAPS: Record<PageMappedBook, BookPageSection[]> = {
   [ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK]: englishHighFrequencyVocabulary,
   [GEOGRAPHY_WEEKLY_PLAN_BOOK]: geographyWeeklyPlan,
   [HISTORY_WEEKLY_PLAN_BOOK]: historyWeeklyPlan,
+  [HISTORY_HAOHAOXUE_BOOK]: historyHaohaoxue,
   [CIVICS_WEEKLY_PLAN_BOOK]: civicsWeeklyPlan,
 };
 
@@ -312,11 +332,13 @@ export function canonicalPageMappedBook(value: unknown): PageMappedBook | null {
   if (identifier.includes(LECTURE_IDENTIFIERS.englishHighFrequencyVocabulary)) return ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK;
   if (identifier.includes(LECTURE_IDENTIFIERS.geographyWeeklyPlan)) return GEOGRAPHY_WEEKLY_PLAN_BOOK;
   if (identifier.includes(LECTURE_IDENTIFIERS.historyWeeklyPlan)) return HISTORY_WEEKLY_PLAN_BOOK;
+  if (identifier.includes(LECTURE_IDENTIFIERS.historyHaohaoxue)) return HISTORY_HAOHAOXUE_BOOK;
   if (identifier.includes(LECTURE_IDENTIFIERS.civicsWeeklyPlan)) return CIVICS_WEEKLY_PLAN_BOOK;
   if (title.includes('深耕十五')) return DEEP_FIFTEEN_BOOK;
   if (title.includes('主題百匯') && title.includes('閱讀寫作新進化')) return CHINESE_TOPIC_BOOK;
   if (title.includes('主題百匯') && (title.includes('篇章結構') || title.includes('閱讀測驗'))) return ENGLISH_TOPIC_READING_BOOK;
   if (title.includes('主題百匯') && title.includes('克漏字')) return ENGLISH_TOPIC_CLOZE_BOOK;
+  if ((title.includes('好好學') && title.includes('歷史')) || title.replace(/\s+/g, '').includes('歷史好好學')) return HISTORY_HAOHAOXUE_BOOK;
   const socialWeeklyPlan = inferredSocialWeeklyPlanBook(title);
   if (socialWeeklyPlan) return socialWeeklyPlan;
   if (/學測週計[畫劃]/.test(title.replace(/\s+/g, ''))) return ENGLISH_WEEKLY_PLAN_BOOK;
@@ -333,6 +355,7 @@ export function pageMappedBookSubject(book: PageMappedBook): '國文' | '英文'
 export function pageMappedBookSocialSubject(book: PageMappedBook): SocialStudiesSubject | null {
   if (book === GEOGRAPHY_WEEKLY_PLAN_BOOK) return '地理';
   if (book === HISTORY_WEEKLY_PLAN_BOOK) return '歷史';
+  if (book === HISTORY_HAOHAOXUE_BOOK) return '歷史';
   if (book === CIVICS_WEEKLY_PLAN_BOOK) return '公民';
   return null;
 }

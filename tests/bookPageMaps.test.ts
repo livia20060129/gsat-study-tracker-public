@@ -20,6 +20,7 @@ import {
   ENGLISH_WEEKLY_PLAN_BOOK,
   ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK,
   GEOGRAPHY_WEEKLY_PLAN_BOOK,
+  HISTORY_HAOHAOXUE_BOOK,
   HISTORY_WEEKLY_PLAN_BOOK,
   pageMappedBookSocialSubject,
   pageMappedBookSubject,
@@ -41,6 +42,8 @@ test('identifies every supported book from punctuation and surrounding Calendar 
   assert.equal(canonicalPageMappedBook('英語 高頻字彙 完全攻略'), ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK);
   assert.equal(canonicalPageMappedBook('GSAT-GEO-WEEKPLAN-20260924-01'), GEOGRAPHY_WEEKLY_PLAN_BOOK);
   assert.equal(canonicalPageMappedBook('【識別碼】GSAT-HIST-WEEKPLAN'), HISTORY_WEEKLY_PLAN_BOOK);
+  assert.equal(canonicalPageMappedBook('【識別碼】GSAT-HIST-HAOHAOXUE-20261023-U09'), HISTORY_HAOHAOXUE_BOOK);
+  assert.equal(canonicalPageMappedBook('好好學 歷史'), HISTORY_HAOHAOXUE_BOOK);
   assert.equal(canonicalPageMappedBook('GSAT-CIVICS-WEEKPLAN'), CIVICS_WEEKLY_PLAN_BOOK);
 });
 
@@ -53,6 +56,7 @@ test('distinguishes social weekly plans by subject and uniquely matching unit na
   assert.equal(pageMappedBookSubject(GEOGRAPHY_WEEKLY_PLAN_BOOK), '社會');
   assert.equal(pageMappedBookSocialSubject(GEOGRAPHY_WEEKLY_PLAN_BOOK), '地理');
   assert.equal(pageMappedBookSocialSubject(HISTORY_WEEKLY_PLAN_BOOK), '歷史');
+  assert.equal(pageMappedBookSocialSubject(HISTORY_HAOHAOXUE_BOOK), '歷史');
   assert.equal(pageMappedBookSocialSubject(CIVICS_WEEKLY_PLAN_BOOK), '公民');
   assert.equal(pageMappedBookSocialSubject(ENGLISH_WEEKLY_PLAN_BOOK), null);
 });
@@ -74,6 +78,19 @@ test('uses the photographed start pages for geography, history, and civics weekl
     bookPageText(GEOGRAPHY_WEEKLY_PLAN_BOOK, 126, 130),
     '地理學測週計畫｜第14週｜115學年度學科能力測驗試題（p.126–130）',
   );
+});
+
+test('maps every Haohaoxue History unit through the supplied final page 281', () => {
+  assert.equal(BOOK_PAGE_MAPS[HISTORY_HAOHAOXUE_BOOK].length, 9);
+  assert.equal(
+    bookPageText(HISTORY_HAOHAOXUE_BOOK, 2, 24),
+    '好好學 歷史｜單元1｜多元族群社會的形成（p.2–24）',
+  );
+  assert.equal(
+    bookPageText(HISTORY_HAOHAOXUE_BOOK, 252, 281),
+    '好好學 歷史｜單元9｜世界變遷與現代性（p.252–281）',
+  );
+  assert.equal(bookPageText(HISTORY_HAOHAOXUE_BOOK, 282, 282), '頁碼不在已建立的教材本文範圍內。');
 });
 
 test('uses the supplied endings for the two new English lecture books', () => {

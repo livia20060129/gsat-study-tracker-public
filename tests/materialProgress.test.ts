@@ -10,6 +10,7 @@ import { PHYSICS_COMEBACK_PAGE_MAP } from '../src/data/lecturePageMaps.ts';
 import {
   CIVICS_WEEKLY_PLAN_BOOK,
   GEOGRAPHY_WEEKLY_PLAN_BOOK,
+  HISTORY_HAOHAOXUE_BOOK,
   HISTORY_WEEKLY_PLAN_BOOK,
 } from '../src/data/bookPageMaps.ts';
 import {
@@ -183,6 +184,7 @@ test('adds separate civics, history, and geography materials and records their p
   assert.deepEqual(socialRows.map(row => row.title), [
     CIVICS_WEEKLY_PLAN_BOOK,
     HISTORY_WEEKLY_PLAN_BOOK,
+    HISTORY_HAOHAOXUE_BOOK,
     GEOGRAPHY_WEEKLY_PLAN_BOOK,
   ]);
   assert.ok(socialRows.every(row => row.unitLabel === '單元'));
@@ -191,6 +193,14 @@ test('adds separate civics, history, and geography materials and records their p
   assert.equal(civics.segments.filter(segment => segment.recorded).length, 2);
   assert.equal(civics.segments[1].completionPercent, 100);
   assert.equal(civics.segments[2].completionPercent, 8);
+});
+
+test('adds Haohaoxue History as a separate selectable 281-page material', () => {
+  const row = materialProgressRows([]).find(entry => entry.title === HISTORY_HAOHAOXUE_BOOK);
+  assert.ok(row);
+  assert.equal(row.total, 9);
+  assert.equal(row.segments[0].label, '好好學 歷史｜單元1｜多元族群社會的形成（p.2–24）');
+  assert.equal(row.segments.at(-1)?.label, '好好學 歷史｜單元9｜世界變遷與現代性（p.252–281）');
 });
 
 test('uses the scanned Dialogue review contents through the final textbook pages', () => {

@@ -6,6 +6,7 @@ import {
   BOOK_PAGE_MAPS,
   CIVICS_WEEKLY_PLAN_BOOK,
   GEOGRAPHY_WEEKLY_PLAN_BOOK,
+  HISTORY_HAOHAOXUE_BOOK,
   HISTORY_WEEKLY_PLAN_BOOK,
 } from '../src/data/bookPageMaps.ts';
 import { LECTURE_IDENTIFIERS, PHYSICS_COMEBACK_PAGE_MAP } from '../src/data/lecturePageMaps.ts';
@@ -27,6 +28,15 @@ test('public edition only creates presets from the connected Google Calendar cac
   assert.doesNotMatch(runtime, /function resolveCloudMathPlan\(parsed\)\{[^}]*CALENDAR_MATH_PLAN/s);
   assert.match(runtime, /function calendarNaturalRecommended\(date,item\)\{\s*if\(!\(calendarConnected&&calendarCacheLoaded\)\)return null;/);
   assert.match(runtime, /var defs=calendarConnected&&calendarCacheLoaded\?\(cloudNaturalIntegrationItemsByDate\[date\]\|\|null\):null;/);
+});
+
+test('Calendar prompt publishes the Haohaoxue History identifier and complete page map', () => {
+  assert.ok(calendarPrompt.includes(LECTURE_IDENTIFIERS.historyHaohaoxue));
+  assert.ok(BOOK_PAGE_MAPS[HISTORY_HAOHAOXUE_BOOK].length === 9);
+  assert.match(calendarPrompt, /歷史《好好學》/);
+  assert.match(calendarPrompt, /單元1 多元族群社會的形成 p\.2–24/);
+  assert.match(calendarPrompt, /單元9 世界變遷與現代性 p\.252–281/);
+  assert.match(calendarPrompt, /只有單元名稱時不得猜測教材/);
 });
 
 test('public edition removes legacy built-in preset items while retaining custom items', () => {

@@ -20,6 +20,7 @@ import {
   DEEP_FIFTEEN_BOOK,
   ENGLISH_TOPIC_CLOZE_BOOK,
   GEOGRAPHY_WEEKLY_PLAN_BOOK,
+  HISTORY_HAOHAOXUE_BOOK,
   isEnglishPageMappedBook,
   pageMappedBookSocialSubject,
   pageMappedBookSubject,
@@ -838,12 +839,12 @@ test('Calendar book scopes render as fixed fields for all four supported books',
   assert.doesNotMatch(chineseHtml, /<select|data-field="start"|data-field="end"/);
 });
 
-test('Calendar social weekly plans render fixed subject, book, pages, and mapped unit fields', () => {
+test('Calendar social materials render the actual book, pages, and mapped unit fields', () => {
   const render = runtimeFunction<(x: StudyItem) => string>('renderGeneralFields', {
     isSaturdayMakeup: () => false,
     isSaturdayReview: () => false,
     isEnglishReview: () => false,
-    calendarSocialPageBook: (x: StudyItem) => x.f.calendarBookRangeLocked ? GEOGRAPHY_WEEKLY_PLAN_BOOK : null,
+    calendarSocialPageBook: (x: StudyItem) => x.f.calendarBookRangeLocked ? canonicalPageMappedBook(x.f.book) : null,
     pageMappedBookSocialSubject,
     bookPageAutoField: () => '<div data-book-topic-auto>地理學測週計畫</div><div data-book-detail-auto>第3週｜氣候系統</div>',
     esc: (value: unknown) => String(value ?? ''),
@@ -866,6 +867,21 @@ test('Calendar social weekly plans render fixed subject, book, pages, and mapped
   assert.match(html, /<label>結束頁<\/label><div class="fixed-book-value">34<\/div>/);
   assert.match(html, /第3週｜氣候系統/);
   assert.doesNotMatch(html, /<input|<select/);
+
+  const historyHtml = render(item({
+    type: 'general',
+    title: '歷史｜好好學',
+    f: {
+      subject: '歷史',
+      book: HISTORY_HAOHAOXUE_BOOK,
+      start: '252',
+      end: '281',
+      calendarBookRangeLocked: true,
+    },
+  }));
+  assert.match(historyHtml, /<label>科目<\/label><div class="fixed-book-value">歷史<\/div>/);
+  assert.match(historyHtml, /<label>教材<\/label><div class="fixed-book-value">好好學<\/div>/);
+  assert.doesNotMatch(historyHtml, /fixed-book-value">學測週計畫/);
 });
 
 test('manual social study summaries retain subject, page range, mapped unit, and completion fields', () => {

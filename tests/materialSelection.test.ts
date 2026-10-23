@@ -52,6 +52,7 @@ test('checked materials map to manual-selector values without changing the full 
     row('english:ace', 'english', '英文｜ACE Reading'),
     row('chinese:gujin', 'chinese', '國文｜古今悅讀一百'),
     row('book:公民｜學測週計畫', 'social', '公民｜學測週計畫'),
+    row('book:歷史｜好好學', 'social', '歷史｜好好學'),
   ];
 
   assert.deepEqual(manualMaterialChoice(rows[0]), {
@@ -66,11 +67,14 @@ test('checked materials map to manual-selector values without changing the full 
   assert.deepEqual(manualMaterialChoice(rows[5]), {
     id: 'book:公民｜學測週計畫', subject: 'social', value: '公民｜學測週計畫', book: '公民',
   });
+  assert.deepEqual(manualMaterialChoice(rows[6]), {
+    id: 'book:歷史｜好好學', subject: 'social', value: '歷史｜好好學', book: '歷史',
+  });
   assert.deepEqual(
     selectedManualMaterialChoices(rows, ['math:新關鍵:1~2', 'english:ace']).map(choice => choice.id),
     ['math:新關鍵:1~2', 'english:ace'],
   );
-  assert.equal(rows.length, 6);
+  assert.equal(rows.length, 7);
 });
 
 test('an unchecked value is retained only as the current existing record', () => {
