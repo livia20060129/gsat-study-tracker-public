@@ -17,6 +17,7 @@ import {
   ENGLISH_TOPIC_CLOZE_BOOK,
   ENGLISH_TOPIC_READING_BOOK,
   ENGLISH_WEEKLY_PLAN_BOOK,
+  HISTORY_HAOHAOXUE_BOOK,
   UNLOCK_3_BOOK,
 } from '../src/data/bookPageMaps.ts';
 import { cloneOriginalItemForMakeup } from '../src/study/makeup.ts';
@@ -31,6 +32,10 @@ test('identifies every supported book from punctuation and surrounding Calendar 
   assert.equal(canonicalPageMappedBook('Unlock 3 (Linstening, speaking, critical thinking)'), UNLOCK_3_BOOK);
   assert.equal(canonicalPageMappedBook('英文｜學測週計畫'), ENGLISH_WEEKLY_PLAN_BOOK);
   assert.equal(canonicalPageMappedBook('英文｜混合題30篇實戰演練'), ENGLISH_MIXED_30_BOOK);
+  assert.equal(canonicalPageMappedBook('歷史｜好好學'), HISTORY_HAOHAOXUE_BOOK);
+  assert.equal(canonicalPageMappedBook('公民｜學測週計畫'), null);
+  assert.equal(canonicalPageMappedBook('歷史｜學測週計畫'), null);
+  assert.equal(canonicalPageMappedBook('地理｜學測週計畫'), null);
 });
 
 test('looks up the requested topic and lesson, level, or round', () => {

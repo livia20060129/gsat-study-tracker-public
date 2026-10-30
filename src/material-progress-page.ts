@@ -47,8 +47,8 @@ function defaultCatalogSubject(): CatalogSubject {
   if (activeSubject === 'chinese') return '國文';
   if (activeSubject === 'english') return '英文';
   if (activeSubject === 'math') return '數學';
-  if (activeSubject === 'social') return '歷史';
-  return '物理';
+  if (activeSubject === 'social') return '公民';
+  return '生物';
 }
 
 function element<T extends HTMLElement>(id: string): T {

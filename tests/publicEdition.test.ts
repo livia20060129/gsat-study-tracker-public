@@ -4,12 +4,9 @@ import test from 'node:test';
 
 import {
   BOOK_PAGE_MAPS,
-  CIVICS_WEEKLY_PLAN_BOOK,
-  GEOGRAPHY_WEEKLY_PLAN_BOOK,
   HISTORY_HAOHAOXUE_BOOK,
-  HISTORY_WEEKLY_PLAN_BOOK,
 } from '../src/data/bookPageMaps.ts';
-import { LECTURE_IDENTIFIERS, PHYSICS_COMEBACK_PAGE_MAP } from '../src/data/lecturePageMaps.ts';
+import { LECTURE_IDENTIFIERS, lectureIdentifierMatch, PHYSICS_COMEBACK_PAGE_MAP } from '../src/data/lecturePageMaps.ts';
 import {
   BIOLOGY_NEW_KEY_PAGE_MAP,
   CHEMISTRY_NEW_KEY_PAGE_MAP,
@@ -36,7 +33,7 @@ test('Calendar prompt publishes the Haohaoxue History identifier and complete pa
   assert.match(calendarPrompt, /歷史《好好學》/);
   assert.match(calendarPrompt, /單元1 多元族群社會的形成 p\.2–24/);
   assert.match(calendarPrompt, /單元9 世界變遷與現代性 p\.252–281/);
-  assert.match(calendarPrompt, /只有單元名稱時不得猜測教材/);
+  assert.match(calendarPrompt, /只有單元名稱、未提供教材名或識別碼時不得猜測教材/);
 });
 
 test('public edition removes legacy built-in preset items while retaining custom items', () => {
@@ -53,20 +50,13 @@ test('Calendar prompt includes the verified Physics Comeback page map', () => {
   }
 });
 
-test('Calendar prompt publishes separate identifiers and page-map guidance for the three social weekly plans', () => {
-  const books = [
-    [GEOGRAPHY_WEEKLY_PLAN_BOOK, LECTURE_IDENTIFIERS.geographyWeeklyPlan, '氣候系統'],
-    [HISTORY_WEEKLY_PLAN_BOOK, LECTURE_IDENTIFIERS.historyWeeklyPlan, '人群的移動與交流'],
-    [CIVICS_WEEKLY_PLAN_BOOK, LECTURE_IDENTIFIERS.civicsWeeklyPlan, '媒體與公共意見'],
-  ] as const;
-
-  for (const [book, identifier, sampleUnit] of books) {
-    assert.ok(calendarPrompt.includes(identifier), identifier);
-    assert.ok(calendarPrompt.includes(sampleUnit), sampleUnit);
-    assert.ok(BOOK_PAGE_MAPS[book].length > 0, book);
+test('public edition removes the three social weekly plans from Calendar recognition and prompt guidance', () => {
+  for (const identifier of ['GSAT-GEO-WEEKPLAN', 'GSAT-HIST-WEEKPLAN', 'GSAT-CIVICS-WEEKPLAN']) {
+    assert.equal(lectureIdentifierMatch(identifier), null);
+    assert.ok(!calendarPrompt.includes(identifier), identifier);
   }
-  assert.match(calendarPrompt, /只有唯一命中時才可寫入/);
-  assert.match(calendarPrompt, /照片未提供末頁，不得自行猜測/);
+  assert.doesNotMatch(calendarPrompt, /地理《學測週計畫》|歷史《學測週計畫》|公民《學測週計畫》/);
+  assert.match(calendarPrompt, /歷史《好好學》/);
 });
 
 test('Calendar prompt publishes the High-Frequency Vocabulary identifier and photographed ranges', () => {

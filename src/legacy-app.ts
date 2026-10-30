@@ -83,13 +83,9 @@ import {
   bookTopics,
   canonicalPageMappedBook,
   CHINESE_TOPIC_BOOK,
-  CIVICS_WEEKLY_PLAN_BOOK,
   DEEP_FIFTEEN_BOOK,
   ENGLISH_TOPIC_CLOZE_BOOK,
   ENGLISH_TOPIC_READING_BOOK,
-  GEOGRAPHY_WEEKLY_PLAN_BOOK,
-  HISTORY_HAOHAOXUE_BOOK,
-  HISTORY_WEEKLY_PLAN_BOOK,
   pageMappedBookSocialSubject,
   isEnglishPageMappedBook,
   pageMappedBookUsesScopeSelection,
@@ -2785,12 +2781,6 @@ function socialSubjectOptions(v){
  var subjects=unique(activeManualMaterialChoices('social').map(function(choice){return choice.book}));
  if(v&&subjects.indexOf(v)<0)subjects.push(v);
  return'<option value="">請選擇</option>'+subjects.map(function(subject){return'<option value="'+esc(subject)+'"'+selected(subject,v)+'>'+esc(subject)+'</option>'}).join('');
-}
-function socialBooksForSubject(subject){
- if(subject==='公民')return[CIVICS_WEEKLY_PLAN_BOOK];
- if(subject==='歷史')return[HISTORY_WEEKLY_PLAN_BOOK,HISTORY_HAOHAOXUE_BOOK];
- if(subject==='地理')return[GEOGRAPHY_WEEKLY_PLAN_BOOK];
- return[];
 }
 function socialBookOptions(subject,v){
  if(!subject)return'<option value="">請先選擇科目</option>';

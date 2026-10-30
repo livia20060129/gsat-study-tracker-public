@@ -148,6 +148,21 @@ test('global subject changes filter the library and retain the open editor draft
   await expect(page.locator('#materialEmpty')).toBeVisible();
 });
 
+test('new-material subject choices group natural and social subdivisions', async ({ page }) => {
+  await openLibrary(page, 'natural');
+  await enableMaterialEditing(page);
+  await page.getByRole('button', { name: '新增教材', exact: true }).click();
+  const subject = page.getByLabel('科目', { exact: true });
+  await expect(subject).toHaveValue('生物');
+  await expect(subject.locator('optgroup[label="自然"] option')).toHaveText(['生物', '物理', '化學', '地科']);
+  await expect(subject.locator('optgroup[label="社會"] option')).toHaveText(['公民', '歷史', '地理']);
+  await page.getByRole('button', { name: '取消編輯', exact: true }).click();
+
+  await page.getByRole('tab', { name: '社會', exact: true }).click();
+  await page.getByRole('button', { name: '新增教材', exact: true }).click();
+  await expect(subject).toHaveValue('公民');
+});
+
 test('old catalog bookmarks redirect to the shared page and Tracker has only one material navigation entry', async ({ page }) => {
   await openLibrary(page);
   await page.goto('/material.catalog.html?from=bookmark#english');

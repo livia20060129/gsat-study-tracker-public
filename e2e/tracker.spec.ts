@@ -370,10 +370,10 @@ test('material progress only shows checked materials and keeps the selection', a
   await expect(page.locator('[data-natural-subject="地科"]')).toContainText('新關鍵');
 
   await page.getByRole('tab', { name: '社會' }).click();
-  await expect(page.locator('#materialSelectionList .material-selection-group > h3')).toHaveText(['公民', '歷史', '地理']);
-  await expect(page.locator('[data-social-subject="公民"]')).toContainText('學測週計畫');
-  await expect(page.locator('[data-social-subject="歷史"]')).toContainText('學測週計畫');
-  await expect(page.locator('[data-social-subject="地理"]')).toContainText('學測週計畫');
+  await expect(page.locator('#materialSelectionList .material-selection-group > h3')).toHaveText(['歷史']);
+  await expect(page.locator('[data-social-subject="歷史"]')).toContainText('好好學');
+  await expect(page.locator('#materialSelectionList')).not.toContainText('學測週計畫');
+  await expect(page.locator('[data-social-subject="公民"], [data-social-subject="地理"]')).toHaveCount(0);
 });
 
 test('manual material selectors use My Materials and keep existing records editable', async ({ page }) => {
@@ -385,7 +385,7 @@ test('manual material selectors use My Materials and keep existing records edita
     localStorage.setItem('study-v11:guest:material-selection', JSON.stringify([
       'math:對話式:1',
       'english:ace',
-      'book:公民｜學測週計畫',
+      'book:歷史｜好好學',
     ]));
   });
   await page.reload();
@@ -406,12 +406,12 @@ test('manual material selectors use My Materials and keep existing records edita
   await expect(page.locator('#manageMaterialsLink')).toHaveAttribute('href', './material.progress.html#social');
   await page.click('#addItemBtn');
   const socialCard = page.locator('#itemList [data-item]').last();
-  await expect(socialCard).toHaveClass(/subject-civics|subject-other/);
-  await expect(socialCard.locator('[data-field="subject"] option')).toHaveText(['請選擇', '公民']);
-  await socialCard.locator('[data-field="subject"]').selectOption('公民');
-  await expect(socialCard.locator('[data-field="book"] option')).toHaveText(['請選擇', '學測週計畫']);
-  await socialCard.locator('[data-field="book"]').selectOption('公民｜學測週計畫');
-  await expect(socialCard).toHaveClass(/subject-civics/);
+  await expect(socialCard).toHaveClass(/subject-history|subject-other/);
+  await expect(socialCard.locator('[data-field="subject"] option')).toHaveText(['請選擇', '歷史']);
+  await socialCard.locator('[data-field="subject"]').selectOption('歷史');
+  await expect(socialCard.locator('[data-field="book"] option')).toHaveText(['請選擇', '好好學']);
+  await socialCard.locator('[data-field="book"]').selectOption('歷史｜好好學');
+  await expect(socialCard).toHaveClass(/subject-history/);
   await expect(socialCard.locator('[data-book-topic-auto]')).toBeVisible();
 
   await page.evaluate(() => localStorage.setItem('study-v11:guest:material-selection', '[]'));
