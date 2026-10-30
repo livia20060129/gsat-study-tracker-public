@@ -25,33 +25,11 @@ export function studyItemSubject(item: StudyItem): string {
 
 export function studyItemSubjectClass(item: StudyItem): string {
   const subject = studyItemSubject(item);
-  let tone = 'other';
-  switch (subject) {
-    case '數學':
-      tone = 'math';
-      break;
-    case '國文':
-      tone = 'chinese';
-      break;
-    case '英文':
-      tone = 'english';
-      break;
-    case '自然':
-      tone = 'natural';
-      break;
-    case '社會':
-      tone = 'social';
-      break;
-    case '公民':
-      tone = 'civics';
-      break;
-    case '歷史':
-      tone = 'history';
-      break;
-    case '地理':
-      tone = 'geography';
-      break;
-  }
+  const tones: Record<string, string> = {
+    數學: 'math', 國文: 'chinese', 英文: 'english', 自然: 'natural',
+    社會: 'social', 公民: 'civics', 歷史: 'history', 地理: 'geography',
+  };
+  const tone = tones[subject] ?? 'other';
   return `subject-card subject-${tone}`;
 }
 

@@ -4,7 +4,10 @@ import test from 'node:test';
 import { createContext, runInContext } from 'node:vm';
 import { buildCalendarStudyTaskPlan } from '../src/application/calendar/calendarStudyTaskService.ts';
 import { prioritizeCalendarPageRanges } from '../src/calendar/pagePriority.ts';
+import { resolveMathCalendarPlan } from '../src/calendar/mathPlan.ts';
+import { CALENDAR_MATH_PLAN } from '../src/data/mathCalendar.ts';
 import { dedupePresetDefinitions } from '../src/study/presetDedup.ts';
+import { isInteractiveStudyItem } from '../src/study/interactiveTasks.ts';
 import type { CalendarTaskRow } from '../src/calendar/calendarBridge.ts';
 
 const runtime = readFileSync(new URL('../src/legacy-app.ts', import.meta.url), 'utf8');
@@ -33,12 +36,12 @@ function row(id: string, title: string, description: string, eventDate = date): 
 
 function app(rows: CalendarTaskRow[]) {
   const context = createContext({
+    isInteractiveStudyItem,
     buildCalendarStudyTaskPlan,
     prioritizeCalendarPageRanges,
+    resolveMathCalendarPlan,
     cloneObj: <T>(value: T): T => JSON.parse(JSON.stringify(value)),
-    CALENDAR_MATH_PLAN: {
-      [date]: { title: '2｜數列與求和', material: '教學講義', book: '2', start: 1, end: 11, pages: 11 },
-    },
+    CALENDAR_MATH_PLAN,
     parseDate: (value: string) => {
       const [year, month, day] = value.split('-').map(Number);
       return new Date(year, month - 1, day, 12);
@@ -69,28 +72,31 @@ const teaching = row(
   '【講義版本】教學講義\n【冊別】2\n【單元進度】1/5\n【識別碼】GSAT-SPLIT-MATH-2026-09-14',
 );
 
-test('public edition keeps every recognizable Calendar math event as a visible card', () => {
+test('public edition keeps both Calendar math events visible and resolves their page-map guidance', () => {
   for (const rows of [[newKey, teaching], [teaching, newKey]]) {
     const context = app(rows);
-    assert.equal(context.cloudMathPlansByDate[date].length, 1);
-    assert.equal(context.cloudMathPlanByDate[date].title, newKey.title);
+    assert.equal(context.cloudMathPlansByDate[date].length, 2);
+    assert.deepEqual(
+      Array.from(context.cloudMathPlansByDate[date], (plan: { title: string }) => plan.title).sort(),
+      ['1–2｜實數與指對數', '2｜數列與求和'].sort(),
+    );
+    assert.equal(context.cloudMathPlanByDate[date].title, '2｜數列與求和');
 
     const calendarDefinitions = context.cloudCalendarDefsForDate(date);
     assert.equal(calendarDefinitions.length, 2);
-    const newKeyDefinition = calendarDefinitions.find((definition: any) => definition.f.material === '新關鍵');
+    const newKeyDefinition = calendarDefinitions.find((definition: { f: Record<string, string> }) => definition.f.material === '新關鍵');
     assert.ok(newKeyDefinition);
     assert.deepEqual(
-      [newKeyDefinition.f.book, newKeyDefinition.f.start, newKeyDefinition.f.end],
-      ['1~2', '2', '5'],
+      [
+        newKeyDefinition.f.material,
+        newKeyDefinition.f.book,
+        newKeyDefinition.f.start,
+        newKeyDefinition.f.end,
+      ],
+      ['新關鍵', '1~2', '2', '5'],
     );
     assert.equal(newKeyDefinition.f.calendarPreserveSeparate, true);
-
-    const builtIn = context.presetDef(
-      'weekday_math_study', 'mathStudy', '數學講義：進度', 'built in', true,
-    );
-    const combined = dedupePresetDefinitions([builtIn, ...calendarDefinitions]);
-    assert.equal(combined.length, 3);
-    assert.ok(combined.some(definition => definition.f.material === '新關鍵'));
+    assert.equal(dedupePresetDefinitions(calendarDefinitions).length, 2);
   }
 });
 
@@ -105,4 +111,15 @@ test('Sunday Calendar math still creates a card when there is no built-in math p
   const definitions = context.cloudCalendarDefsForDate(sunday);
   assert.equal(definitions.length, 1);
   assert.deepEqual([definitions[0].f.start, definitions[0].f.end], ['26', '28']);
+});
+
+test('fraction-only Calendar math uses page-map guidance without creating an offline schedule', () => {
+  const moved = '2026-10-29';
+  const context = app([1, 2].map(part => row(`moved-${part}`, '4A｜條件機率與貝氏定理',
+    `【講義版本】教學講義 【冊別】4A 【單元進度】條件機率與貝氏定理（${part}/4） 【來源日期】2026/10/${6 + part}`, moved)));
+  const definitions = context.cloudCalendarDefsForDate(moved);
+  assert.equal(definitions.length, 2);
+  assert.equal(dedupePresetDefinitions(definitions).length, 2);
+  assert.deepEqual(Array.from(definitions, (definition: { f: Record<string, string> }) => [definition.f.book, definition.f.start, definition.f.end]),
+    [['4A', '151', '162'], ['4A', '163', '174']]);
 });

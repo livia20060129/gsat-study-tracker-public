@@ -58,9 +58,70 @@ function isWeekly(item: StudyItem): boolean {
   return item.f?.calendarRoute === 'week';
 }
 
+/** Manual cards own their range and completion state, even when they count as required work. */
+function canGroupScheduledWork(item: StudyItem): boolean {
+  return Boolean(item.source) && item.source !== 'custom';
+}
+
 function sourceItems(item: StudyItem): StudyItem[] {
   const sources = item.f?.dailyWorkSourceItems;
   return Array.isArray(sources) && sources.length ? sources : [item];
+}
+
+function itemIdentity(item: StudyItem): string {
+  const id = text(item.id);
+  if (id) return `id:${id}`;
+  const presetKey = text(item.presetKey);
+  return presetKey ? `preset:${presetKey}` : '';
+}
+
+/** Grouping also copies the natural children onto the parent and its visible child. */
+function relinkNaturalIntegrationEntries(item: StudyItem, sources: StudyItem[]): void {
+  const entries = item.f?.calendarIntegrationEntries;
+  const canonical = preferredBase(sources).f?.calendarIntegrationEntries;
+  if (!Array.isArray(entries) || !Array.isArray(canonical)) return;
+  const byId = new Map(canonical.filter(entry => entry?.id).map(entry => [entry.id, entry]));
+  item.f.calendarIntegrationEntries = entries.map(entry => byId.get(entry?.id) ?? entry);
+}
+
+/**
+ * JSON storage duplicates the hidden source objects referenced by a grouped
+ * child. Relink those copies to the canonical sources kept by the parent so a
+ * child edit cannot appear successful in the UI while leaving the persisted
+ * source unchanged.
+ */
+export function relinkDailyWorkSourceItems(items: StudyItem[]): void {
+  for (const root of items) {
+    const rootSources = root.f?.dailyWorkSourceItems;
+    if (!Array.isArray(rootSources) || !rootSources.length) continue;
+
+    const canonicalSources = new Map<string, StudyItem>();
+    const register = (item: StudyItem): void => {
+      const identity = itemIdentity(item);
+      if (identity && !canonicalSources.has(identity)) canonicalSources.set(identity, item);
+      const sources = item.f?.dailyWorkSourceItems;
+      if (Array.isArray(sources)) sources.forEach(register);
+    };
+    rootSources.forEach(register);
+
+    const visited = new Set<StudyItem>();
+    const relink = (item: StudyItem): void => {
+      if (!item || visited.has(item)) return;
+      visited.add(item);
+      const sources = item.f?.dailyWorkSourceItems;
+      if (Array.isArray(sources)) {
+        item.f!.dailyWorkSourceItems = sources.map(source => (
+          canonicalSources.get(itemIdentity(source)) || source
+        ));
+        if (item.f!.dailyWorkSourceItems.length) {
+          relinkNaturalIntegrationEntries(item, item.f!.dailyWorkSourceItems);
+        }
+      }
+      const children = item.f?.groupedWorkEntries;
+      if (Array.isArray(children)) children.forEach(relink);
+    };
+    relink(root);
+  }
 }
 
 function uniqueText(values: unknown[]): string[] {
@@ -120,7 +181,7 @@ function groupedChild(item: StudyItem, index: number): StudyItem {
 function groupSeparatedRanges(items: StudyItem[]): StudyItem[] {
   const buckets = new Map<string, Array<{ item: StudyItem; index: number }>>();
   items.forEach((item, index) => {
-    if (isWeekly(item) || !numericPageRange(item.f) || Array.isArray(item.f?.groupedWorkEntries)) return;
+    if (!canGroupScheduledWork(item) || isWeekly(item) || !numericPageRange(item.f) || Array.isArray(item.f?.groupedWorkEntries)) return;
     const key = workIdentity(item);
     const bucket = buckets.get(key) || [];
     bucket.push({ item, index });
@@ -131,7 +192,7 @@ function groupSeparatedRanges(items: StudyItem[]): StudyItem[] {
   items.forEach((item, index) => {
     const key = workIdentity(item);
     const bucket = buckets.get(key) || [];
-    if (!numericPageRange(item.f) || bucket.length < 2 || isWeekly(item) || Array.isArray(item.f?.groupedWorkEntries)) {
+    if (!canGroupScheduledWork(item) || !numericPageRange(item.f) || bucket.length < 2 || isWeekly(item) || Array.isArray(item.f?.groupedWorkEntries)) {
       output.push(item);
       return;
     }
@@ -146,7 +207,7 @@ function groupSeparatedRanges(items: StudyItem[]): StudyItem[] {
 }
 
 function roundIdentity(item: StudyItem): string {
-  if (!text(item.f?.round) || isWeekly(item)) return '';
+  if (!canGroupScheduledWork(item) || !text(item.f?.round) || isWeekly(item)) return '';
   return workIdentity(item);
 }
 
@@ -172,7 +233,7 @@ function groupRounds(items: StudyItem[]): StudyItem[] {
     emitted.add(key);
     const byRound = new Map<string, StudyItem[]>();
     bucket.forEach(entry => {
-      const round = [text(entry.f?.topic), text(entry.f?.round)].filter(Boolean).join('｜');
+      const round = [text(entry.f?.topic), text(entry.f?.round), text(entry.f?.roundEnd || entry.f?.round)].filter(Boolean).join('｜');
       const sameRound = byRound.get(round) || [];
       sameRound.push(entry);
       byRound.set(round, sameRound);
@@ -267,7 +328,7 @@ function mergeMathPracticeTemplate(items: StudyItem[]): StudyItem {
 function groupBlankScheduledTemplates(items: StudyItem[]): StudyItem[] {
   const buckets = new Map<string, StudyItem[]>();
   items.forEach(item => {
-    if (isWeekly(item)) return;
+    if (!canGroupScheduledWork(item) || isWeekly(item)) return;
     const key = templateIdentity(item);
     const bucket = buckets.get(key) || [];
     bucket.push(item);
@@ -322,12 +383,12 @@ export function ungroupDailyWorkItems(items: StudyItem[]): StudyItem[] {
   return items.flatMap(item => item.f?.dailyWorkGroup ? sourceItems(item) : [item]);
 }
 
-/** Final daily pass: merge work regardless of whether it came from Calendar or a deferral. */
+/** Merge scheduled/Calendar/deferred work, leaving manually added cards independent. */
 export function groupDailyWorkItems(items: StudyItem[]): StudyItem[] {
   const ranged = contiguousRangeClusters(
     items,
     workIdentity,
-    item => isWeekly(item) || Array.isArray(item.f?.groupedWorkEntries) ? null : numericPageRange(item.f),
+    item => !canGroupScheduledWork(item) || isWeekly(item) || Array.isArray(item.f?.groupedWorkEntries) ? null : numericPageRange(item.f),
   ).map(mergeRangeCluster);
   return groupBlankScheduledTemplates(groupRounds(groupSeparatedRanges(ranged)));
 }
@@ -343,6 +404,8 @@ export function propagateDailyWorkDone(item: StudyItem, done: boolean): void {
     if (Array.isArray(sources)) sources.forEach(apply);
     const children = target.f?.groupedWorkEntries;
     if (Array.isArray(children)) children.forEach(apply);
+    const integration = target.f?.calendarIntegrationEntries;
+    if (Array.isArray(integration)) integration.forEach(child => apply(child as StudyItem));
   };
   apply(item);
 }

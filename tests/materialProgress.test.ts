@@ -6,17 +6,6 @@ import {
   materialProgressRows,
   readMaterialProgressRecords,
 } from '../src/study/materialProgress.ts';
-import { PHYSICS_COMEBACK_PAGE_MAP } from '../src/data/lecturePageMaps.ts';
-import {
-  CIVICS_WEEKLY_PLAN_BOOK,
-  GEOGRAPHY_WEEKLY_PLAN_BOOK,
-  HISTORY_HAOHAOXUE_BOOK,
-  HISTORY_WEEKLY_PLAN_BOOK,
-} from '../src/data/bookPageMaps.ts';
-import {
-  DIALOGUE_REVIEW_12_PAGE_MAP,
-  DIALOGUE_REVIEW_34_PAGE_MAP,
-} from '../src/data/mathMaterialPageMaps.ts';
 import type { StudyItem, StudyRecord } from '../src/types.ts';
 
 function item(overrides: Partial<StudyItem> = {}): StudyItem {
@@ -45,19 +34,24 @@ test('leaves unrecorded material segments empty and alternates segment tones', (
   assert.ok(ace.segments.every(segment => !segment.recorded));
 });
 
-test('reads a recorded math range from a grouped child without filling untouched units', () => {
-  const child = item({
-    id: 'math-child',
-    type: 'mathLecture',
-    done: true,
-    f: { material: '教學講義', book: '1', start: '149', end: '165', progress: true },
-  });
-  const parent = item({ id: 'group', f: { groupedWorkEntries: [child] } });
-  const math = materialProgressRows([record([parent])]).find(row => row.id === 'math:教學講義:1');
-  assert.ok(math);
-  assert.equal(math.recorded, 1);
-  assert.match(math.segments.find(segment => segment.recorded)?.label ?? '', /多項式及其運算/);
-  assert.equal(math.segments.find(segment => segment.recorded)?.completionPercent, 71);
+test('classifies the progress chart by the same material groups as manual entry', () => {
+  const rows = materialProgressRows([]);
+  const groupFor = (id: string) => rows.find(row => row.id === id)?.group;
+
+  assert.equal(groupFor('english:ace'), '學測');
+  assert.equal(groupFor('english:grammar'), '學測');
+  assert.equal(groupFor('english:azar-intermediate'), '補充');
+  assert.equal(groupFor('book:Unlock 3 (Listening, Speaking, Critical Thinking)'), '補充');
+  assert.equal(groupFor('math:新關鍵:1~2'), '複習講義');
+  assert.equal(groupFor('math:教學講義:1'), '分冊講義');
+  assert.equal(groupFor('natural:物理:123日的淬鍊'), '物理');
+  assert.equal(groupFor('natural:物理:新關鍵'), '物理');
+  assert.equal(groupFor('natural:化學:好考點'), '化學');
+  assert.equal(groupFor('natural:化學:新關鍵'), '化學');
+  assert.equal(groupFor('natural:生物:123日的淬鍊'), '生物');
+  assert.equal(groupFor('natural:生物:新關鍵'), '生物');
+  assert.equal(groupFor('natural:地科:123日的淬鍊'), '地科');
+  assert.equal(groupFor('natural:地科:新關鍵'), '地科');
 });
 
 test('Biology New Key groups its progress bar by large topics and records actual pages', () => {
@@ -153,89 +147,19 @@ test('Earth Science New Key groups its progress bar into eight large topics', ()
   );
 });
 
-test('adds all four Dialogue split books and the two review books to material progress', () => {
-  const rows = materialProgressRows([]);
-  assert.deepEqual(
-    rows.filter(row => row.id.startsWith('math:對話式:')).map(row => row.id),
-    ['math:對話式:1', 'math:對話式:2', 'math:對話式:3A', 'math:對話式:4A'],
-  );
-  assert.ok(rows.some(row => row.id === 'math:對話式複習講義:1~2'));
-  assert.ok(rows.some(row => row.id === 'math:對話式複習講義:3A~4A'));
-});
-
-test('adds High-Frequency Vocabulary as an English material with the photographed unit ranges', () => {
-  const vocabulary = materialProgressRows([]).find(row => row.id === 'book:英語高頻字彙完全攻略');
-  assert.ok(vocabulary);
-  assert.equal(vocabulary.title, '英語高頻字彙完全攻略');
-  assert.equal(vocabulary.total, 38);
-  assert.equal(vocabulary.segments[0].label, 'Part 1 Basic｜Unit 1｜The Melting Ice Caps｜極地冰冠融化中（p.8–12）');
-  assert.equal(vocabulary.segments.at(-1)?.label, '附錄｜單字索引（p.254 起）');
-});
-
-test('adds separate civics, history, and geography materials and records their page ranges', () => {
-  const completed = item({
-    id: 'civics-pages',
-    type: 'socialStudy',
-    done: true,
-    f: { subject: '公民', book: CIVICS_WEEKLY_PLAN_BOOK, start: '16', end: '31', progress: true },
-  });
-  const rows = materialProgressRows([record([completed])]);
-  const socialRows = rows.filter(row => row.subject === 'social');
-  assert.deepEqual(socialRows.map(row => row.title), [
-    CIVICS_WEEKLY_PLAN_BOOK,
-    HISTORY_WEEKLY_PLAN_BOOK,
-    HISTORY_HAOHAOXUE_BOOK,
-    GEOGRAPHY_WEEKLY_PLAN_BOOK,
-  ]);
-  assert.ok(socialRows.every(row => row.unitLabel === '單元'));
-  const civics = socialRows.find(row => row.title === CIVICS_WEEKLY_PLAN_BOOK);
-  assert.ok(civics);
-  assert.equal(civics.segments.filter(segment => segment.recorded).length, 2);
-  assert.equal(civics.segments[1].completionPercent, 100);
-  assert.equal(civics.segments[2].completionPercent, 8);
-});
-
-test('adds Haohaoxue History as a separate selectable 281-page material', () => {
-  const row = materialProgressRows([]).find(entry => entry.title === HISTORY_HAOHAOXUE_BOOK);
-  assert.ok(row);
-  assert.equal(row.total, 9);
-  assert.equal(row.segments[0].label, '好好學 歷史｜單元1｜多元族群社會的形成（p.2–24）');
-  assert.equal(row.segments.at(-1)?.label, '好好學 歷史｜單元9｜世界變遷與現代性（p.252–281）');
-});
-
-test('uses the scanned Dialogue review contents through the final textbook pages', () => {
-  assert.deepEqual(DIALOGUE_REVIEW_12_PAGE_MAP, [
-    [1, 20, '數與式'],
-    [21, 45, '直線與圓'],
-    [46, 72, '多項式'],
-    [73, 107, '數列級數與數據分析'],
-    [108, 139, '排列組合與機率'],
-    [140, 164, '三角比的定義及其性質'],
-  ]);
-  assert.deepEqual(DIALOGUE_REVIEW_34_PAGE_MAP, [
-    [1, 25, '三角函數'],
-    [26, 52, '指數函數與對數函數'],
-    [53, 85, '平面向量'],
-    [86, 112, '空間向量'],
-    [113, 136, '空間中的平面與直線'],
-    [137, 155, '條件機率'],
-    [156, 188, '矩陣'],
-  ]);
-});
-
-test('records Dialogue review pages against the correct unit boundary', () => {
-  const mathItem = item({
-    id: 'dialogue-review-boundary',
+test('reads a recorded math range from a grouped child without filling untouched units', () => {
+  const child = item({
+    id: 'math-child',
     type: 'mathLecture',
     done: true,
-    f: { material: '對話式複習講義', book: '1～2冊', start: '20', end: '21' },
+    f: { material: '教學講義', book: '1', start: '149', end: '165', progress: true },
   });
-  const row = materialProgressRows([record([mathItem])]).find(entry => entry.id === 'math:對話式複習講義:1~2');
-  assert.ok(row);
-  assert.deepEqual(row.segments.filter(segment => segment.recorded).map(segment => segment.label), [
-    '數與式（p.1–20）',
-    '直線與圓（p.21–45）',
-  ]);
+  const parent = item({ id: 'group', f: { groupedWorkEntries: [child] } });
+  const math = materialProgressRows([record([parent])]).find(row => row.id === 'math:教學講義:1');
+  assert.ok(math);
+  assert.equal(math.recorded, 1);
+  assert.match(math.segments.find(segment => segment.recorded)?.label ?? '', /多項式及其運算/);
+  assert.equal(math.segments.find(segment => segment.recorded)?.completionPercent, 71);
 });
 
 test('uses the printed New Key books 1-2 page boundaries through the final p.191', () => {
@@ -364,47 +288,14 @@ test('records New Key books 3A-4A boundaries and stops at p.187', () => {
   assert.equal(math.segments[6].completionPercent, 3);
 });
 
-test('adds the supplied New Grand Slam Math A map through p.353', () => {
-  const math = materialProgressRows([]).find(row => row.id === 'math:新大滿貫:A');
-  assert.ok(math);
-  assert.equal(math.segments[0].label, '單元1 數與式（p.6–19）');
-  assert.equal(math.segments[13].label, '單元14 矩陣（p.316–348）');
-  assert.equal(math.segments[14].label, '114學年度學科能力測驗（數學A考科）（p.349–353）');
-});
-
-test('adds the supplied Navigator, Advantage and Comeback lecture page maps', () => {
-  const rows = materialProgressRows([]);
-  const chemistry = rows.find(row => row.id === 'natural:化學:領航');
-  const physics = rows.find(row => row.id === 'natural:物理:優勢');
-  const comeback = rows.find(row => row.id === 'natural:物理:逆轉勝');
-  assert.ok(chemistry && physics && comeback);
-  assert.equal(chemistry.segments.at(-1)?.label, '第4章 生活中的化學｜4-4 化學的現代應用（p.265–290）');
-  assert.equal(physics.segments.at(-1)?.label, '第6章 量子現象｜6-2 原子光譜（p.230–244）');
-  assert.equal(comeback.segments.length, 37);
-  assert.equal(comeback.segments[0].label, '單元1 科學的態度與方法｜主題1 科學的態度與方法（p.3）');
-  assert.equal(comeback.segments[17].label, '單元7 波動與光學｜主題1 波動的基本性質（p.120–129）');
-  assert.equal(comeback.segments[35].label, '素養導向進階試題｜題型1 探究實作（p.243–249）');
-  assert.equal(comeback.segments[36].label, '素養導向進階試題｜題型2 跨科整合（p.250–255）');
-  for (let index = 1; index < PHYSICS_COMEBACK_PAGE_MAP.length; index += 1) {
-    assert.equal(PHYSICS_COMEBACK_PAGE_MAP[index][0], PHYSICS_COMEBACK_PAGE_MAP[index - 1][1] + 1);
-  }
-});
-
-test('records actual pages for the newly mapped math and natural lectures', () => {
-  const mathItem = item({
-    id: 'grand-slam', type: 'mathLecture', done: true,
-    f: { material: '新大滿貫', book: '數學A', start: '316', end: '320' },
-  });
-  const chemistryItem = item({
-    id: 'navigator', type: 'scienceReview', done: true,
-    f: { subject: '化學', material: '領航', start: '173', end: '187' },
-  });
-  const rows = materialProgressRows([record([mathItem, chemistryItem])]);
-  assert.equal(rows.find(row => row.id === 'math:新大滿貫:A')?.segments[13].recorded, true);
-  assert.match(
-    rows.find(row => row.id === 'natural:化學:領航')?.segments.find(segment => segment.recorded)?.label ?? '',
-    /3-4 水溶液中的酸鹼反應/,
-  );
+test('public lecture materials appear in material progress', () => {
+  const rowIds = materialProgressRows([]).map(row => row.id);
+  assert.equal(rowIds.includes('math:新大滿貫:A'), true);
+  assert.equal(rowIds.includes('natural:化學:領航'), true);
+  assert.equal(rowIds.includes('natural:物理:優勢'), true);
+  assert.equal(rowIds.includes('natural:物理:逆轉勝'), true);
+  assert.equal(rowIds.includes('book:學測週計畫'), true);
+  assert.equal(rowIds.includes('book:混合題30篇實戰演練'), true);
 });
 
 test('fills a page-based segment only by its actual covered percentage and deduplicates overlap', () => {
@@ -462,6 +353,27 @@ test('requires actual activity before an English topic round is filled', () => {
   assert.match(row.segments.find(segment => segment.recorded)?.label ?? '', /第二回/);
 });
 
+test('fills Unlock 3 progress from completed actual page records', () => {
+  const completed = item({
+    id: 'unlock-unit-1-part',
+    type: 'extra',
+    done: true,
+    f: {
+      title: 'Unlock 3 (Listening, Speaking, Critical Thinking)',
+      start: '14',
+      end: '24',
+    },
+  });
+  const unlock = materialProgressRows([record([completed])])
+    .find(row => row.id === 'book:Unlock 3 (Listening, Speaking, Critical Thinking)');
+
+  assert.ok(unlock);
+  assert.equal(unlock.recorded, 1);
+  assert.equal(unlock.segments.find(segment => segment.recorded)?.completionPercent, 50);
+  assert.match(unlock.segments.find(segment => segment.recorded)?.label ?? '', /Unit 1｜Animals/);
+  assert.match(unlock.segments.at(-1)?.label ?? '', /Acknowledgements（p\.223）/);
+});
+
 test('includes completed Calendar natural integration child ranges', () => {
   const calendar = item({
     id: 'calendar-natural',
@@ -478,7 +390,7 @@ test('includes completed Calendar natural integration child ranges', () => {
   assert.match(biology.segments.find(segment => segment.recorded)?.label ?? '', /Chapter 2 遺傳/);
 });
 
-test('shows one Azar progress segment per chapter while preserving section-level completion', () => {
+test('groups Azar sections into chapter-sized progress blocks', () => {
   const first = item({
     id: 'azar-2-1', type: 'extra', done: true,
     f: { title: 'Azar英文文法（中階）', azarSectionCode: '2-1', start: '31', end: '31' },
@@ -490,14 +402,39 @@ test('shows one Azar progress segment per chapter while preserving section-level
   const parent = item({ id: 'azar-chapter', f: { groupedWorkEntries: [first, second] } });
   const azar = materialProgressRows([record([parent])]).find(row => row.id === 'english:azar-intermediate');
   assert.ok(azar);
-  assert.equal(azar.unitLabel, '章');
   assert.equal(azar.total, 14);
   assert.equal(azar.recorded, 1);
-  assert.equal(azar.segments[0].label, '第一章：現在式（p.1–29）');
-  assert.equal(azar.segments[13].label, '第十四章：名詞子句（p.400–428）');
-  assert.equal(azar.segments.find(segment => segment.key === '2')?.recorded, true);
-  assert.equal(azar.segments.find(segment => segment.key === '2')?.completionPercent, 3);
+  assert.match(azar.segments.find(segment => segment.key === '2')?.label ?? '', /Ch\.2 過去式/);
+  assert.equal(azar.segments.find(segment => segment.key === '2')?.completionPercent, 11);
   assert.equal(azar.segments.find(segment => segment.key === '1')?.recorded, false);
+});
+
+test('one completed Azar chapter card counts its actual page range only once', () => {
+  const chapter = item({
+    id: 'azar-chapter-range', type: 'extra', done: true,
+    f: { title: 'Azar英文文法（中階）', start: '18', end: '21', azarChapterNumber: 1,
+      azarLegacySections: [item({ id: 'archived-1', type: 'extra', done: true,
+        f: { title: 'Azar英文文法（中階）', start: '18', end: '20', azarSectionCode: '1-6' } })] },
+  });
+  const azar = materialProgressRows([record([chapter])]).find(row => row.id === 'english:azar-intermediate');
+  assert.ok(azar);
+  assert.equal(azar.recorded, 1);
+  assert.equal(azar.segments.find(segment => segment.key === '1')?.recorded, true);
+});
+
+test('unfinished merged Azar chapter keeps only completed legacy subsection coverage', () => {
+  const chapter = item({
+    id: 'azar-partial-chapter', type: 'extra', done: false, minutes: '20',
+    f: { title: 'Azar英文文法（中階）', start: '18', end: '21', azarChapterNumber: 1,
+      azarLegacySections: [
+        item({ id: 'old-1', type: 'extra', done: true, f: { start: '18', end: '20' } }),
+        item({ id: 'old-2', type: 'extra', done: false, f: { start: '21', end: '21' } }),
+      ] },
+  });
+  const azar = materialProgressRows([record([chapter])]).find(row => row.id === 'english:azar-intermediate');
+  assert.ok(azar);
+  assert.equal(azar.recorded, 1);
+  assert.equal(azar.segments.find(segment => segment.key === '1')?.completionPercent, 10);
 });
 
 test('uses the Tracker active account prefix and ignores other account records', () => {

@@ -1,4 +1,9 @@
 import type { StudyItem, StudyRecord, StudyTimerState } from '../types.ts';
+import { calendarFixedTemplate } from '../calendar/calendarBridge.ts';
+import { numberedStudyScope, usesSharedPageTemplate, type NumberedScopeKind } from '../data/numberedScopes.ts';
+import { bookUnitRange, bookUnitText } from './unitBookProgress.ts';
+import { applyNumberedScope, numberedScopeText, validNumberedScope } from './numberedScopeProgress.ts';
+import { markCalendarNaturalCompletionByUser, markCalendarNaturalProgressByUser } from './calendarNaturalCompletion.ts';
 import {
   applyManualCompletionMetadata,
   completionChildItems,
@@ -6,14 +11,18 @@ import {
   refreshCompletionTree,
 } from './completionTree.ts';
 import {
-  propagateDailyWorkDone,
   propagateDailyWorkField,
   propagateDailyWorkMinutes,
+  propagateDailyWorkRangeField,
+  relinkDailyWorkSourceItems,
 } from './dailyWorkGroup.ts';
 import { deferredCapacityCandidates, isConfirmedDeferred, isDeferrableStudyItem } from './deferDays.ts';
 import { activeEnglishTaskItems } from './englishTaskChoice.ts';
+import { isInteractiveStudyItem } from './interactiveTasks.ts';
+import { STUDY_PROGRESS_FIELDS, studyItemProgress } from './itemProgress.ts';
 import { studyItemSubject } from './subjectOrder.ts';
 import { normalizeStudyTimerState } from './studyTimer.ts';
+import { validatePageRange } from './pageRangeValidation.ts';
 
 export const OVERDUE_TASK_SUBJECTS = ['all', 'chinese', 'english', 'math', 'natural', 'other'] as const;
 export type OverdueTaskSubject = typeof OVERDUE_TASK_SUBJECTS[number];
@@ -22,6 +31,9 @@ export type OverdueItemSubject = Exclude<OverdueTaskSubject, 'all'>;
 export interface OverdueTaskDetail {
   label: string;
   value: string;
+  editableRange?: 'start' | 'end';
+  unitMaximum?: number;
+  rangeKind?: NumberedScopeKind;
 }
 
 export interface OverdueTaskProgress {
@@ -104,12 +116,6 @@ const DETAIL_FIELDS: Array<[string, string]> = [
   ['translation', '中譯英'], ['gsatPart1', 'GSAT 第壹部分'],
 ];
 
-const PROGRESS_FIELDS: Array<[string, string]> = [
-  ['progress', '進度'], ['graded', '批改'], ['corrected', '訂正'], ['review', '需要再複習'],
-  ['listening', '英聽'], ['vocab', '單字'], ['translation', '中譯英'],
-  ['gsatPart1', 'GSAT 第壹部分'],
-];
-
 function dateNumber(value: string): number | null {
   const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!match) return null;
@@ -132,8 +138,11 @@ function taskTitle(item: StudyItem): string {
 function taskDescription(item: StudyItem): string {
   const description = String(item.description ?? '').trim();
   if (description && description !== taskTitle(item)) return description;
+  const scope = numberedStudyScope(item);
+  if (scope) return scope.kind === 'unit' ? bookUnitText(item) : numberedScopeText(item);
   const material = String(item.f?.material || item.f?.book || '').trim();
-  const pages = [item.f?.start, item.f?.end].map(value => String(value ?? '').trim()).filter(Boolean);
+  const range = taskPageRange(item);
+  const pages = [range.start, range.end].filter(Boolean);
   if (material && pages.length) return `${material}｜p.${pages.join('–')}`;
   return material;
 }
@@ -168,15 +177,69 @@ function magazineDetails(value: unknown): string {
   }).filter(Boolean).join('；');
 }
 
+function hasOwn(object: unknown, key: string): boolean {
+  return Boolean(object && typeof object === 'object' && !Array.isArray(object)
+    && Object.prototype.hasOwnProperty.call(object, key));
+}
+
+function pageRangeFromText(item: StudyItem): { start: string; end: string } {
+  const fields = item.f ?? {};
+  const candidates = [fields.calendarRangeText, item.description, item.title];
+  for (const candidate of candidates) {
+    const text = String(candidate ?? '');
+    const match = text.match(/(?:p\.?\s*|頁碼(?:範圍)?[^\d]{0,12})(\d+)\s*(?:[–—~\-至到]\s*(?:p\.?\s*)?(\d+))?/i);
+    if (match) return { start: match[1], end: match[2] || match[1] };
+  }
+  return { start: '', end: '' };
+}
+
+function taskPageRange(item: StudyItem): { start: string; end: string; editable: boolean } {
+  const fields = item.f ?? {};
+  const scope = numberedStudyScope(item);
+  if (scope && (!scope.start || /^\d+$/.test(scope.start))) {
+    return { ...(scope.kind === 'unit' ? bookUnitRange(item) : scope), editable: true };
+  }
+  const userFields = fields.dailyWorkUserFields;
+  const textRange = pageRangeFromText(item);
+  const value = (field: 'start' | 'end'): string => {
+    const explicit = detailValue(fields[field]);
+    if (explicit || hasOwn(userFields, field)) return explicit;
+    const suggestedKey = field === 'start' ? 'calendarSuggestedStart' : 'calendarSuggestedEnd';
+    return detailValue(fields[suggestedKey]) || textRange[field];
+  };
+  const start = value('start');
+  const end = value('end') || start;
+  const mathRange = item.type === 'mathStudy' || item.type === 'mathLecture' || item.type === 'mathPractice';
+  const editable = mathRange || usesSharedPageTemplate(item) || Boolean(start || end)
+    || hasOwn(fields, 'start') || hasOwn(fields, 'end')
+    || hasOwn(fields, 'calendarSuggestedStart') || hasOwn(fields, 'calendarSuggestedEnd');
+  return { start, end, editable };
+}
+
 function taskDetails(item: StudyItem): OverdueTaskDetail[] {
   const details: OverdueTaskDetail[] = [{
     label: '項目類型',
     value: ITEM_TYPE_LABELS[item.type] ?? item.type,
   }];
   const fields = item.f ?? {};
+  const pageRange = taskPageRange(item);
+  const scope = numberedStudyScope(item);
+  const numberedRange = scope && (!scope.start || /^\d+$/.test(scope.start));
   for (const [key, label] of DETAIL_FIELDS) {
+    if ((numberedRange || usesSharedPageTemplate(item)) && ['unit', 'unitStart', 'unitEnd', 'round'].includes(key)) continue;
+    if (key === 'start' || key === 'end') {
+      if (!pageRange.editable) continue;
+      const scopeLabel = scope?.kind === 'unit' ? 'Unit' : '回次';
+      details.push({
+        label: numberedRange ? `${key === 'start' ? '起始' : '結束'} ${scopeLabel}` : label,
+        value: key === 'start' ? pageRange.start : pageRange.end,
+        editableRange: key,
+        ...(numberedRange ? { rangeKind: scope.kind, unitMaximum: scope.maximum } : {}),
+      });
+      continue;
+    }
     if (!(key in fields)) continue;
-    if (PROGRESS_FIELDS.some(([progressKey]) => progressKey === key) && typeof fields[key] === 'boolean') continue;
+    if (STUDY_PROGRESS_FIELDS.some(([progressKey]) => progressKey === key) && typeof fields[key] === 'boolean') continue;
     const value = detailValue(fields[key]);
     if (value) details.push({ label, value });
   }
@@ -187,22 +250,78 @@ function taskDetails(item: StudyItem): OverdueTaskDetail[] {
   return details;
 }
 
-function taskProgress(item: StudyItem): OverdueTaskProgress[] {
-  const fields = item.f ?? {};
-  return PROGRESS_FIELDS.filter(([key]) => typeof fields[key] === 'boolean').map(([key, label]) => ({
-    key,
-    label,
-    checked: fields[key] === true,
-  }));
-}
-
 function overdueCandidates(record: StudyRecord): StudyItem[] {
   const activeItems = activeEnglishTaskItems(record, Array.isArray(record.items) ? record.items : []);
   return deferredCapacityCandidates(activeItems) as StudyItem[];
 }
 
+function overdueTaskItem(record: StudyRecord, itemId: string): StudyItem | null {
+  return overdueCandidates(record).find(item => item.id === itemId)
+    ?? findCompletionItem(record.items, itemId);
+}
+
+/**
+ * JSON persistence duplicates source items referenced by merged cards. Relink
+ * those copies before every todo edit so the visible overdue row and the
+ * nested card reference always update the same object.
+ */
+function editableOverdueRecord(record: StudyRecord): StudyRecord {
+  const updated = JSON.parse(JSON.stringify(record)) as StudyRecord;
+  relinkDailyWorkSourceItems(updated.items);
+  return updated;
+}
+
+const MATH_PRACTICE_PRESET_KEYS = new Set([
+  'weekday_math_practice', 'fri_math_practice', 'sat_math_practice', 'sun_math_practice',
+]);
+
+const EXCLUDED_ENGLISH_ROUTINE_TEMPLATES = new Set([
+  'englishMockTimed', 'englishMockCorrection', 'englishMixedWriting', 'fixedMagazine',
+]);
+const EXCLUDED_ENGLISH_ROUTINE_KEYS = new Set([
+  'fri_mock_timed', 'sat_mock_correction', 'english_mixed_writing', 'weekday_magazine', 'fri_magazine',
+]);
+const EXCLUDED_ENGLISH_ROUTINE_PREFIXES = [
+  'cal_fixed_englishMockTimed_', 'cal_fixed_englishMockCorrection_', 'cal_fixed_englishMixedWriting_',
+  'cal_fixed_fixedMagazine_', 'cal_magazine_', 'cal_listening_a_',
+];
+
+export function isExcludedEnglishTodoTitle(value: unknown, subject: OverdueItemSubject): boolean {
+  const title = String(value ?? '').replace(/\s+/g, '').replace(/\//g, '／').replace(/:/g, '：')
+    .replace(/\|/g, '｜').replace(/^(?:英文｜)+/, '');
+  return /^(?:英文：)?大考英聽A攻略(?=$|[｜:：（(]|(?:Test|第|p[.．])[0-9０-９])/i.test(title)
+    || EXCLUDED_ENGLISH_ROUTINE_TEMPLATES.has(calendarFixedTemplate(title) ?? '')
+    || (subject === 'english' && /^混合題與作文(?:練習)?(?:$|｜)/.test(title));
+}
+
+/** Match fixed English routines and the listening book without excluding other materials. */
+function isExcludedEnglishTodoItem(item: StudyItem): boolean {
+  if (item.type === 'englishMixedWriting') return true;
+  if (EXCLUDED_ENGLISH_ROUTINE_TEMPLATES.has(String(item.f?.calendarFixedTemplate ?? ''))) return true;
+  if ([item.presetKey, item.templatePresetKey].some(value => {
+    const key = String(value ?? '');
+    return EXCLUDED_ENGLISH_ROUTINE_KEYS.has(key) || EXCLUDED_ENGLISH_ROUTINE_PREFIXES.some(prefix => key.startsWith(prefix));
+  })) return true;
+  const subject = taskSubject(item);
+  return [item.title, item.f?.calendarOriginalTitle, item.f?.title, item.f?.book, item.f?.material]
+    .some(value => isExcludedEnglishTodoTitle(value, subject));
+}
+
+function isMathPracticeReminder(item: StudyItem): boolean {
+  if (item.type === 'mathPractice' || item.f?.calendarFixedTemplate === 'mathPractice') return true;
+  if (MATH_PRACTICE_PRESET_KEYS.has(String(item.presetKey ?? ''))
+    || MATH_PRACTICE_PRESET_KEYS.has(String(item.templatePresetKey ?? ''))) return true;
+  const title = String(item.title ?? '').replace(/\s+/g, '');
+  return /^數學講義題目[｜:：]理解檢查[＋+]錯題標記[＋+]訂正(?:$|｜)/.test(title);
+}
+
 function isPendingOverdueTask(item: StudyItem): boolean {
   return isDeferrableStudyItem(item)
+    && !isInteractiveStudyItem(item)
+    && !isExcludedEnglishTodoItem(item)
+    && item.presetKey !== 'weekday_english_review'
+    && String(item.title ?? '').trim() !== '英文訂正與搭配詞整理'
+    && !isMathPracticeReminder(item)
     && !item.done
     && !isConfirmedDeferred(item)
     && !item.deferredCarry
@@ -232,7 +351,7 @@ export function overdueTasks(records: StudyRecord[], today: string): OverdueTask
         minutes: String(item.minutes ?? ''),
         timer: normalizeStudyTimerState(item.f?.timeTracking),
         details: taskDetails(item),
-        progress: taskProgress(item),
+        progress: studyItemProgress(item),
         daysOverdue,
       });
     }
@@ -251,8 +370,8 @@ export function updateOverdueTaskSkip(
   skippedOn: string | null,
   handledAt = new Date().toISOString(),
 ): StudyRecord | null {
-  const updated = JSON.parse(JSON.stringify(record)) as StudyRecord;
-  const item = findCompletionItem(updated.items, itemId);
+  const updated = editableOverdueRecord(record);
+  const item = overdueTaskItem(updated, itemId);
   if (!item) return null;
   item.f = item.f || {};
   if (skippedOn) {
@@ -272,8 +391,8 @@ export function updateOverdueTaskMinutes(
 ): StudyRecord | null {
   const numeric = Number(minutes);
   if (minutes !== '' && (!Number.isFinite(numeric) || numeric < 0)) return null;
-  const updated = JSON.parse(JSON.stringify(record)) as StudyRecord;
-  const item = findCompletionItem(updated.items, itemId);
+  const updated = editableOverdueRecord(record);
+  const item = overdueTaskItem(updated, itemId);
   if (!item) return null;
   propagateDailyWorkMinutes(item, minutes);
   return updated;
@@ -285,8 +404,8 @@ export function updateOverdueTaskTimer(
   timer: StudyTimerState,
   minutes?: string,
 ): StudyRecord | null {
-  const updated = JSON.parse(JSON.stringify(record)) as StudyRecord;
-  const item = findCompletionItem(updated.items, itemId);
+  const updated = editableOverdueRecord(record);
+  const item = overdueTaskItem(updated, itemId);
   if (!item) return null;
   propagateDailyWorkField(item, 'timeTracking', normalizeStudyTimerState(timer));
   if (minutes !== undefined) propagateDailyWorkMinutes(item, minutes);
@@ -294,7 +413,7 @@ export function updateOverdueTaskTimer(
 }
 
 export function overdueTaskTimer(record: StudyRecord, itemId: string): StudyTimerState | null {
-  const item = findCompletionItem(record.items, itemId);
+  const item = overdueTaskItem(record, itemId);
   return item ? normalizeStudyTimerState(item.f?.timeTracking) : null;
 }
 
@@ -304,11 +423,59 @@ export function updateOverdueTaskProgress(
   field: string,
   checked: boolean,
 ): StudyRecord | null {
-  if (!PROGRESS_FIELDS.some(([key]) => key === field)) return null;
-  const updated = JSON.parse(JSON.stringify(record)) as StudyRecord;
-  const item = findCompletionItem(updated.items, itemId);
-  if (!item) return null;
+  const updated = editableOverdueRecord(record);
+  const item = overdueTaskItem(updated, itemId);
+  if (!item || !studyItemProgress(item).some(progress => progress.key === field)) return null;
+  if (field === 'progress' && item.type === 'scienceReview') {
+    markCalendarNaturalProgressByUser(item, checked);
+    propagateDailyWorkField(item, 'calendarProgressSetByUser', true);
+    propagateDailyWorkField(item, 'calendarProgressUserValue', checked);
+  }
   propagateDailyWorkField(item, field, checked);
+  return updated;
+}
+
+export function updateOverdueTaskRange(
+  record: StudyRecord,
+  itemId: string,
+  field: 'start' | 'end',
+  value: string,
+): StudyRecord | null {
+  const item = findCompletionItem(record.items, itemId);
+  if (!item) return null;
+  const current = taskPageRange(item);
+  return updateOverdueTaskPageRange(
+    record,
+    itemId,
+    field === 'start' ? value : current.start,
+    field === 'end' ? value : current.end,
+  );
+}
+
+export function updateOverdueTaskPageRange(
+  record: StudyRecord,
+  itemId: string,
+  start: string,
+  end: string,
+): StudyRecord | null {
+  const normalizedStart = String(start ?? '').trim();
+  const normalizedEnd = String(end ?? '').trim();
+  const unitItem = overdueTaskItem(record, itemId);
+  const scope = unitItem && numberedStudyScope(unitItem);
+  if (scope) {
+    if (!validNumberedScope(scope, normalizedStart, normalizedEnd)) return null;
+    const updated = editableOverdueRecord(record);
+    const item = overdueTaskItem(updated, itemId);
+    if (!item) return null;
+    applyNumberedScope(item, normalizedStart, normalizedEnd);
+    return updated;
+  }
+  if (!validatePageRange(normalizedStart, normalizedEnd).valid) return null;
+  const updated = editableOverdueRecord(record);
+  const item = overdueTaskItem(updated, itemId);
+  if (!item) return null;
+  propagateDailyWorkRangeField(item, 'start', normalizedStart ? String(Number(normalizedStart)) : '');
+  propagateDailyWorkRangeField(item, 'end', normalizedEnd ? String(Number(normalizedEnd)) : '');
   return updated;
 }
 
@@ -320,11 +487,19 @@ export function updateOverdueTaskCompletion(
   handledAt = new Date().toISOString(),
 ): StudyRecord | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(completionDate)) return null;
-  const updated = JSON.parse(JSON.stringify(record)) as StudyRecord;
-  const item = findCompletionItem(updated.items, itemId);
+  const updated = editableOverdueRecord(record);
+  const item = overdueTaskItem(updated, itemId);
   if (!item) return null;
   applyManualCompletionMetadata(item, completed, record.date, completionDate, updated.items);
-  propagateDailyWorkDone(item, completed);
+  const visited = new Set<StudyItem>();
+  function completeRepresentedItem(target: StudyItem): void {
+    if (visited.has(target)) return;
+    visited.add(target);
+    target.done = completed;
+    if (target.type === 'scienceReview') markCalendarNaturalCompletionByUser(target, completed);
+    completionChildItems(target, true).forEach(completeRepresentedItem);
+  }
+  completeRepresentedItem(item);
   item.f ||= {};
   if (completed) item.f.overdueTodoAction = { kind: 'complete', handledAt };
   else delete item.f.overdueTodoAction;
@@ -337,11 +512,21 @@ export function updateOverdueTaskCompletion(
 function allRecordItems(record: StudyRecord): StudyItem[] {
   const output: StudyItem[] = [];
   const visited = new Set<StudyItem>();
+  const identities = new Set<string>();
   function visit(items: StudyItem[]): void {
     for (const item of items) {
       if (!item || visited.has(item)) continue;
       visited.add(item);
-      output.push(item);
+      const sources = item.f?.dailyWorkSourceItems;
+      if (Array.isArray(sources) && sources.length) {
+        visit(sources);
+        continue;
+      }
+      if (isInteractiveStudyItem(item) || isExcludedEnglishTodoItem(item)) continue;
+      if (!identities.has(item.id)) {
+        identities.add(item.id);
+        output.push(item);
+      }
       visit(completionChildItems(item, true));
     }
   }
@@ -383,7 +568,7 @@ export function undoOverdueTaskAction(
   itemId: string,
   actionDate: string,
 ): StudyRecord | null {
-  const item = findCompletionItem(record.items, itemId);
+  const item = overdueTaskItem(record, itemId);
   const kind = item?.f?.overdueTodoAction?.kind;
   if (kind === 'skip') return updateOverdueTaskSkip(record, itemId, null);
   if (kind === 'complete') return updateOverdueTaskCompletion(record, itemId, false, actionDate);

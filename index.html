@@ -14,8 +14,8 @@
  <div class="app-heading"><h1>每日讀書完成度紀錄卡</h1><div class="subtitle">每日紀錄、完成度、頁數與每週匯出</div></div>
  <div class="header-actions">
   <a class="header-action-link" href="./gpt.prompt.html" target="_blank" rel="noopener noreferrer">排程建議prompt</a>
-  <a class="header-action-link" href="./summary.html">學習總結</a>
   <a class="header-action-link" href="./todo.html">待辦事項</a>
+  <a class="header-action-link" href="./summary.html">週／月總結</a>
   <a class="header-action-link" href="./material.progress.html">教材進度圖</a>
   <a class="header-action-link" href="./vocabulary.review.html">英文單字複習</a>
  </div>
@@ -58,7 +58,7 @@
      <button id="cloudSignOutBtn" type="button">登出</button>
     </div>
    </div>
-   <div class="small connection-message" id="cloudMessage" aria-live="polite">未登入時仍可使用，本機資料會照常保留。</div>
+   <div class="small connection-message" id="cloudMessage" aria-live="polite">未登入時仍可使用；訪客新增的內容會在登入後自動保存到帳號。</div>
    <div class="cloud-refresh-notice" id="cloudRefreshNotice" hidden aria-live="polite">
     <span>雲端有較新的資料；輸入完成後會安全合併並更新畫面。</span>
     <button id="cloudApplyRefreshBtn" class="secondary" type="button">立即套用</button>
@@ -66,8 +66,8 @@
    <div class="cloud-conflict-actions" id="cloudConflictActions" hidden>
    <span id="cloudConflictText"></span>
     <div class="cloud-conflict-details" id="cloudConflictDetails"></div>
-    <button id="cloudKeepLocalBtn" class="primary" type="button">完整保留本機版本</button>
-    <button id="cloudUseCloudBtn" class="secondary" type="button">完整採用雲端版本</button>
+    <button id="cloudKeepLocalBtn" class="primary" type="button">以本機整日紀錄覆蓋雲端</button>
+    <button id="cloudUseCloudBtn" class="secondary" type="button">以雲端整日紀錄取代本機</button>
    </div>
   </section>
 
@@ -166,7 +166,7 @@
   <span class="badge view-badge" id="dailyPresetBadge">0 項</span>
   <span class="badge view-badge" id="weeklyItemBadge" hidden>0 項</span>
  </div>
- <div class="view-pane" id="dailyItemsView"><div class="content"><div class="small" id="dailyNotice" style="margin-bottom:10px"></div><div id="dailyItemList"></div></div></div>
+ <div class="view-pane" id="dailyItemsView"><div class="content"><div class="small" id="dailyNotice" style="margin-bottom:10px"></div><div class="english-task-choice" id="englishTaskChoice" hidden></div><div id="dailyItemList"></div></div></div>
  <div class="view-pane" id="weeklyItemsView" hidden><div class="content" id="weeklyItemList"></div></div>
 </section>
 
@@ -182,8 +182,11 @@
  <div class="panel-head"><h2>新增讀書項目</h2><span class="badge">需要時自行追加</span></div>
  <div class="content">
   <div class="add-grid"><div class="field"><label for="itemType">項目類型</label><select id="itemType"><option value="">請選擇</option><option value="mathLecture">數學</option><option value="scienceReview">自然</option><option value="socialStudy">社會</option><option value="extra">英文</option><option value="chineseReading">國文</option><option value="mock">歷屆／模考</option><option value="general">其他／自訂教材</option></select></div><button id="addItemBtn" class="primary" type="button">新增</button></div>
-  <div class="manual-material-guidance"><div class="small" id="manualMaterialHint">教材選單只顯示「我的教材」已勾選項目；Google Calendar 仍會使用完整教材目錄辨識。</div><a class="secondary material-manager-link" id="manageMaterialsLink" href="./material.progress.html">管理我的教材</a></div>
-  <div class="small" style="margin-top:8px">這裡可另外追加今日補做；補做會列入今日總項目完成率，但不改變原訂今日項目完成率。</div>
+  <div class="manual-material-guidance" data-empty="false">
+   <div class="small" id="manualMaterialHint">教材選單只顯示「我的教材」已勾選項目；Google Calendar 仍會使用完整教材目錄辨識。</div>
+   <a class="material-manager-link" id="manageMaterialsLink" href="./material.progress.html">管理我的教材</a>
+  </div>
+  <div class="small" style="margin-top:10px">這裡可另外追加今日補做。補做會列入今日總項目完成率，但不改變原訂今日項目完成率。自行新增的項目各自保存，不合併相同教材或範圍。</div>
  </div>
 </section>
 
@@ -236,6 +239,8 @@
  <a href="/terms">服務條款</a>
  <span aria-hidden="true">／</span>
  <a href="/support">使用者支援</a>
+ <span aria-hidden="true">／</span>
+ <a href="./vocabulary.sources.html">單字資料來源</a>
 </footer>
 </main>
 <div class="undo-toast" id="deleteUndoToast" role="status" aria-live="polite" hidden>

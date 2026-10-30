@@ -293,7 +293,7 @@ export function isAzarGrammarBookTitle(value: unknown): boolean {
 }
 
 export function isAzarGrammarIdentifier(value: unknown): boolean {
-  return /^GAST-AZAR-2026-[A-Z0-9_-]+$/i.test(String(value ?? '').replace(/\s+/g, ''));
+  return /^(?:GSAT|GAST)-AZAR-\d{4}-[A-Z0-9_-]+$/i.test(String(value ?? '').replace(/\s+/g, ''));
 }
 
 export function azarGrammarChaptersForPages(startValue: unknown, endValue?: unknown): AzarGrammarChapter[] {

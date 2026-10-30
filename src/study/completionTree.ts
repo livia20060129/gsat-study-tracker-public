@@ -89,10 +89,7 @@ export function applyManualCompletionMetadata(
     });
     applyCompletionDateChange(target, change);
 
-    const represented = [
-      ...(Array.isArray(target.f?.dailyWorkSourceItems) ? target.f.dailyWorkSourceItems as StudyItem[] : []),
-      ...(Array.isArray(target.f?.groupedWorkEntries) ? target.f.groupedWorkEntries as StudyItem[] : []),
-    ];
+    const represented = completionChildItems(target, true);
     if (change.syncDeferredOrigin && carrier && represented.length === 0) {
       requests.push({ carrier, target, change, previousDeferredCompletedOn });
     }
@@ -202,11 +199,14 @@ export function completionTargetWithinOrigin(
   }) ?? null;
 }
 
-/** Recalculates aggregate completion without touching any persisted fields. */
+/** Refreshes every visible representation, deriving aggregate state from canonical sources first. */
 export function refreshCompletionTree(item: StudyItem, visited = new Set<StudyItem>()): void {
   if (!item || visited.has(item)) return;
   visited.add(item);
   const fields = item.f ?? {};
+  completionChildItems(item, true).forEach(function refreshChild(child): void {
+    refreshCompletionTree(child, visited);
+  });
   const groups = [
     fields.dailyWorkSourceItems,
     fields.groupedWorkEntries,
@@ -216,10 +216,16 @@ export function refreshCompletionTree(item: StudyItem, visited = new Set<StudyIt
     return Array.isArray(value) && value.length > 0;
   }) as StudyItem[] | undefined;
   if (!groups) return;
-  groups.forEach(function refreshChild(child): void {
-    refreshCompletionTree(child, visited);
-  });
   item.done = groups.every(function isComplete(child): boolean {
     return Boolean(child.done);
   });
+  if (Array.isArray(fields.dailyWorkSourceItems) && fields.dailyWorkSourceItems.length) {
+    for (const field of ['checkedOn', 'deferredCompletedOn'] as const) {
+      const dates = groups.map(function completionDate(child): string {
+        return child[field] ?? '';
+      }).filter(Boolean).sort();
+      if (item.done && dates.length) item[field] = dates[dates.length - 1];
+      else delete item[field];
+    }
+  }
 }

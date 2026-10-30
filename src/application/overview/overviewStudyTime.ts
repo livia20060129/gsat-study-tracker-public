@@ -2,7 +2,7 @@ import type { StudyRecord } from '../../types.ts';
 import {
   completedStudyTimeEntries,
   type CompletedStudyTimeEntry,
-} from '../../study/learningSummary.ts';
+} from '../../study/completedStudyTime.ts';
 
 /** Replaces a stored record with the unsaved in-memory draft for the same date. */
 export function recordsWithLiveStudyDraft(

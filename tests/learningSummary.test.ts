@@ -4,13 +4,14 @@ import test from 'node:test';
 
 import {
   calendarLeadingBlankCount,
+  completionIncludedInPeriod,
   completedStudyTimeEntries,
   completedSubjectTimeForRecord,
   fixedPeriodRemarks,
-  formatClockMinutes,
-  includesCompletionInPeriod,
+  groupedSummarySubjectTime,
   shiftSummaryAnchor,
   summarizeLearningPeriod,
+  summarizeNaturalScienceTime,
   summarizeStudyItemTime,
   summaryCompletionUnitsForRecord,
   summaryPeriod,
@@ -113,32 +114,32 @@ test('a grouped parent check date is inherited by completed child time', () => {
 });
 
 test('learning summary separates natural science into physics, chemistry, biology, and earth science', () => {
-  const entries = completedStudyTimeEntries([record('2026-09-15', [
+  const scienceItems: StudyItem[] = [
     { id: 'physics', type: 'scienceReview', title: '物理｜運動學', done: true, minutes: '10', required: true, f: { subject: '物理' } },
+    { id: 'physics-force', type: 'scienceReview', title: '物理｜力學', done: true, minutes: '5', required: true, f: { subject: '物理' } },
     { id: 'chemistry', type: 'scienceReview', title: '化學｜化學反應', done: true, minutes: '20', required: true, f: { subject: '化學' } },
     { id: 'biology', type: 'biologyInteractive', title: '生物｜細胞', done: true, minutes: '30', required: true, f: { subject: '生物' } },
     { id: 'earth', type: 'scienceReview', title: '地科｜地質', done: true, minutes: '40', required: true, f: { subject: '地科' } },
-  ])]);
-  const summary = summarizeLearningPeriod([record('2026-09-15', [
-    { id: 'physics', type: 'scienceReview', title: '物理｜運動學', done: true, minutes: '10', required: true, f: { subject: '物理' } },
-    { id: 'chemistry', type: 'scienceReview', title: '化學｜化學反應', done: true, minutes: '20', required: true, f: { subject: '化學' } },
-    { id: 'biology', type: 'biologyInteractive', title: '生物｜細胞', done: true, minutes: '30', required: true, f: { subject: '生物' } },
-    { id: 'earth', type: 'scienceReview', title: '地科｜地質', done: true, minutes: '40', required: true, f: { subject: '地科' } },
-  ])], summaryPeriod('2026-09-15', 'week'));
+  ];
+  const entries = completedStudyTimeEntries([record('2026-09-15', scienceItems)]);
+  const summary = summarizeLearningPeriod(
+    [record('2026-09-15', scienceItems)],
+    summaryPeriod('2026-09-15', 'week'),
+  );
 
-  assert.deepEqual(entries.map(entry => entry.subject).sort(), ['物理', '化學', '生物', '地科'].sort());
+  assert.deepEqual([...new Set(entries.map(entry => entry.subject))].sort(), ['物理', '化學', '生物', '地科'].sort());
   assert.deepEqual(summary.subjectTime.slices.map(slice => slice.subject), ['物理', '化學', '生物', '地科']);
-});
-
-test('learning summary keeps civics, history, and geography separate', () => {
-  const studyRecord = record('2026-09-15', [
-    { id: 'civics', type: 'socialStudy', done: true, minutes: '15', required: true, f: { subject: '公民', book: '公民｜學測週計畫' } },
-    { id: 'history', type: 'socialStudy', done: true, minutes: '20', required: true, f: { subject: '歷史', book: '歷史｜學測週計畫' } },
-    { id: 'geography', type: 'general', done: true, minutes: '25', required: true, f: { subject: '地理', book: '地理｜學測週計畫' } },
-  ]);
-  const summary = summarizeLearningPeriod([studyRecord], summaryPeriod('2026-09-15', 'week'));
-  assert.deepEqual(summary.subjectTime.slices.map(slice => slice.subject), ['公民', '歷史', '地理']);
-  assert.equal(summary.subjectTime.totalMinutes, 60);
+  const overview = groupedSummarySubjectTime(entries);
+  assert.deepEqual(overview.slices.map(slice => slice.subject), ['自然']);
+  assert.equal(overview.slices[0].minutes, 105);
+  const naturalDetail = summarizeNaturalScienceTime(entries);
+  assert.deepEqual(
+    naturalDetail.slices.map(slice => slice.label),
+    ['物理｜運動學', '物理｜力學', '化學｜化學反應', '生物｜互動題', '地科｜地質'],
+  );
+  assert.deepEqual(naturalDetail.slices.map(slice => slice.minutes), [10, 5, 20, 30, 40]);
+  assert.deepEqual(naturalDetail.slices.map(slice => slice.subject), ['物理', '物理', '化學', '生物', '地科']);
+  assert.equal(naturalDetail.slices.reduce((sum, slice) => sum + slice.percent, 0), 100);
 });
 
 test('all overview blocks derive from the same requested period', () => {
@@ -151,8 +152,6 @@ test('all overview blocks derive from the same requested period', () => {
 
   assert.equal(summary.records.length, 2);
   assert.equal(summary.subjectTime.totalMinutes, 20);
-  assert.equal(summary.averageWakeMinutes, 405);
-  assert.equal(formatClockMinutes(summary.averageWakeMinutes), '06:45');
   assert.equal(summary.days.length, 7);
 });
 
@@ -171,33 +170,45 @@ test('summary days preserve mood for calendar status colors', () => {
   assert.equal(summary.days[3].mood, '');
 });
 
-test('outside and unwell days keep daily progress but are excluded from week and month completion', () => {
-  const ordinary = record('2026-09-14', [
-    item('ordinary-done', true, '30', '數學'),
-    item('ordinary-open', false, '20', '英文'),
+test('outside and unwell days keep daily progress but do not affect week or month completion', () => {
+  const normal = record('2026-09-14', [item('normal-done', true, '20', '數學')]);
+  const unwell = record('2026-09-15', [
+    item('unwell-done', true, '10', '英文'),
+    item('unwell-open', false, '', '英文'),
   ]);
-  const unwell = record('2026-09-15', [item('unwell-open', false, '15', '英文')]);
   unwell.mood = '身體不適';
-  const outside = record('2026-09-16', [item('outside-done', true, '25', '自然')]);
+  const outside = record('2026-09-16', [
+    item('outside-preset-done', true, '15', '國文'),
+    item('outside-preset-open', false, '', '國文'),
+  ]);
   outside.mood = '外出';
 
-  assert.equal(includesCompletionInPeriod(ordinary), true);
-  assert.equal(includesCompletionInPeriod(unwell), false);
-  assert.equal(includesCompletionInPeriod(outside), false);
+  const summary = summarizeLearningPeriod([normal, unwell, outside], summaryPeriod('2026-09-14', 'week'));
 
-  const summary = summarizeLearningPeriod([ordinary, unwell, outside], summaryPeriod('2026-09-14', 'week'));
-  assert.deepEqual(summary.days.slice(0, 3).map(day => day.completionPercent), [50, 0, 100]);
-  assert.deepEqual(summary.days.slice(0, 3).map(day => day.completionIncludedInPeriod), [true, false, false]);
-  assert.equal(summary.completion.settlementPercent, 50);
-  assert.equal(summary.subjectTime.totalMinutes, 55);
+  const unwellDailyCompletion = summarizeCompletionUnits(summaryCompletionUnitsForRecord(unwell)).settlementPercent;
+  const outsideDailyCompletion = summarizeCompletionUnits(summaryCompletionUnitsForRecord(outside)).settlementPercent;
+  assert.ok(unwellDailyCompletion > 0);
+  assert.ok(outsideDailyCompletion > 0);
+  assert.equal(summary.days[1].completionPercent, unwellDailyCompletion);
+  assert.equal(summary.days[1].completionIncludedInPeriod, false);
+  assert.equal(summary.days[2].completionPercent, outsideDailyCompletion);
+  assert.equal(outsideDailyCompletion, 50);
+  assert.equal(summary.days[2].completionIncludedInPeriod, false);
+  assert.equal(summary.completion.settlementPercent, 100);
+  assert.equal(summary.subjectTime.totalMinutes, 45);
+  assert.equal(completedStudyTimeEntries([outside]).some(entry => entry.key.includes('outside-preset-done')), true);
+  assert.equal(completionIncludedInPeriod(normal), true);
+  assert.equal(completionIncludedInPeriod(unwell), false);
+  assert.equal(completionIncludedInPeriod(outside), false);
 
-  const included = summarizeLearningPeriod(
-    [ordinary, unwell, outside],
+  const summaryWithStatusDays = summarizeLearningPeriod(
+    [normal, unwell, outside],
     summaryPeriod('2026-09-14', 'week'),
     { includeStatusDaysInCompletion: true },
   );
-  assert.deepEqual(included.days.slice(0, 3).map(day => day.completionIncludedInPeriod), [true, true, true]);
-  assert.equal(included.completion.settlementPercent, 50);
+  assert.equal(summaryWithStatusDays.completion.settlementPercent, 60);
+  assert.equal(summaryWithStatusDays.days[1].completionIncludedInPeriod, true);
+  assert.equal(summaryWithStatusDays.days[2].completionIncludedInPeriod, true);
 });
 
 test('completed time deduplicates deferred copies and item drilldown totals', () => {
@@ -295,27 +306,31 @@ test('summary page has one global week/month switch and no separate total-hours 
   assert.equal((html.match(/id="summaryModeSwitch"/g) || []).length, 1);
   assert.equal((html.match(/data-summary-mode=/g) || []).length, 2);
   assert.match(html, /id="summaryTotalCompletion"/);
-  assert.match(html, /id="includeStatusDaysCompletion"/);
-  assert.match(html, /id="statusDaysCompletionState"/);
+  assert.match(html, /id="includeStatusDaysCompletion"[^>]*role="switch"/);
+  assert.match(html, /id="statusDaysCompletionState">不列入/);
   assert.doesNotMatch(html, /summary-heading-icon/);
   assert.doesNotMatch(html, /總時數/);
   assert.match(html, /圓內深淺＝當日學習時數/);
   assert.match(html, /亮綠完整圓環＝100% 完成/);
   assert.match(html, /紅色圓心＝身體不適/);
-  assert.match(html, /橘色圓心＝疲倦（較疲累）/);
+  assert.match(html, /橘色圓心＝疲倦/);
   assert.match(html, /黃色圓心＝外出/);
+  assert.doesNotMatch(html, /深綠完整圓環/);
   assert.doesNotMatch(html, /id="subjectBack"|返回全部科目<\/button>/);
   const runtime = readFileSync(new URL('../src/learning-summary-page.ts', import.meta.url), 'utf8');
   const styles = readFileSync(new URL('../src/learning-summary.css', import.meta.url), 'utf8');
+  assert.match(runtime, /summaryTotalCompletion'\)\.textContent = `\$\{current\.completion\.settlementPercent\}%`/);
+  assert.match(runtime, /STATUS_DAY_COMPLETION_STORAGE_KEY/);
+  assert.match(runtime, /summarizeLearningPeriod\(records, period, completionOptions\)/);
   assert.doesNotMatch(runtime, /fetch\(|openai|anthropic|gemini/i);
   assert.match(runtime, /data-summary-back/);
   assert.match(runtime, /function returnToSubjectOverview\(\)/);
-  assert.match(runtime, /STATUS_DAY_COMPLETION_STORAGE_KEY/);
-  assert.match(runtime, /summarizeLearningPeriod\(records, period, completionOptions\)/);
+  assert.match(runtime, /groupedSummarySubjectTime\(summary\.timeEntries\)/);
+  assert.match(runtime, /selectedSubject === '自然'/);
+  assert.match(runtime, /summarizeNaturalScienceTime\(summary\.timeEntries\)/);
   assert.match(runtime, /summary-donut-return-overlay/);
   assert.match(runtime, /destinationRect\.left - sourceRect\.left/);
   assert.match(styles, /\.summary-donut-return-overlay\{/);
-  assert.match(styles, /\.summary-status-completion-toggle\{/);
   assert.doesNotMatch(styles, /pointer-events:bounding-box/);
   assert.match(runtime, /--day-time-color:\$\{timeColor\}/);
   assert.match(runtime, /summaryMoodClass\(day\.mood\)/);
@@ -338,6 +353,10 @@ test('summary page has one global week/month switch and no separate total-hours 
   assert.match(styles, /\.summary-day-ring::before\{[^}]*mask:radial-gradient/);
   assert.match(styles, /\.summary-day-ring\{--day-ring-width:6px;position:relative;background:transparent\}/);
   assert.match(styles, /\.summary-day\.is-complete\{--day-accent:#70DE43\}/);
+  assert.match(styles, /\.legend-complete\{border-color:#70DE43\}/);
+  assert.match(styles, /\.legend-unwell\{[^}]*background:#ff7575\}/);
+  assert.match(styles, /\.legend-tired\{[^}]*background:#ffc78e\}/);
+  assert.match(styles, /\.legend-out\{[^}]*background:#fff0bd\}/);
   assert.doesNotMatch(html, /summary-side-stack/);
   assert.match(html, /summary-conclusion-card[\s\S]*id="summaryComparison"[\s\S]*id="summaryConclusion"/);
   assert.match(html, /summary-personal-card[\s\S]*id="averageSleepDuration"[\s\S]*id="averageBedtime"[\s\S]*id="averageWakeTime"[\s\S]*id="validSleepCount"/);
@@ -346,12 +365,10 @@ test('summary page has one global week/month switch and no separate total-hours 
   assert.doesNotMatch(runtime, /<dt>平均起床<\/dt>/);
   assert.match(runtime, /summarizeSleepPeriod\(records, period\.dates\)/);
   assert.match(runtime, /sleepComparisonText\(current\.averageSleepMinutes, previous\.averageSleepMinutes\)/);
+  assert.doesNotMatch(runtime, /averageWakeMinutes.*current\.completion|subjectTime.*averageWakeMinutes/);
   assert.match(styles, /summary-subject-detail-list\{grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
   assert.match(styles, /summary-subject-detail-list\{display:grid;grid-template-columns:none;grid-template-rows:repeat\(var\(--summary-detail-rows,1\),auto\);grid-auto-flow:column/);
-  assert.match(runtime, /mergeNaturalScienceSubjectTime\(summary\.subjectTime\)/);
-  assert.match(runtime, /const isNaturalScience = selectedSubject === '自然'/);
-  assert.match(runtime, /summary-natural-subject-name/);
-  assert.match(runtime, /const detailRows = Math\.max\(1, Math\.min\(4, displayedCount\)\)/);
+  assert.match(runtime, /const detailRows = Math\.max\(1, Math\.min\(4, slices\.length\)\)/);
   assert.match(runtime, /--summary-detail-rows:\$\{detailRows\}/);
   assert.match(runtime, /pendingSubjectEntryOrigin/);
   assert.match(runtime, /entryOrigin\.left \+ entryOrigin\.width \/ 2/);
@@ -373,7 +390,7 @@ test('summary page has one global week/month switch and no separate total-hours 
   assert.match(runtime, /exit\.cancel\(\);\s*applyMode\(\);/);
   assert.match(runtime, /height: `\$\{beforeHeight\}px`/);
   assert.match(html, /<div class="summary-view-controls">\s*<a class="summary-back header-action-link"[^>]*>回到 Tracker<\/a>\s*<div class="summary-mode-switch"/);
-  assert.match(index, /class="header-action-link" href="\.\/summary\.html">學習總結<\/a>/);
+  assert.match(index, /class="header-action-link" href="\.\/summary\.html">週／月總結<\/a>/);
   assert.doesNotMatch(index, /本週趨勢|completionTrendPanel|completionViewTabs/);
   assert.match(styles, /@import "\.\/header-action-link\.css"/);
   assert.match(sharedHeaderActions, /\.header-action-link\{/);

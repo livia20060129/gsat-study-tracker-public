@@ -23,9 +23,9 @@ function validDate(value: unknown): value is string {
 
 /**
  * Resolves the date metadata for a user-triggered completion checkbox.
- * Normal work records only a late check; deferred carry work records the
- * actual completion date on or after its target day and asks the runtime to
- * mirror that completion back to the original record.
+ * Normal work records every check made on a date other than the scheduled
+ * record date. Deferred carry work always records the actual check date and
+ * asks the runtime to mirror that completion back to the original record.
  */
 export function manualCompletionDateChange(input: ManualCompletionDateInput): ManualCompletionDateChange {
   const previousDeferredDate = validDate(input.previousDeferredCompletedOn)
@@ -40,14 +40,13 @@ export function manualCompletionDateChange(input: ManualCompletionDateInput): Ma
     return { syncDeferredOrigin: false };
   }
   if (input.deferredCarry) {
-    if (input.actionDate < input.recordDate) return { syncDeferredOrigin: false };
     return {
       checkedOn: input.actionDate,
       deferredCompletedOn: input.actionDate,
       syncDeferredOrigin: true,
     };
   }
-  if (input.confirmedDeferred || input.actionDate <= input.recordDate) {
+  if (input.confirmedDeferred || input.actionDate === input.recordDate) {
     return { syncDeferredOrigin: false };
   }
   return {
@@ -86,15 +85,24 @@ export function deferredCompletionDate(item: StudyItem | null | undefined): stri
 export function completionDateLabel(item: StudyItem | null | undefined): string {
   if (!item) return '';
   if (validDate(item.checkedOn)) {
-    return item.deferredCompletedOn === item.checkedOn
-      ? `延期完成：${item.checkedOn}`
-      : `${item.checkedOn} 勾選`;
+    return `完成日期：${item.checkedOn}`;
   }
   for (const child of nestedItems(item)) {
     const label = completionDateLabel(child);
     if (label) return label;
   }
   return '';
+}
+
+/** Returns the date shown by the completion-date editor for a completed item. */
+export function completionDateValue(
+  item: StudyItem | null | undefined,
+  recordDate: string,
+): string {
+  if (!item?.done) return '';
+  if (validDate(item.checkedOn)) return item.checkedOn;
+  if (validDate(item.deferredCompletedOn)) return item.deferredCompletedOn;
+  return validDate(recordDate) ? recordDate : '';
 }
 
 /**

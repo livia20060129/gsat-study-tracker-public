@@ -1,16 +1,22 @@
 import './learning-summary.css';
+import {
+  completedItemSummarySubject, completedItemsForPeriod, completedItemsForSubject,
+} from './study/completedItems.ts';
 import { readMaterialProgressRecords } from './study/materialProgress.ts';
 import {
   SUMMARY_MODES,
   calendarLeadingBlankCount,
   dateKey,
   fixedPeriodRemarks,
+  groupedSummarySubjectTime,
   shiftSummaryAnchor,
+  summarizeNaturalScienceTime,
   summarizeStudyItemTime,
   summarizeLearningPeriod,
   summaryPeriod,
   type LearningPeriodSummary,
   type SummaryMode,
+  type SummaryPeriod,
 } from './study/learningSummary.ts';
 import {
   formatClockMinutes,
@@ -21,14 +27,10 @@ import {
 } from './study/sleep.ts';
 import { subjectFamilyDetailColor } from './study/detailColors.ts';
 import {
-  NATURAL_SCIENCE_SUBJECTS,
   SUBJECT_TIME_COLORS,
   SUBJECT_TIME_SHORT_LABELS,
-  mergeNaturalScienceSubjectTime,
-  summarizeSubjectTime,
   subjectTimeArcPath,
   subjectTimeDonutSlices,
-  type SubjectTimeSummary,
   type SubjectTimeSubject,
 } from './study/subjectTime.ts';
 import type { StudyRecord } from './types.ts';
@@ -48,7 +50,7 @@ function storeStatusDayCompletionPreference(include: boolean): void {
   try {
     localStorage.setItem(STATUS_DAY_COMPLETION_STORAGE_KEY, String(include));
   } catch {
-    // The summary remains usable when browser storage is unavailable.
+    // The summary still works when storage is unavailable; only the preference is temporary.
   }
 }
 
@@ -92,9 +94,9 @@ function formatWholeDuration(value: number): string {
 
 function signed(value: number, suffix: string): string {
   const rounded = Math.round(value * 10) / 10;
-  let prefix = '±';
+  let prefix = '';
   if (rounded > 0) prefix = '+';
-  else if (rounded < 0) prefix = '';
+  else if (rounded === 0) prefix = '±';
   return `${prefix}${rounded}${suffix}`;
 }
 
@@ -135,7 +137,8 @@ function summaryMoodColor(mood: string, opacity: number): string {
   return '';
 }
 
-function subjectDonutMarkup(subjectTime: SubjectTimeSummary): string {
+function subjectDonutMarkup(summary: LearningPeriodSummary): string {
+  const subjectTime = groupedSummarySubjectTime(summary.timeEntries);
   const arcs = subjectTimeDonutSlices(subjectTime);
   const paths = arcs.map(slice => `<path class="summary-donut-slice" data-summary-subject-path="${slice.subject}" d="${subjectTimeArcPath(slice)}" fill="none" stroke="${slice.color}" tabindex="0" role="button" aria-label="${slice.subject} ${formatHours(slice.minutes)} 小時，占 ${slice.percent}%"></path>`).join('');
   const labels = arcs.map(slice => {
@@ -153,77 +156,28 @@ function subjectDonutMarkup(subjectTime: SubjectTimeSummary): string {
 
 function detailDonutMarkup(
   totalMinutes: number,
-  slices: Array<{
-    label: string;
-    minutes: number;
-    percent: number;
-    color: string;
-    ringLabel?: string;
-    ringLabelPercent?: number;
-  }>,
+  slices: Array<{ label: string; minutes: number; percent: number; color: string; subject?: SubjectTimeSubject }>,
 ): string {
   let cursor = 0;
   const labels: string[] = [];
   const paths = slices.map((slice, index) => {
     const startPercent = cursor;
     cursor = index === slices.length - 1 ? 100 : Math.min(100, cursor + slice.percent);
-    if (slice.ringLabel) {
-      const labelPercent = slice.ringLabelPercent ?? (startPercent + cursor) / 2;
-      const angle = labelPercent / 100 * Math.PI * 2 - Math.PI / 2;
+    if (slice.subject) {
+      const middlePercent = (startPercent + cursor) / 2;
+      const angle = middlePercent / 100 * Math.PI * 2 - Math.PI / 2;
       const left = 50 + Math.cos(angle) * 35;
       const top = 50 + Math.sin(angle) * 35;
-      labels.push(`<span class="summary-donut-detail-label" style="left:${left}%;top:${top}%">${escapeHtml(slice.ringLabel)}</span>`);
+      labels.push(`<span class="summary-donut-detail-label" style="left:${left}%;top:${top}%">${SUBJECT_TIME_SHORT_LABELS[slice.subject]}</span>`);
     }
     return `<path class="summary-donut-slice is-detail" d="${subjectTimeArcPath({ startPercent, endPercent: cursor })}" fill="none" stroke="${slice.color}"><title>${escapeHtml(slice.label)}：${formatHours(slice.minutes)} 小時，占 ${slice.percent}%；點擊返回全部科目</title></path>`;
   }).join('');
   return `<div class="summary-donut-shell is-detail">
     <svg class="summary-donut-ring" data-summary-back viewBox="0 0 160 160" tabindex="0" role="button" aria-label="返回全部科目">
       <circle class="summary-donut-track" cx="80" cy="80" r="56" fill="none"></circle>${paths}
-    </svg>
-    ${labels.join('')}
+    </svg>${labels.join('')}
     <div class="summary-donut-center"><strong>${formatHours(totalMinutes)}</strong><span>hr</span></div>
   </div>`;
-}
-
-function naturalScienceDetail(summary: LearningPeriodSummary): {
-  totalMinutes: number;
-  donutSlices: Array<{
-    label: string;
-    minutes: number;
-    percent: number;
-    color: string;
-    ringLabel?: string;
-    ringLabelPercent?: number;
-  }>;
-  list: string;
-  itemCount: number;
-} {
-  const acceptedSubjects = new Set<SubjectTimeSubject>([...NATURAL_SCIENCE_SUBJECTS, '自然']);
-  const entries = summary.timeEntries.filter(entry => acceptedSubjects.has(entry.subject));
-  const subjectTime = summarizeSubjectTime(entries);
-  let subjectCursor = 0;
-  const items = subjectTime.slices.flatMap(subjectSlice => {
-    const detail = summarizeStudyItemTime(entries, subjectSlice.subject);
-    const ringLabelPercent = subjectCursor + subjectSlice.percent / 2;
-    subjectCursor += subjectSlice.percent;
-    return detail.slices.map((slice, index) => ({
-      subject: subjectSlice.subject,
-      label: slice.label,
-      minutes: slice.minutes,
-      percent: Math.round(slice.minutes / Math.max(1, subjectTime.totalMinutes) * 1000) / 10,
-      color: subjectFamilyDetailColor(subjectSlice.color, index, detail.slices.length),
-      ...(index === 0 ? {
-        ringLabel: SUBJECT_TIME_SHORT_LABELS[subjectSlice.subject],
-        ringLabelPercent,
-      } : {}),
-    }));
-  });
-  const list = items.map(item => `<li>
-    <i style="background:${item.color}"></i>
-    <span class="summary-subject-detail-name"><strong class="summary-natural-subject-name">${escapeHtml(item.subject)}</strong><span class="summary-natural-item-name">${escapeHtml(item.label)}</span></span>
-    <span class="summary-subject-detail-value">${item.percent}%｜${formatHours(item.minutes)} hr</span>
-  </li>`).join('');
-  return { totalMinutes: subjectTime.totalMinutes, donutSlices: items, list, itemCount: items.length };
 }
 
 function renderCalendar(summary: LearningPeriodSummary): void {
@@ -258,8 +212,8 @@ function renderCalendar(summary: LearningPeriodSummary): void {
         <strong>${escapeHtml(formatDateLabel(day.date))}</strong>
         <span>學習時間：${escapeHtml(timeText)}</span>
         <span>完成率：${day.completionPercent}%</span>
-        ${day.mood ? `<span>狀態：${escapeHtml(day.mood)}</span>` : ''}
         ${periodCompletionLabel ? `<span>${periodCompletionLabel}</span>` : ''}
+        ${day.mood ? `<span>狀態：${escapeHtml(day.mood)}</span>` : ''}
       </span>
     </article>`;
   });
@@ -276,24 +230,51 @@ function renderSubjectDistribution(summary: LearningPeriodSummary): void {
     target.dataset.view = 'detail';
     target.classList.toggle('animate-detail-entry', shouldAnimateEntry);
     target.classList.remove('is-detail-ready');
-    const isNaturalScience = selectedSubject === '自然';
-    const detail = summarizeStudyItemTime(summary.timeEntries, selectedSubject);
-    const naturalDetail = isNaturalScience ? naturalScienceDetail(summary) : null;
+    const naturalDetail = selectedSubject === '自然'
+      ? summarizeNaturalScienceTime(summary.timeEntries)
+      : null;
+    const detail = naturalDetail ?? summarizeStudyItemTime(summary.timeEntries, selectedSubject);
     title.textContent = `科目分配｜${selectedSubject}`;
     const baseColor = SUBJECT_TIME_COLORS[selectedSubject];
-    const slices = detail.slices.map((slice, index) => ({
-      ...slice,
-      color: subjectFamilyDetailColor(baseColor, index, detail.slices.length),
-    }));
-    const displayedCount = naturalDetail?.itemCount ?? slices.length;
-    const detailRows = Math.max(1, Math.min(4, displayedCount));
-    const list = slices.map(slice => `<li><i style="background:${slice.color}"></i><span class="summary-subject-detail-name">${escapeHtml(slice.label)}</span><span class="summary-subject-detail-value">${slice.percent}%｜${formatHours(slice.minutes)} hr</span></li>`).join('');
-    const hasDetail = naturalDetail ? naturalDetail.donutSlices.length > 0 : slices.length > 0;
-    const donut = naturalDetail
-      ? detailDonutMarkup(naturalDetail.totalMinutes, naturalDetail.donutSlices)
-      : detailDonutMarkup(detail.totalMinutes, slices);
-    target.innerHTML = hasDetail
-      ? `${donut}<ul class="summary-subject-detail-list" style="--summary-detail-rows:${detailRows}">${naturalDetail?.list ?? list}</ul>`
+    const naturalSubjectCounts = new Map<SubjectTimeSubject, number>();
+    if (naturalDetail) {
+      naturalDetail.slices.forEach(slice => {
+        naturalSubjectCounts.set(slice.subject, (naturalSubjectCounts.get(slice.subject) ?? 0) + 1);
+      });
+    }
+    const naturalSubjectIndexes = new Map<SubjectTimeSubject, number>();
+    const slices: Array<{
+      label: string;
+      minutes: number;
+      percent: number;
+      color: string;
+      subject?: SubjectTimeSubject;
+    }> = naturalDetail
+      ? naturalDetail.slices.map(slice => {
+        const index = naturalSubjectIndexes.get(slice.subject) ?? 0;
+        naturalSubjectIndexes.set(slice.subject, index + 1);
+        return {
+          ...slice,
+          color: subjectFamilyDetailColor(
+            SUBJECT_TIME_COLORS[slice.subject],
+            index,
+            naturalSubjectCounts.get(slice.subject) ?? 1,
+          ),
+        };
+      })
+      : detail.slices.map((slice, index) => ({
+        ...slice,
+        color: subjectFamilyDetailColor(baseColor, index, detail.slices.length),
+      }));
+    const detailRows = Math.max(1, Math.min(4, slices.length));
+    const list = slices.map(slice => {
+      const name = naturalDetail && slice.subject
+        ? `<span class="summary-natural-subject-name">${escapeHtml(slice.subject)}</span><span class="summary-natural-item-name">${escapeHtml(slice.label.replace(`${slice.subject}｜`, ''))}</span>`
+        : `<span class="summary-subject-detail-name">${escapeHtml(slice.label)}</span>`;
+      return `<li><i style="background:${slice.color}"></i>${name}<span class="summary-subject-detail-value">${slice.percent}%｜${formatHours(slice.minutes)} hr</span></li>`;
+    }).join('');
+    target.innerHTML = slices.length
+      ? `${detailDonutMarkup(detail.totalMinutes, slices)}<ul class="summary-subject-detail-list" style="--summary-detail-rows:${detailRows}">${list}</ul>`
       : `<div class="summary-donut-shell is-empty"><div class="summary-donut-center"><strong>0.0</strong><span>hr</span></div></div><p class="summary-empty">本期尚無此科目的完成時間紀錄。</p>`;
     if (shouldAnimateEntry && entryOrigin) {
       target.getBoundingClientRect();
@@ -321,13 +302,12 @@ function renderSubjectDistribution(summary: LearningPeriodSummary): void {
   title.textContent = '科目分配';
   target.dataset.view = 'subjects';
   target.classList.remove('animate-detail-entry', 'is-detail-ready');
-  const overviewSubjectTime = mergeNaturalScienceSubjectTime(summary.subjectTime);
-  const slices = overviewSubjectTime.slices;
+  const slices = groupedSummarySubjectTime(summary.timeEntries).slices;
   if (!slices.length) {
     target.innerHTML = `<div class="summary-donut-shell is-empty"><svg class="summary-donut-ring" viewBox="0 0 160 160" aria-hidden="true"><circle class="summary-donut-track" cx="80" cy="80" r="56" fill="none"></circle></svg><div class="summary-donut-center"><strong>0.0</strong><span>hr</span></div></div><p class="summary-empty">本期尚無完成時間紀錄。</p>`;
     return;
   }
-  target.innerHTML = subjectDonutMarkup(overviewSubjectTime);
+  target.innerHTML = subjectDonutMarkup(summary);
 }
 
 function returnToSubjectOverview(): void {
@@ -412,10 +392,10 @@ function renderTrend(summary: LearningPeriodSummary): void {
 function renderComparison(current: LearningPeriodSummary, previous: LearningPeriodSummary): void {
   const timeDelta = current.subjectTime.totalMinutes - previous.subjectTime.totalMinutes;
   const completionDelta = current.completion.settlementPercent - previous.completion.settlementPercent;
+  element<HTMLElement>('summaryTotalCompletion').textContent = `${current.completion.settlementPercent}%`;
   element<HTMLDListElement>('summaryComparison').innerHTML = `
     <div><dt>學習時間</dt><dd class="${comparisonClass(timeDelta)}">${signed(timeDelta / 60, ' hr')}</dd></div>
     <div><dt>完成率</dt><dd class="${comparisonClass(completionDelta)}">${signed(completionDelta, '%')}</dd></div>`;
-  element<HTMLElement>('summaryTotalCompletion').textContent = `${current.completion.settlementPercent}%`;
 }
 
 function sleepTrendMarkup(summary: SleepPeriodSummary): string {
@@ -489,6 +469,35 @@ function renderConclusion(current: LearningPeriodSummary, previous: LearningPeri
     <article class="${remarkClass[remarks.completionState]}"><strong>完成率${stateTitle[remarks.completionState]}</strong><p>${remarks.completion}</p></article>`;
 }
 
+function renderCompletedItems(period: SummaryPeriod): void {
+  const entries = completedItemsForSubject(completedItemsForPeriod(records, period), selectedSubject);
+  const title = activeMode === 'week' ? '本週完成項目' : '本月完成項目';
+  element<HTMLElement>('completedItemsTitle').textContent = selectedSubject ? `${title}｜${selectedSubject}` : title;
+  element<HTMLElement>('completedItemsCount').textContent = `共 ${entries.length} 項`;
+  element<HTMLButtonElement>('clearCompletedSubjectFilter').hidden = !selectedSubject;
+  const container = element<HTMLElement>('summaryCompletedItems');
+  if (!entries.length) {
+    const subjectLabel = selectedSubject ? `${selectedSubject}的` : '';
+    container.innerHTML = `<p class="summary-completed-empty">${activeMode === 'week' ? '本週' : '本月'}尚無${subjectLabel}完成項目。</p>`;
+    return;
+  }
+  const dates = [...new Set(entries.map(function completionDate(entry): string { return entry.date; }))];
+  container.innerHTML = dates.map(function dayMarkup(date): string {
+    const rows = entries.filter(function onDate(entry): boolean { return entry.date === date; });
+    return `<section class="summary-completed-day" aria-label="${escapeHtml(formatDateLabel(date))}">
+      <h3><time datetime="${date}">${escapeHtml(formatDateLabel(date))}</time><span>${rows.length} 項</span></h3>
+      <ul>${rows.map(function itemMarkup(entry): string {
+        const originalDate = entry.recordDate !== entry.date
+          ? `<small>原排程 ${escapeHtml(entry.recordDate)}</small>` : '';
+        const detail = entry.detail ? `<p>${escapeHtml(entry.detail)}</p>` : '';
+        const color = SUBJECT_TIME_COLORS[completedItemSummarySubject(entry.subject)];
+        return `<li data-completed-subject="${escapeHtml(entry.subject)}" style="--completed-accent:${color}"><span class="summary-completed-subject">${escapeHtml(entry.subject)}</span>
+          <div><strong>${escapeHtml(entry.title)}</strong>${detail}${originalDate}</div></li>`;
+      }).join('')}</ul>
+    </section>`;
+  }).join('');
+}
+
 function renderAll(): void {
   const period = summaryPeriod(activeAnchor, activeMode);
   const previousPeriod = summaryPeriod(shiftSummaryAnchor(activeAnchor, activeMode, -1), activeMode);
@@ -516,6 +525,7 @@ function renderAll(): void {
   renderComparison(current, previous);
   renderConclusion(current, previous);
   renderPersonalStatus(currentSleep, previousSleep);
+  renderCompletedItems(period);
 }
 
 function switchSummaryMode(mode: SummaryMode): void {
@@ -598,6 +608,7 @@ element<HTMLInputElement>('includeStatusDaysCompletion').addEventListener('chang
   storeStatusDayCompletionPreference(includeStatusDaysInCompletion);
   renderAll();
 });
+element<HTMLButtonElement>('clearCompletedSubjectFilter').addEventListener('click', returnToSubjectOverview);
 element<HTMLDivElement>('summarySubjectDistribution').addEventListener('click', event => {
   const detailBack = (event.target as HTMLElement).closest<HTMLElement>('[data-summary-back]');
   if (detailBack) {

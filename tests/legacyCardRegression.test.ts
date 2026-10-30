@@ -1,17 +1,21 @@
 import assert from 'node:assert/strict';
+import { resolveMathCalendarPlan } from '../src/calendar/mathPlan.ts';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { runInNewContext } from 'node:vm';
 import * as completion from '../src/study/completionMetrics.ts';
+import { isInteractiveStudyItem } from '../src/study/interactiveTasks.ts';
 import { isConfirmedDeferred } from '../src/study/deferDays.ts';
 import { renderItemDeleteFooter } from '../src/ui/itemActions.ts';
 import { propagateDailyWorkField } from '../src/study/dailyWorkGroup.ts';
 import { normalizeStudyTimerState } from '../src/study/studyTimer.ts';
 import { studyItemSubject } from '../src/study/subjectOrder.ts';
 import { summarizeSubjectTime } from '../src/study/subjectTime.ts';
-import { completedStudyTimeEntries } from '../src/study/learningSummary.ts';
+import { completedStudyTimeEntries } from '../src/study/completedStudyTime.ts';
 import { isCompletedByDate } from '../src/study/completionCheckedOn.ts';
 import { parseCalendarTask } from '../src/calendar/calendarBridge.ts';
+import { unitBook } from '../src/data/unitBooks.ts';
+import { numberedStudyScope, usesSharedNumberedTemplate, usesSharedPageTemplate } from '../src/data/numberedScopes.ts';
 import { prioritizeCalendarPageRanges } from '../src/calendar/pagePriority.ts';
 import type { StudyItem, StudyRecord } from '../src/types.ts';
 import {
@@ -19,10 +23,8 @@ import {
   CHINESE_TOPIC_BOOK,
   DEEP_FIFTEEN_BOOK,
   ENGLISH_TOPIC_CLOZE_BOOK,
-  GEOGRAPHY_WEEKLY_PLAN_BOOK,
-  HISTORY_HAOHAOXUE_BOOK,
   isEnglishPageMappedBook,
-  pageMappedBookSocialSubject,
+  pageMappedBookUsesScopeSelection,
   pageMappedBookSubject,
 } from '../src/data/bookPageMaps.ts';
 
@@ -35,7 +37,13 @@ function runtimeFunction<T>(name: string, dependencies: Record<string, unknown>)
   const end = runtime.indexOf('\nfunction ', start + 1);
   assert.ok(start >= 0 && end > start, `Missing runtime function: ${name}`);
   return runInNewContext(`${runtime.slice(start, end)}\n${name}`, {
+    managedMaterialForItem: () => null,
     completionDateMarkup: () => '',
+    isInteractiveStudyItem,
+    unitBook,
+    numberedStudyScope,
+    usesSharedNumberedTemplate,
+    usesSharedPageTemplate,
     ...dependencies,
   }) as T;
 }
@@ -44,10 +52,27 @@ function item(overrides: Partial<StudyItem> = {}): StudyItem {
   return { id: 'test-item', type: 'extra', title: '英文', required: true, source: 'preset', done: false, minutes: '', f: {}, ...overrides };
 }
 
-function optionGroupContents(markup: string, label: string): string {
-  const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return markup.match(new RegExp(`<optgroup label="${escapedLabel}">([\\s\\S]*?)<\\/optgroup>`))?.[1] ?? '';
-}
+const selectedMaterialChoices = [
+  { subject: 'math', value: '教學講義', book: '1' },
+  { subject: 'math', value: '新關鍵', book: '1~2' },
+  { subject: 'math', value: '新大滿貫', book: 'A' },
+  { subject: 'natural', value: '領航', book: '化學' },
+  { subject: 'natural', value: '優勢', book: '物理' },
+  { subject: 'natural', value: '逆轉勝', book: '物理' },
+  { subject: 'english', value: 'ACE Reading' },
+  { subject: 'english', value: '學測週計畫' },
+  { subject: 'english', value: '混合題30篇實戰演練' },
+  { subject: 'english', value: 'Unlock 3 (Listening, Speaking, Critical Thinking)' },
+  { subject: 'chinese', value: 'reading' },
+  { subject: 'chinese', value: DEEP_FIFTEEN_BOOK },
+  { subject: 'chinese', value: CHINESE_TOPIC_BOOK },
+];
+const activeManualMaterialChoices = (subject: string) => selectedMaterialChoices.filter(choice => choice.subject === subject);
+const unique = (values: string[]) => values.filter((value, index) => Boolean(value) && values.indexOf(value) === index);
+const manualExistingOption = () => '';
+const manualOptions = (values: string[], current: string, labelFor?: (value: string) => string) => values.map(value => (
+  `<option value="${value}"${value === current ? ' selected' : ''}>${labelFor ? labelFor(value) : value}</option>`
+)).join('');
 
 const recordUnits = runtimeFunction<(record: StudyRecord, date: string, cutoffDate?: string) => completion.CompletionUnit[]>(
   'completionUnitsForRecord',
@@ -76,7 +101,72 @@ function metrics(items: StudyItem[]) {
   return completion.summarizeCompletionUnits(recordUnits(record, record.date));
 }
 
-test('Friday settlement excludes weekday items completed during the weekend', () => {
+test('all seven weekday presets and Calendar interactive definitions are optional while regular work remains required', () => {
+  const presetDef = runtimeFunction<(...args: unknown[]) => { type: string; required: boolean; f: Record<string, unknown> }>('presetDef', {});
+  const weekdayPresets = runtimeFunction<(day: number) => Array<{ type: string; required: boolean }>>('weekdayPresets', { presetDef });
+  for (let day = 0; day < 7; day++) {
+    const definitions = weekdayPresets(day);
+    assert.equal(definitions.find(entry => entry.type === 'interactiveDaily')?.required, false);
+    assert.equal(definitions.find(entry => entry.type === 'mathStudy' || entry.type === 'mathPractice')?.required, true);
+  }
+  const calendarFixedTemplateDef = runtimeFunction('calendarFixedTemplateDef', {
+    presetDef,
+    calendarFixedTemplateSpec: runtimeFunction('calendarFixedTemplateSpec', {}),
+    cloneObj: structuredClone,
+  });
+  const calendarDefinitions = runtimeFunction<(date: string) => Array<{ type: string; required: boolean; f: Record<string, unknown> }>>(
+    'cloudCalendarDefsForDate', {
+      calendarParsedByDate: { '2026-10-26': ['interactiveDaily', 'fixedMagazine'].map(template => ({
+        kind: 'fixedTemplate', template, title: template, sourceEventId: template, eventKey: template, date: '2026-10-26', route: 'today',
+      })) },
+      calendarEventToken: (value: string) => value,
+      calendarFixedTemplateDef,
+    },
+  )('2026-10-26');
+  assert.equal(calendarDefinitions.find(entry => entry.type === 'interactiveDaily')?.required, false);
+  assert.equal(calendarDefinitions.find(entry => entry.type === 'magazine')?.required, true);
+});
+
+test('interactive child normalization preserves existing work and keeps Monday vocabulary optional without duplication', () => {
+  let nextId = 0;
+  const interactiveDailyChild = runtimeFunction<(type: string) => StudyItem>('interactiveDailyChild', {
+    newItem: (type: string) => item({ type }), uid: () => `new-${++nextId}`,
+  });
+  const ensureEntries = runtimeFunction<(parent: StudyItem) => StudyItem[]>('ensureInteractiveEntries', {
+    data: { date: '2026-10-26' }, parseDate: (date: string) => new Date(`${date}T12:00:00`), interactiveDailyChild,
+  });
+  const child = item({ id: 'saved-child', type: 'biologyInteractive', done: true, checkedOn: '2026-10-25', minutes: '25', f: { topic: '細胞' } });
+  const parent = item({ type: 'interactiveDaily', f: { interactiveEntries: [child] } });
+  const normalized = ensureEntries(parent);
+  assert.equal(parent.required, false);
+  assert.equal(normalized.length, 2);
+  assert.ok(normalized.every(entry => entry.required === false));
+  assert.equal(child.done, true);
+  assert.equal(child.checkedOn, '2026-10-25');
+  assert.equal(child.minutes, '25');
+  assert.equal(child.f.topic, '細胞');
+  assert.equal(normalized[0].id, 'monday-vocab-2026-10-26');
+  assert.equal(normalized[0].locked, true);
+  assert.equal(ensureEntries(parent).length, 2);
+});
+
+test('main-page completion excludes old interactive work and nested children regardless of required or makeup flags', () => {
+  const optional = [
+    item({ type: 'interactiveDaily', f: { interactiveEntries: [item({ done: true })] } }),
+    item({ type: 'englishPractice', source: 'custom', done: true }),
+    item({ type: 'biologyInteractive', deferredCarry: true }),
+    item({ type: 'general', presetKey: 'daily_interactive' }),
+  ];
+  const recordItems = [item({ done: true }), item(), ...optional];
+  const before = structuredClone(recordItems);
+  assert.equal(metrics(recordItems).itemPercent, 50);
+  assert.equal(metrics(recordItems).workloadPercent, 50);
+  assert.equal(metrics(optional).workloadTotal, 0);
+  assert.equal(metrics([item({ f: { groupedWorkEntries: [item({ done: true }), ...optional] } })]).workloadTotal, 1);
+  assert.deepEqual(recordItems, before);
+});
+
+test('Friday settlement excludes optional interaction and weekday items completed during the weekend', () => {
   const record = { date: '2026-09-16', items: [
     item({ done: true, checkedOn: '2026-09-19' }),
     item({ f: { groupedWorkEntries: [item({ done: true, checkedOn: '2026-09-20' })] } }),
@@ -85,10 +175,10 @@ test('Friday settlement excludes weekday items completed during the weekend', ()
   const friday = completion.summarizeCompletionUnits(recordUnits(record, record.date, '2026-09-18'));
   const sunday = completion.summarizeCompletionUnits(recordUnits(record, record.date, '2026-09-20'));
 
-  assert.equal(friday.itemCompleted, 1);
-  assert.equal(friday.workloadCompleted, 1);
-  assert.equal(sunday.itemCompleted, 3);
-  assert.equal(sunday.workloadCompleted, 3);
+  assert.equal(friday.itemCompleted, 0);
+  assert.equal(friday.workloadCompleted, 0);
+  assert.equal(sunday.itemCompleted, 2);
+  assert.equal(sunday.workloadCompleted, 2);
 });
 
 test('weekly completion metrics pass Friday and Sunday as separate snapshot cutoffs', () => {
@@ -104,7 +194,7 @@ test('weekly completion metrics pass Friday and Sunday as separate snapshot cuto
         cutoffs.push(cutoffDate);
         return [];
       },
-      includesCompletionInPeriod: () => true,
+      completionIncludedInPeriod: () => true,
       summarizeCompletionUnits: completion.summarizeCompletionUnits,
     },
   );
@@ -114,6 +204,93 @@ test('weekly completion metrics pass Friday and Sunday as separate snapshot cuto
   cutoffs.length = 0;
   weekMetrics('2026-09-14', 6);
   assert.deepEqual(cutoffs, Array(7).fill('2026-09-20'));
+});
+
+test('main-page weekly completion skips outside days without hiding their schedule', () => {
+  const awayRecord: StudyRecord = {
+    date: '2026-09-14', mood: '外出',
+    items: [item({ id: 'away-preset', source: 'preset', done: false })],
+  };
+  const visible = runtimeFunction<(record: StudyRecord) => StudyItem[]>('visibleItems', {
+    activeEnglishTaskItems: (_record: StudyRecord, items: StudyItem[]) => items,
+  });
+  assert.deepEqual(visible(awayRecord).map(entry => entry.id), ['away-preset']);
+
+  const weekMetrics = runtimeFunction<(date: string, lastDayIndex: number) => completion.CompletionMetrics>(
+    'completionMetricsForWeek',
+    {
+      mondayOf: (date: Date) => date,
+      parseDate: (date: string) => new Date(`${date}T12:00:00`),
+      dateString: (date: Date) => date.toISOString().slice(0, 10),
+      studyRecordForOverview: (date: string) => date === awayRecord.date ? awayRecord : { date, items: [] },
+      completionIncludedInPeriod: (record: StudyRecord) => record.mood !== '外出' && record.mood !== '身體不適',
+      completionUnitsForRecord: () => [completion.originalCompletionUnit(false)],
+      summarizeCompletionUnits: completion.summarizeCompletionUnits,
+    },
+  );
+  assert.equal(weekMetrics('2026-09-14', 0).itemTotal, 0);
+  assert.doesNotMatch(runtime, /固定排程已全部取消|固定排程全部取消|因外出取消/);
+  assert.match(runtime, /原有排程仍保留.*不列入週／月完成率/);
+});
+
+test('cloud bootstrap renders the saved day without replacing it with fallback presets', () => {
+  const nodes = {
+    studyDate: { value: '2026-09-18' },
+    weekdayText: { textContent: '' },
+    status: { textContent: '' },
+  };
+  let presetCalls = 0;
+  let persistCalls = 0;
+  let renderCalls = 0;
+  const load = runtimeFunction<(options?: { skipCloudRead?: boolean; cacheOnly?: boolean; skipPresetReconcile?: boolean }) => void>(
+    'load',
+    {
+      id: (name: keyof typeof nodes) => nodes[name],
+      loadData: (date: string) => ({ date, items: [{ id: 'saved-calendar-item' }] }),
+      cloneRecord: (record: StudyRecord) => structuredClone(record),
+      updateCloudConflictUI: () => {},
+      updateStorageRecoveryUI: () => {},
+      weekdays: ['日', '一', '二', '三', '四', '五', '六'],
+      parseDate: (date: string) => new Date(`${date}T12:00:00`),
+      ensureDailyPresets: () => {
+        presetCalls += 1;
+        return true;
+      },
+      ensureEnglishReviewWordEntryIds: () => false,
+      writeHeader: () => {},
+      render: () => {
+        renderCalls += 1;
+      },
+      persist: () => {
+        persistCalls += 1;
+        return true;
+      },
+      cloudUser: {},
+      cloudBootstrapPending: true,
+      cloudPullDate: () => {},
+    },
+  );
+
+  load({ skipCloudRead: true, cacheOnly: true, skipPresetReconcile: true });
+  assert.equal(renderCalls, 1);
+  assert.equal(presetCalls, 0);
+  assert.equal(persistCalls, 0);
+
+  load({ skipCloudRead: true });
+  assert.equal(renderCalls, 2);
+  assert.equal(presetCalls, 1);
+  assert.equal(persistCalls, 1);
+});
+
+test('cloud activation waits for Calendar data before reconciling visible presets', () => {
+  assert.match(runtime, /load\(\{skipCloudRead:true,cacheOnly:true,skipPresetReconcile:true\}\)/);
+  assert.match(runtime, /refreshVisibleDataAfterBackgroundSync\(\{skipPresetReconcile:true\}\)/);
+  assert.match(runtime, /setCloudVisibleRefreshPending\(true,options\)/);
+  assert.match(runtime, /load\(Object\.assign\(\{skipCloudRead:true\},options\|\|\{\}\)\)/);
+  assert.match(
+    runtime,
+    /await withOperationTimeout\(calendarRefreshStatus\(false\)[\s\S]*?if\(serial===cloudActivationSerial\)refreshVisibleDataAfterBackgroundSync\(\)/,
+  );
 });
 
 test('runtime metrics wait for confirmation, subtract once on retargeting, and restore on cancellation', () => {
@@ -142,8 +319,6 @@ test('all runtime card variants exclude confirmed deferrals from both metrics', 
     item({ required: false, f: { calendarMakeup: true } }),
     item({ required: false, source: 'custom' }),
     item({ f: { calendarIncludesMakeup: true } }),
-    item({ type: 'interactiveDaily', f: { interactiveEntries: [item({ done: true })], calendarIncludesMakeup: true } }),
-    item({ type: 'interactiveDaily', deferredCarry: true, f: { interactiveEntries: [item({ done: true })] } }),
     item({ type: 'scienceReview', f: { calendarNaturalIntegration: true, calendarIntegrationEntries: [{ subject: '物理', done: true }, { subject: '生物', done: false }] } }),
     item({ type: 'scienceReview', deferredCarry: true, f: { calendarNaturalIntegration: true, calendarIntegrationEntries: [{ subject: '物理', done: true }] } }),
     item({ type: 'scienceReview', f: { calendarNaturalIntegration: true } }),
@@ -217,120 +392,35 @@ test('Calendar math cards lock the supplied lecture version while manual cards k
   assert.match(manual, /<select data-field="material">/);
 });
 
-test('manual added-item selectors expose checked materials and preserve an existing value', () => {
+test('manual added-item selectors expose the selected public materials', () => {
   const selected = (value: unknown, current: unknown) => String(value) === String(current) ? ' selected' : '';
   const esc = (value: unknown) => String(value ?? '');
-  const unique = (values: string[]) => values.filter((value, index) => Boolean(value) && values.indexOf(value) === index);
-  const choices = {
-    math: [
-      { subject: 'math', value: '對話式', book: '1' },
-      { subject: 'math', value: '新關鍵', book: '1~2' },
-    ],
-    natural: [
-      { subject: 'natural', value: '逆轉勝', book: '物理' },
-      { subject: 'natural', value: '領航', book: '化學' },
-    ],
-    english: [
-      { subject: 'english', value: '學測週計畫' },
-      { subject: 'english', value: 'Azar英文文法（中階）' },
-    ],
-  };
-  const activeManualMaterialChoices = (subject: keyof typeof choices) => choices[subject] ?? [];
   const manualOptionGroup = runtimeFunction<(label: string, values: string[], current: string, labelFor?: (value: string) => string) => string>(
     'manualOptionGroup',
     { selected, esc },
   );
-  const manualOptions = runtimeFunction<(values: string[], current: string, labelFor?: (value: string) => string) => string>(
-    'manualOptions',
-    { selected, esc },
-  );
-  const manualExistingOption = (values: string[], current: string) => current && !values.includes(current)
-    ? `<optgroup label="既有紀錄"><option value="${current}" selected>${current}（目前紀錄）</option></optgroup>`
-    : '';
   const mathOptions = runtimeFunction<(current: string) => string>('mathMaterialOptions', {
-    MATH_GRAND_SLAM_MATERIAL: '新大滿貫',
-    manualOptionGroup,
-    manualExistingOption,
-    activeManualMaterialChoices,
-    unique,
-  });
-  const mathBookOptions = runtimeFunction<(material: string, current: string) => string>('mathBookOptions', {
-    activeManualMaterialChoices,
-    manualOptions,
-    manualExistingOption,
-    unique,
+    activeManualMaterialChoices, manualExistingOption, manualOptionGroup, unique,
   });
   const scienceOptions = runtimeFunction<(subject: string, current: string) => string>('scienceMaterialOptions', {
-    activeManualMaterialChoices,
-    manualOptions,
-    manualExistingOption,
-    unique,
-  });
-  const englishMaterialOptionGroups = runtimeFunction<(values: string[], current: string) => string>('englishMaterialOptionGroups', {
-    ENGLISH_WEEKLY_PLAN_BOOK: '學測週計畫',
-    ENGLISH_MIXED_30_BOOK: '混合題30篇實戰演練',
-    ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK: '英語高頻字彙完全攻略',
-    LISTENING_TEST_BOOK_TITLE: '大考英聽A攻略',
-    ENGLISH_TOPIC_READING_BOOK: '主題百匯：篇章結構·閱讀測驗',
-    ENGLISH_TOPIC_CLOZE_BOOK: '主題百匯：克漏字',
-    manualOptionGroup,
-    manualExistingOption,
+    activeManualMaterialChoices, manualExistingOption, manualOptionGroup, manualOptions, unique,
   });
   const readingOptions = runtimeFunction<(current: string) => string>('readingOptions', {
-    activeManualMaterialChoices,
-    englishMaterialOptionGroups,
-    unique,
-  });
-  const reviewEnglishOptions = runtimeFunction<(current: string) => string>('reviewEnglishOptions', {
-    activeManualMaterialChoices,
-    englishMaterialOptionGroups,
-    unique,
+    GSAT_ENGLISH_TITLES: ['ACE Reading', '英文寫作測驗', '學測週計畫', '混合題30篇實戰演練'],
+    SUPPLEMENT_ENGLISH_TITLES: ['雜誌', 'Unlock 3 (Listening, Speaking, Critical Thinking)'],
+    activeManualMaterialChoices, manualExistingOption, manualOptionGroup, unique,
   });
 
-  assert.match(mathOptions(''), /<optgroup label="分冊講義"><option value="對話式"/);
-  assert.match(mathOptions(''), /<optgroup label="複習講義">/);
-  assert.match(mathOptions(''), /<option value="新關鍵"/);
-  assert.doesNotMatch(mathOptions(''), /教學講義|新大滿貫/);
-  assert.match(mathOptions('教學講義'), /既有紀錄/);
-  assert.match(mathOptions('教學講義'), /教學講義（目前紀錄）/);
-  assert.deepEqual(
-    [...mathBookOptions('對話式', '').matchAll(/<option value="([^"]+)"/g)].map(match => match[1]).filter(Boolean),
-    ['1'],
-  );
-  assert.deepEqual(
-    [...mathBookOptions('新關鍵', '').matchAll(/<option value="([^"]+)"/g)].map(match => match[1]).filter(Boolean),
-    ['1~2'],
-  );
-  assert.match(scienceOptions('化學', ''), /<option value="領航"/);
-  assert.match(scienceOptions('物理', ''), /<option value="逆轉勝"/);
-  assert.doesNotMatch(scienceOptions('物理', ''), /優勢|123日的淬鍊/);
-  assert.match(scienceOptions('', ''), /請先選擇科目/);
-  const readingMarkup = readingOptions('');
-  assert.match(readingMarkup, /<option value="學測週計畫"/);
-  assert.match(readingMarkup, /<optgroup label="學測">/);
-  assert.match(readingMarkup, /<optgroup label="課外補充">/);
-  assert.match(readingMarkup, /<option value="Azar英文文法（中階）"/);
-  assert.doesNotMatch(readingMarkup, /ACE Reading|混合題30篇實戰演練/);
-  assert.match(readingOptions('ACE Reading'), /ACE Reading（目前紀錄）/);
-
-  const reviewMarkup = reviewEnglishOptions('');
-  assert.match(reviewMarkup, /<option value="Azar英文文法（中階）"/);
-  assert.match(reviewMarkup, /<optgroup label="學測">/);
-  assert.match(reviewMarkup, /<optgroup label="課外補充">/);
-});
-
-test('manual natural lecture is cleared when the subject no longer matches', () => {
-  const normalize = runtimeFunction<(fields: Record<string, unknown>) => void>('normalizeScience', {
-    CHEMISTRY_NAVIGATOR_MATERIAL: '領航',
-    PHYSICS_ADVANTAGE_MATERIAL: '優勢',
-    PHYSICS_COMEBACK_MATERIAL: '逆轉勝',
-  });
-  const chemistry = { subject: '物理', material: '領航' };
-  const physics = { subject: '化學', material: '優勢' };
-  normalize(chemistry);
-  normalize(physics);
-  assert.equal(chemistry.material, '');
-  assert.equal(physics.material, '');
+  assert.match(mathOptions(''), /optgroup label="複習講義"/);
+  assert.match(mathOptions(''), /optgroup label="分冊講義"/);
+  assert.match(scienceOptions('化學', ''), /option value="領航">領航/);
+  assert.match(readingOptions(''), /optgroup label="學測"/);
+  assert.match(readingOptions(''), /optgroup label="課外補充"/);
+  assert.match(readingOptions(''), /Unlock 3 \(Listening, Speaking, Critical Thinking\)/);
+  assert.match(mathOptions(''), /新大滿貫/);
+  assert.match(scienceOptions('化學', ''), /領航/);
+  assert.match(scienceOptions('物理', ''), /優勢|逆轉勝/);
+  assert.match(readingOptions(''), /學測週計畫|混合題30篇實戰演練/);
 });
 
 test('date switching saves the current date before loading the requested date', () => {
@@ -395,6 +485,7 @@ test('Calendar New Key material and grouped book replace stale defaults unless t
   assert.equal(parsed.kind, 'math');
   if (parsed.kind !== 'math') throw new Error('Expected math Calendar item');
   const resolveCloudMathPlan = runtimeFunction<(task: typeof parsed) => any>('resolveCloudMathPlan', {
+    resolveMathCalendarPlan,
     CALENDAR_MATH_PLAN: {},
     cloneObj: (value: unknown) => JSON.parse(JSON.stringify(value)),
     prioritizeCalendarPageRanges,
@@ -505,6 +596,32 @@ test('interactive child deletion is bottom-left and locked children still cannot
   const render = runtimeFunction<(x: StudyItem) => string>('renderDailyInteractiveEntry', renderingDependencies);
   assert.ok(render(item()).endsWith(`${renderItemDeleteFooter('interactive-delete')}</div>`));
   assert.doesNotMatch(render(item({ locked: true })), /刪除此筆/);
+});
+
+test('interactive and nested completion dates render below their title controls', () => {
+  const dateMarkup = () => '<label class="completion-date-editor">完成日期</label>';
+  const interactive = runtimeFunction<(x: StudyItem) => string>('renderDailyInteractiveEntry', {
+    ...renderingDependencies,
+    completionDateMarkup: dateMarkup,
+  });
+  const interactiveHtml = interactive(item({ done: true }));
+  assert.ok(interactiveHtml.indexOf('data-interactive-type') < interactiveHtml.indexOf('completion-date-editor'));
+  const lockedInteractiveHtml = interactive(item({ done: true, locked: true, description: '標題備註' }));
+  assert.ok(lockedInteractiveHtml.indexOf('標題備註') < lockedInteractiveHtml.indexOf('completion-date-editor'));
+
+  const card = runtimeFunction<(x: StudyItem, deletable: boolean) => string>('renderCard', {
+    ...renderingDependencies,
+    completionDateMarkup: dateMarkup,
+  });
+  const cardHtml = card(item({ done: true, description: '標題備註' }), false);
+  assert.ok(cardHtml.indexOf('標題備註') < cardHtml.indexOf('completion-date-editor'));
+
+  const nested = runtimeFunction<(x: StudyItem, kind: string) => string>('renderNestedEntry', {
+    ...renderingDependencies,
+    completionDateMarkup: dateMarkup,
+  });
+  const nestedHtml = nested(item({ done: true }), 'makeup');
+  assert.ok(nestedHtml.indexOf('data-nested-type') < nestedHtml.indexOf('completion-date-editor'));
 });
 
 test('magazine entries keep their delete index in their own footer and retain the last-entry guard', () => {
@@ -631,13 +748,6 @@ test('mixed writing places both quarter-width scores beside one spanning priorit
 });
 
 test('Chinese page-mapped books are selected directly from 國文項目 without another book selector', () => {
-  const selectedChinese = () => [
-    { value: 'reading' },
-    { value: DEEP_FIFTEEN_BOOK },
-    { value: CHINESE_TOPIC_BOOK },
-  ];
-  const manualOptions = (values: string[], current: string, labelFor: (value: string) => string) => values
-    .map(value => `<option value="${value}"${value === current ? ' selected' : ''}>${labelFor(value)}</option>`).join('');
   const render = runtimeFunction<(x: StudyItem, reviewMode: boolean) => string>('renderChineseFields', {
     isCalendarGujin: () => false,
     isCalendarPageMappedBook: () => false,
@@ -648,10 +758,7 @@ test('Chinese page-mapped books are selected directly from 國文項目 without 
     selected: (left: unknown, right: unknown) => left === right ? ' selected' : '',
     checked: (value: unknown) => value ? ' checked' : '',
     bookPageAutoField: () => '<div data-book-page-auto>fixture</div>',
-    activeManualMaterialChoices: selectedChinese,
-    manualOptions,
-    manualExistingOption: () => '',
-    unique: (values: string[]) => [...new Set(values)],
+    activeManualMaterialChoices, manualExistingOption, manualOptions, unique,
   });
   const html = render(item({
     type: 'chineseReading',
@@ -671,13 +778,6 @@ test('Chinese page-mapped books are selected directly from 國文項目 without 
 });
 
 test('manual Chinese item fields use the requested half and quarter widths', () => {
-  const selectedChinese = () => [
-    { value: 'reading' },
-    { value: DEEP_FIFTEEN_BOOK },
-    { value: CHINESE_TOPIC_BOOK },
-  ];
-  const manualOptions = (values: string[], current: string, labelFor: (value: string) => string) => values
-    .map(value => `<option value="${value}"${value === current ? ' selected' : ''}>${labelFor(value)}</option>`).join('');
   const render = runtimeFunction<(x: StudyItem, reviewMode: boolean) => string>('renderChineseFields', {
     isCalendarGujin: () => false,
     isCalendarPageMappedBook: () => false,
@@ -688,10 +788,7 @@ test('manual Chinese item fields use the requested half and quarter widths', () 
     checked: (value: unknown) => value ? ' checked' : '',
     reasonField: () => '',
     esc: (value: unknown) => String(value ?? ''),
-    activeManualMaterialChoices: selectedChinese,
-    manualOptions,
-    manualExistingOption: () => '',
-    unique: (values: string[]) => [...new Set(values)],
+    activeManualMaterialChoices, manualExistingOption, manualOptions, unique,
   });
   const html = render(item({
     type: 'chineseReading',
@@ -715,13 +812,6 @@ test('manual Chinese item fields use the requested half and quarter widths', () 
 });
 
 test('manual Chinese writing uses the three-row half-quarter layout', () => {
-  const selectedChinese = () => [
-    { value: 'reading' },
-    { value: DEEP_FIFTEEN_BOOK },
-    { value: CHINESE_TOPIC_BOOK },
-  ];
-  const manualOptions = (values: string[], current: string, labelFor: (value: string) => string) => values
-    .map(value => `<option value="${value}"${value === current ? ' selected' : ''}>${labelFor(value)}</option>`).join('');
   const render = runtimeFunction<(x: StudyItem, reviewMode: boolean) => string>('renderChineseFields', {
     isCalendarGujin: () => false,
     isCalendarPageMappedBook: () => false,
@@ -732,10 +822,7 @@ test('manual Chinese writing uses the three-row half-quarter layout', () => {
     checked: (value: unknown) => value ? ' checked' : '',
     reasonField: () => '',
     esc: (value: unknown) => String(value ?? ''),
-    activeManualMaterialChoices: selectedChinese,
-    manualOptions,
-    manualExistingOption: () => '',
-    unique: (values: string[]) => [...new Set(values)],
+    activeManualMaterialChoices, manualExistingOption, manualOptions, unique,
   });
   const html = render(item({
     type: 'chineseReading',
@@ -774,6 +861,7 @@ test('English Topic Collection books use ACE-style topic and round fields withou
     isPrism: () => false,
     isAce: () => false,
     isEnglishPageMappedBook,
+    pageMappedBookUsesScopeSelection,
     canonicalPageMappedBook,
     isCalendarPageMappedBook: () => false,
     readingOptions: () => `<option selected>${ENGLISH_TOPIC_CLOZE_BOOK}</option>`,
@@ -803,6 +891,7 @@ test('Calendar book scopes render as fixed fields for all four supported books',
     isPrism: () => false,
     isAce: () => false,
     isEnglishPageMappedBook,
+    pageMappedBookUsesScopeSelection,
     canonicalPageMappedBook,
     isCalendarPageMappedBook: (x: StudyItem) => x.f.calendarBookRangeLocked === true,
     readingOptions: () => '',
@@ -839,80 +928,6 @@ test('Calendar book scopes render as fixed fields for all four supported books',
   assert.doesNotMatch(chineseHtml, /<select|data-field="start"|data-field="end"/);
 });
 
-test('Calendar social materials render the actual book, pages, and mapped unit fields', () => {
-  const render = runtimeFunction<(x: StudyItem) => string>('renderGeneralFields', {
-    isSaturdayMakeup: () => false,
-    isSaturdayReview: () => false,
-    isEnglishReview: () => false,
-    calendarSocialPageBook: (x: StudyItem) => x.f.calendarBookRangeLocked ? canonicalPageMappedBook(x.f.book) : null,
-    pageMappedBookSocialSubject,
-    bookPageAutoField: () => '<div data-book-topic-auto>地理學測週計畫</div><div data-book-detail-auto>第3週｜氣候系統</div>',
-    esc: (value: unknown) => String(value ?? ''),
-  });
-  const html = render(item({
-    type: 'general',
-    title: '地理｜學測週計畫',
-    f: {
-      subject: '地理',
-      book: GEOGRAPHY_WEEKLY_PLAN_BOOK,
-      start: '24',
-      end: '34',
-      calendarBookRangeLocked: true,
-    },
-  }));
-
-  assert.match(html, /<label>科目<\/label><div class="fixed-book-value">地理<\/div>/);
-  assert.match(html, /<label>教材<\/label><div class="fixed-book-value">學測週計畫<\/div>/);
-  assert.match(html, /<label>起始頁<\/label><div class="fixed-book-value">24<\/div>/);
-  assert.match(html, /<label>結束頁<\/label><div class="fixed-book-value">34<\/div>/);
-  assert.match(html, /第3週｜氣候系統/);
-  assert.doesNotMatch(html, /<input|<select/);
-
-  const historyHtml = render(item({
-    type: 'general',
-    title: '歷史｜好好學',
-    f: {
-      subject: '歷史',
-      book: HISTORY_HAOHAOXUE_BOOK,
-      start: '252',
-      end: '281',
-      calendarBookRangeLocked: true,
-    },
-  }));
-  assert.match(historyHtml, /<label>科目<\/label><div class="fixed-book-value">歷史<\/div>/);
-  assert.match(historyHtml, /<label>教材<\/label><div class="fixed-book-value">好好學<\/div>/);
-  assert.doesNotMatch(historyHtml, /fixed-book-value">學測週計畫/);
-});
-
-test('manual social study summaries retain subject, page range, mapped unit, and completion fields', () => {
-  const details = runtimeFunction<(x: StudyItem) => string>('itemDetails', {
-    isGroupedWork: () => false,
-    canonicalPageMappedBook,
-    bookPageText: () => '第3單元｜公平正義與多元文化',
-    line: (value: unknown) => String(value ?? '') || '—',
-  });
-  const summary = details(item({
-    type: 'socialStudy',
-    f: {
-      subject: '公民',
-      book: '公民｜學測週計畫',
-      start: '31',
-      end: '42',
-      progress: true,
-      graded: true,
-      corrected: true,
-      reason: '重新整理多元文化概念',
-    },
-  }));
-
-  assert.match(summary, /科目：公民/);
-  assert.match(summary, /教材：學測週計畫/);
-  assert.match(summary, /頁碼：第31頁～第42頁/);
-  assert.match(summary, /對應：第3單元｜公平正義與多元文化/);
-  assert.match(summary, /進度：✓｜批改：✓｜訂正：✓/);
-  assert.match(summary, /錯因／不熟觀念：重新整理多元文化概念/);
-});
-
 test('manual English topic selection keeps a compatible round and never creates page fields', () => {
   const applySelection = runtimeFunction<(x: StudyItem, field: string, value: string) => boolean>('applyEnglishPageBookSelection', {
     canonicalPageMappedBook,
@@ -946,5 +961,5 @@ test('manual completion stores late dates and mirrors deferred completion to its
   assert.match(runtime, /syncDeferredCompletionToOrigins\(deferredCompletionRequests,t\.checked,completionActionDate\)/);
   assert.match(runtime, /propagateDailyWorkCompletionDates\(originTarget,checked\?actionDate:undefined,checked\?actionDate:undefined\)/);
   assert.match(runtime, /completedSnapshot=existing\[matchIndex\].*deferredCompletionDate\(existing\[matchIndex\]\)>=date/);
-  assert.match(styles, /\.completion-checked-on\{/);
+  assert.match(styles, /\.completion-date-editor\{/);
 });

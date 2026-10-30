@@ -1,3 +1,5 @@
+import { numberedStudyScope } from '../data/numberedScopes.ts';
+
 export interface NumericPageRange {
   start: number;
   end: number;
@@ -9,6 +11,7 @@ export interface RangeCluster<T> {
 }
 
 export function numericPageRange(fields: Record<string, unknown> | null | undefined): NumericPageRange | null {
+  if (numberedStudyScope({ f: fields ?? {} })) return null;
   const start = Number(fields?.start);
   const end = Number(fields?.end ?? fields?.start);
   if (!Number.isInteger(start) || !Number.isInteger(end) || start < 1 || end < start) return null;
@@ -58,3 +61,4 @@ export function contiguousRangeClusters<T>(
     .sort((left, right) => left.index - right.index)
     .map(({ items: groupedItems, range }) => ({ items: groupedItems, range }));
 }
+

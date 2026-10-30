@@ -26,32 +26,6 @@ test('parses an Essential Grammar unit range into individual units', () => {
   if (parsed.kind === 'essentialGrammar') assert.deepEqual(parsed.units, [12, 13, 14]);
 });
 
-test('recognizes Dialogue split and review lecture versions from standard Calendar notes', () => {
-  const split = parseCalendarTask(row(
-    '數學｜對話式第1冊',
-    '【講義版本】對話式\n【冊別】1\n【頁碼範圍】77-98',
-    'math',
-  ));
-  const review = parseCalendarTask(row(
-    '數學｜對話式複習講義',
-    '【講義版本】對話式複習講義\n【冊別】3A～4A\n【頁碼範圍】156-188',
-    'math',
-  ));
-
-  assert.equal(split.kind, 'math');
-  if (split.kind === 'math') {
-    assert.equal(split.material, '對話式');
-    assert.equal(split.book, '1');
-    assert.deepEqual([split.startPage, split.endPage], [77, 98]);
-  }
-  assert.equal(review.kind, 'math');
-  if (review.kind === 'math') {
-    assert.equal(review.material, '對話式複習講義');
-    assert.equal(review.book, '3A~4A');
-    assert.deepEqual([review.startPage, review.endPage], [156, 188]);
-  }
-});
-
 test('parses 大考英聽A攻略 Test 1-10 as the ACE-style test template', () => {
   const single = parseCalendarTask(row('大考英聽A攻略｜Test 3'));
   const range = parseCalendarTask(row('英文｜大考英聽A攻略｜Test 8-12'));
@@ -300,6 +274,22 @@ test('reads Chinese books by fixed pages and English topic books by fixed topic 
   }
 });
 
+test('reads Unlock 3 as a page-based English book', () => {
+  const parsed = parseCalendarTask(row(
+    '英文｜Unlock 3 (Listening, Speaking, Critical Thinking)',
+    '【頁碼範圍】p.146–167\n【識別碼】unlock-3-unit-7',
+    'studyItem',
+  ));
+
+  assert.equal(parsed.kind, 'bookPages');
+  if (parsed.kind === 'bookPages') {
+    assert.equal(parsed.book, 'Unlock 3 (Listening, Speaking, Critical Thinking)');
+    assert.equal(parsed.subject, '英文');
+    assert.equal(parsed.startPage, 146);
+    assert.equal(parsed.endPage, 167);
+  }
+});
+
 test('a deferred English topic book stays typed and never falls back to page parsing', () => {
   const parsed = parseCalendarTask(row(
     '補做｜英文｜主題百匯 克漏字｜新新世代',
@@ -316,143 +306,6 @@ test('a deferred English topic book stays typed and never falls back to page par
     assert.equal(parsed.topic, '新新世代');
     assert.deepEqual(parsed.rounds, ['第三回']);
     assert.equal('startPage' in parsed, false);
-  }
-});
-
-test('reads the new English lecture books from actual Calendar page ranges', () => {
-  const weekly = parseCalendarTask(row(
-    '英文｜學測週計畫',
-    '【講義版本】學測週計畫\n【頁碼範圍】p.146–155\n【識別碼】weekly-plan-15',
-    'studyItem',
-  ));
-  const mixed = parseCalendarTask(row(
-    '英文｜混合題30篇實戰演練',
-    '【講義版本】混合題30篇 實戰演練\n【頁碼範圍】p.62–63\n【識別碼】mixed-30-26',
-    'studyItem',
-  ));
-  const vocabulary = parseCalendarTask(row(
-    '英文｜英語高頻字彙完全攻略｜Part 2｜Unit 16',
-    '【頁碼範圍】p.224–230\n【識別碼】GSAT-ENG-HIGHFREQ-VOCAB-20260928-U16',
-    'studyItem',
-  ));
-
-  for (const parsed of [weekly, mixed, vocabulary]) {
-    assert.equal(parsed.kind, 'bookPages');
-    if (parsed.kind === 'bookPages') assert.equal(parsed.subject, '英文');
-  }
-  if (weekly.kind === 'bookPages') assert.deepEqual([weekly.book, weekly.startPage, weekly.endPage], ['學測週計畫', 146, 155]);
-  if (mixed.kind === 'bookPages') assert.deepEqual([mixed.book, mixed.startPage, mixed.endPage], ['混合題30篇實戰演練', 62, 63]);
-  if (vocabulary.kind === 'bookPages') assert.deepEqual(
-    [vocabulary.book, vocabulary.startPage, vocabulary.endPage],
-    ['英語高頻字彙完全攻略', 224, 230],
-  );
-});
-
-test('reads New Grand Slam, Navigator and Advantage lecture names from standardized notes', () => {
-  const math = parseCalendarTask(row(
-    '數學A｜矩陣',
-    '【講義版本】新大滿貫\n【冊別】數學A\n【頁碼範圍】p.316–320\n【識別碼】grand-slam-matrix',
-    'math',
-  ));
-  const chemistry = parseCalendarTask(row(
-    '化學｜水溶液中的酸鹼反應',
-    '【講義版本】領航\n【頁碼範圍】p.173–187\n【識別碼】navigator-acid-base',
-    'natural',
-  ));
-  const physics = parseCalendarTask(row(
-    '物理｜原子光譜',
-    '【講義版本】優勢\n【頁碼範圍】p.230–244\n【識別碼】advantage-spectrum',
-    'natural',
-  ));
-
-  assert.equal(math.kind, 'math');
-  if (math.kind === 'math') assert.deepEqual([math.material, math.book, math.startPage, math.endPage], ['新大滿貫', 'A', 316, 320]);
-  assert.equal(chemistry.kind, 'natural');
-  if (chemistry.kind === 'natural') assert.deepEqual([chemistry.material, chemistry.startPage, chemistry.endPage], ['領航', 173, 187]);
-  assert.equal(physics.kind, 'natural');
-  if (physics.kind === 'natural') assert.deepEqual([physics.material, physics.startPage, physics.endPage], ['優勢', 230, 244]);
-});
-
-test('lecture identifiers select the correct map even with a shortened Calendar title', () => {
-  const chemistry = parseCalendarTask(row(
-    '酸鹼反應',
-    '【頁碼範圍】173–187\n【識別碼】GSAT-CHEM-LINGHANG',
-    'studyItem',
-  ));
-  const math = parseCalendarTask(row(
-    '矩陣',
-    '【頁碼範圍】316–320\n【識別碼】GSAT-MATHA-NEW-DAMANFEN',
-    'studyItem',
-  ));
-  const english = parseCalendarTask(row(
-    '第15回',
-    '【頁碼範圍】146–155\n【識別碼】GSAT-ENG-WEEKPLAN',
-    'studyItem',
-  ));
-
-  assert.equal(chemistry.kind, 'natural');
-  if (chemistry.kind === 'natural') assert.deepEqual([chemistry.subject, chemistry.material], ['化學', '領航']);
-  assert.equal(math.kind, 'math');
-  if (math.kind === 'math') assert.deepEqual([math.material, math.book], ['新大滿貫', 'A']);
-  assert.equal(english.kind, 'bookPages');
-  if (english.kind === 'bookPages') assert.deepEqual([english.subject, english.book], ['英文', '學測週計畫']);
-});
-
-test('lecture identifiers still select the material after adding a unique event suffix', () => {
-  const chemistry = parseCalendarTask(row(
-    '酸鹼反應',
-    '【頁碼範圍】173–187\n【識別碼】GSAT-CHEM-LINGHANG-20260916-01',
-    'studyItem',
-  ));
-
-  assert.equal(chemistry.kind, 'natural');
-  if (chemistry.kind === 'natural') {
-    assert.deepEqual(
-      [chemistry.subject, chemistry.material, chemistry.startPage, chemistry.endPage],
-      ['化學', '領航', 173, 187],
-    );
-  }
-});
-
-test('social weekly-plan identifiers select separate geography, history, and civics maps', () => {
-  const cases = [
-    ['氣候系統', '【頁碼範圍】24–34\n【識別碼】GSAT-GEO-WEEKPLAN-20260924-03', '地理', '地理｜學測週計畫'],
-    ['人群的移動與交流', '【頁碼範圍】114–145\n【識別碼】GSAT-HIST-WEEKPLAN-20260924-05', '歷史', '歷史｜學測週計畫'],
-    ['媒體與公共意見', '【頁碼範圍】83–98\n【識別碼】GSAT-CIVICS-WEEKPLAN-20260924-06', '公民', '公民｜學測週計畫'],
-  ] as const;
-
-  for (const [title, description, socialSubject, book] of cases) {
-    const parsed = parseCalendarTask(row(title, description, 'studyItem'));
-    assert.equal(parsed.kind, 'bookPages');
-    if (parsed.kind === 'bookPages') {
-      assert.deepEqual([parsed.subject, parsed.socialSubject, parsed.book], ['社會', socialSubject, book]);
-    }
-  }
-});
-
-test('Haohaoxue History identifier selects its own material and final mapped range', () => {
-  const parsed = parseCalendarTask(row(
-    '歷史｜好好學｜單元9 世界變遷與現代性',
-    '【頁碼範圍】252–281\n【識別碼】GSAT-HIST-HAOHAOXUE-20261023-U09',
-    'studyItem',
-  ));
-  assert.equal(parsed.kind, 'bookPages');
-  if (parsed.kind === 'bookPages') {
-    assert.deepEqual(
-      [parsed.subject, parsed.socialSubject, parsed.book, parsed.startPage, parsed.endPage],
-      ['社會', '歷史', '歷史｜好好學', 252, 281],
-    );
-  }
-});
-
-test('social weekly-plan subject is inferred from a uniquely matching unit name', () => {
-  const geography = parseCalendarTask(row('東亞文化圈的形成與發展', '【頁碼範圍】60–67', 'studyItem'));
-  const history = parseCalendarTask(row('歐洲文化與現代世界', '【頁碼範圍】178–218', 'studyItem'));
-  const civics = parseCalendarTask(row('全球關聯與永續發展', '【頁碼範圍】325–330', 'studyItem'));
-
-  for (const [parsed, subject] of [[geography, '地理'], [history, '歷史'], [civics, '公民']] as const) {
-    assert.equal(parsed.kind, 'bookPages');
-    if (parsed.kind === 'bookPages') assert.deepEqual([parsed.subject, parsed.socialSubject], ['社會', subject]);
   }
 });
 
@@ -526,30 +379,6 @@ test('infers New Key math from standardized notes and normalizes grouped book sp
     if (parsed.kind !== 'math') throw new Error('Expected math Calendar item');
     assert.equal(parsed.material, '新關鍵');
     assert.equal(parsed.book, expectedBook);
-    assert.deepEqual([parsed.startPage, parsed.endPage], [start, end]);
-  }
-});
-
-test('natural New Key identifiers restore all four subjects from shortened Calendar titles', () => {
-  const cases = [
-    ['GSAT-BIO-NEWKEY', '生物', 38, 41],
-    ['GSAT-CHEM-NEWKEY', '化學', 146, 155],
-    ['GSAT-PHYS-NEWKEY', '物理', 131, 136],
-    ['GSAT-EARTH-NEWKEY', '地科', 213, 218],
-  ] as const;
-
-  for (const [identifier, subject, start, end] of cases) {
-    const parsed = parseCalendarTask(row(
-      '複習指定範圍',
-      `【講義版本】新關鍵
-【頁碼範圍】p.${start}–${end}
-【識別碼】${identifier}-20260930-01`,
-      'studyItem',
-    ));
-    assert.equal(parsed.kind, 'natural');
-    if (parsed.kind !== 'natural') throw new Error('Expected natural Calendar item');
-    assert.equal(parsed.subject, subject);
-    assert.equal(parsed.material, '新關鍵');
     assert.deepEqual([parsed.startPage, parsed.endPage], [start, end]);
   }
 });

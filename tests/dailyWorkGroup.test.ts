@@ -4,11 +4,13 @@ import test from 'node:test';
 import {
   applyDailyWorkRangeOverrides,
   groupDailyWorkItems,
+  propagateDailyWorkCompletionDates,
   propagateDailyWorkDeferred,
   propagateDailyWorkDone,
   propagateDailyWorkField,
   propagateDailyWorkMinutes,
   propagateDailyWorkRangeField,
+  relinkDailyWorkSourceItems,
   replaceDailyWorkMinutes,
   ungroupDailyWorkItems,
 } from '../src/study/dailyWorkGroup.ts';
@@ -151,6 +153,26 @@ test('keeps interrupted ranges as separate counted children in one card', () => 
   assert.equal(output.length, 1);
   const children = output[0].f.groupedWorkEntries as StudyItem[];
   assert.deepEqual(children.map(child => [child.f.start, child.f.end]), [['1', '5'], ['11', '15']]);
+});
+
+test('relinks stored grouped children to canonical sources before completion edits', () => {
+  const grouped = groupDailyWorkItems([
+    math('teaching-lecture', 23, 32),
+    { ...math('new-key', 10, 13), f: { material: '新關鍵', book: '1~2', start: '10', end: '13' } },
+  ]);
+  const stored = JSON.parse(JSON.stringify(grouped)) as StudyItem[];
+  const parentSources = stored[0].f.dailyWorkSourceItems as StudyItem[];
+  const children = stored[0].f.groupedWorkEntries as StudyItem[];
+
+  assert.notEqual(children[0].f.dailyWorkSourceItems?.[0], parentSources[0]);
+  relinkDailyWorkSourceItems(stored);
+  assert.equal(children[0].f.dailyWorkSourceItems?.[0], parentSources[0]);
+
+  propagateDailyWorkDone(children[0], true);
+  propagateDailyWorkCompletionDates(children[0], '2026-09-19');
+  assert.equal(parentSources[0].done, true);
+  assert.equal(parentSources[0].checkedOn, '2026-09-19');
+  assert.equal(parentSources[1].done, false);
 });
 
 test('stores every edited child field on its hidden source before rebuilding', () => {

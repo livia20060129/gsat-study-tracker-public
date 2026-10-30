@@ -7,6 +7,8 @@ export const ENGLISH_TOPIC_CLOZE_BOOK = '主題百匯：克漏字';
 export const ENGLISH_WEEKLY_PLAN_BOOK = '學測週計畫';
 export const ENGLISH_MIXED_30_BOOK = '混合題30篇實戰演練';
 export const ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK = '英語高頻字彙完全攻略';
+export const UNLOCK_3_BOOK = 'Unlock 3 (Listening, Speaking, Critical Thinking)';
+export const TOEFL_VOCABULARY_3800_BOOK = 'TOEFL托福決戰字彙3800';
 export const GEOGRAPHY_WEEKLY_PLAN_BOOK = '地理｜學測週計畫';
 export const HISTORY_WEEKLY_PLAN_BOOK = '歷史｜學測週計畫';
 export const HISTORY_HAOHAOXUE_BOOK = '歷史｜好好學';
@@ -22,6 +24,8 @@ export type PageMappedBook =
   | typeof ENGLISH_WEEKLY_PLAN_BOOK
   | typeof ENGLISH_MIXED_30_BOOK
   | typeof ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK
+  | typeof UNLOCK_3_BOOK
+  | typeof TOEFL_VOCABULARY_3800_BOOK
   | typeof GEOGRAPHY_WEEKLY_PLAN_BOOK
   | typeof HISTORY_WEEKLY_PLAN_BOOK
   | typeof HISTORY_HAOHAOXUE_BOOK
@@ -209,10 +213,7 @@ const englishHighFrequencyVocabulary = [
   { start: 254, end: OPEN_ENDED_SECTION, topic: '附錄', detail: '單字索引' },
 ];
 
-function weeklyPlanSections(
-  topic: string,
-  starts: Array<[string, number]>,
-): BookPageSection[] {
+function weeklyPlanSections(topic: string, starts: Array<[string, number]>): BookPageSection[] {
   return starts.map(([detail, start], index) => ({
     start,
     end: index + 1 < starts.length ? starts[index + 1][1] - 1 : OPEN_ENDED_SECTION,
@@ -222,73 +223,116 @@ function weeklyPlanSections(
 }
 
 const geographyWeeklyPlan = weeklyPlanSections('地理學測週計畫', [
-  ['第1週｜研究觀點與研究方法；地理資訊；地圖', 4],
-  ['第2週｜地形系統', 14],
-  ['第3週｜氣候系統', 24],
-  ['第4週｜人口與環境負載力', 35],
-  ['第5週｜聚落、流通路線與區域；都市與城鄉關係', 42],
-  ['第6週｜產業活動', 50],
+  ['第1週｜研究觀點與研究方法；地理資訊；地圖', 4], ['第2週｜地形系統', 14],
+  ['第3週｜氣候系統', 24], ['第4週｜人口與環境負載力', 35],
+  ['第5週｜聚落、流通路線與區域；都市與城鄉關係', 42], ['第6週｜產業活動', 50],
   ['第7週｜世界體系；臺灣與世界；東亞文化圈的形成與發展', 60],
   ['第8週｜東西文化的接觸與區域發展——東南亞、南亞', 68],
   ['第9週｜從孤立到樞紐——澳、紐；伊斯蘭世界的形成與發展', 76],
   ['第10週｜歐洲文明的發展與擴散；超級強國的興起與挑戰——美國', 86],
   ['第11週｜南方區域的發展與挑戰——中南美洲、非洲；全球化', 99],
-  ['第12週｜第一～三冊複習 I', 110],
-  ['第13週｜第一～三冊複習 II', 118],
+  ['第12週｜第一～三冊複習 I', 110], ['第13週｜第一～三冊複習 II', 118],
   ['第14週｜115學年度學科能力測驗試題', 126],
 ]);
 
 const civicsWeeklyPlan = weeklyPlanSections('公民學測週計畫', [
-  ['單元1｜國家組成與認同', 2],
-  ['單元2｜普世人權與公民身分', 16],
-  ['單元3｜公平正義與多元文化', 31],
-  ['單元4｜社會安全制度與勞動參與', 43],
-  ['單元5｜政府組成與運作', 59],
-  ['單元6｜媒體與公共意見', 83],
-  ['單元7｜民主治理與政治參與', 99],
-  ['單元8｜社會規範與法律', 126],
-  ['單元9｜權利主體與基本權利', 142],
-  ['單元10｜限制行政權的法律規範', 159],
-  ['單元11｜犯罪與刑罰', 175],
-  ['單元12｜民事權利的法律保障', 198],
-  ['單元13｜有限資源的分配與誘因', 216],
-  ['單元14｜生產與消費', 231],
-  ['單元15｜市場機能', 253],
-  ['單元16｜市場競爭與政府規範', 266],
-  ['單元17｜專業分工與自由貿易', 280],
-  ['單元18｜國民所得', 298],
-  ['單元19｜外部性與政府對策', 313],
-  ['單元20｜全球關聯與永續發展', 325],
+  ['單元1｜國家組成與認同', 2], ['單元2｜普世人權與公民身分', 16],
+  ['單元3｜公平正義與多元文化', 31], ['單元4｜社會安全制度與勞動參與', 43],
+  ['單元5｜政府組成與運作', 59], ['單元6｜媒體與公共意見', 83],
+  ['單元7｜民主治理與政治參與', 99], ['單元8｜社會規範與法律', 126],
+  ['單元9｜權利主體與基本權利', 142], ['單元10｜限制行政權的法律規範', 159],
+  ['單元11｜犯罪與刑罰', 175], ['單元12｜民事權利的法律保障', 198],
+  ['單元13｜有限資源的分配與誘因', 216], ['單元14｜生產與消費', 231],
+  ['單元15｜市場機能', 253], ['單元16｜市場競爭與政府規範', 266],
+  ['單元17｜專業分工與自由貿易', 280], ['單元18｜國民所得', 298],
+  ['單元19｜外部性與政府對策', 313], ['單元20｜全球關聯與永續發展', 325],
 ]);
 
 const historyWeeklyPlan = weeklyPlanSections('歷史學測週計畫', [
-  ['單元1｜多元族群社會的形成', 2],
-  ['單元2｜現代國家的形塑', 25],
-  ['單元3｜經濟與文化的多樣性', 50],
-  ['單元4｜國家與社會', 78],
-  ['單元5｜人群的移動與交流', 114],
-  ['單元6｜現代化的歷程', 146],
-  ['單元7｜歐洲文化與現代世界', 178],
-  ['單元8｜文化的交會與多元世界的發展', 219],
+  ['單元1｜多元族群社會的形成', 2], ['單元2｜現代國家的形塑', 25],
+  ['單元3｜經濟與文化的多樣性', 50], ['單元4｜國家與社會', 78],
+  ['單元5｜人群的移動與交流', 114], ['單元6｜現代化的歷程', 146],
+  ['單元7｜歐洲文化與現代世界', 178], ['單元8｜文化的交會與多元世界的發展', 219],
   ['單元9｜世界變遷與現代性', 252],
 ]);
 
-/** 《好好學 歷史》，依使用者提供的目錄與全書末頁 p.281。 */
 const historyHaohaoxue = groupedSections([{
   topic: '好好學 歷史',
   starts: [
-    ['單元1｜多元族群社會的形成', 2],
-    ['單元2｜現代國家的形塑', 25],
-    ['單元3｜經濟與文化的多樣性', 50],
-    ['單元4｜國家與社會', 78],
-    ['單元5｜人群的移動與交流', 114],
-    ['單元6｜現代化的歷程', 146],
-    ['單元7｜歐洲文化與現代世界', 178],
-    ['單元8｜文化的交會與多元世界的發展', 219],
+    ['單元1｜多元族群社會的形成', 2], ['單元2｜現代國家的形塑', 25],
+    ['單元3｜經濟與文化的多樣性', 50], ['單元4｜國家與社會', 78],
+    ['單元5｜人群的移動與交流', 114], ['單元6｜現代化的歷程', 146],
+    ['單元7｜歐洲文化與現代世界', 178], ['單元8｜文化的交會與多元世界的發展', 219],
     ['單元9｜世界變遷與現代性', 252],
   ],
   end: 281,
 }]);
+
+const unlock3: BookPageSection[] = [
+  { start: 4, end: 7, topic: 'Front matter', detail: 'Map of the book' },
+  { start: 8, end: 13, topic: 'Front matter', detail: 'Your guide to Unlock' },
+  { start: 14, end: 35, topic: 'Unit 1', detail: 'Animals' },
+  { start: 36, end: 57, topic: 'Unit 2', detail: 'The environment' },
+  { start: 58, end: 79, topic: 'Unit 3', detail: 'Transport' },
+  { start: 80, end: 101, topic: 'Unit 4', detail: 'Customs and traditions' },
+  { start: 102, end: 123, topic: 'Unit 5', detail: 'Health and fitness' },
+  { start: 124, end: 145, topic: 'Unit 6', detail: 'Discovery and invention' },
+  { start: 146, end: 167, topic: 'Unit 7', detail: 'Fashion' },
+  { start: 168, end: 189, topic: 'Unit 8', detail: 'Economics' },
+  { start: 190, end: 200, topic: 'Reference', detail: 'Glossary' },
+  { start: 201, end: 222, topic: 'Reference', detail: 'Video and audio scripts' },
+  { start: 223, end: 223, topic: 'Reference', detail: 'Acknowledgements' },
+];
+
+// Arabic printed pages only. TOC lookup spans end immediately before the next listed start.
+const toeflVocabulary3800 = groupedSections([
+  {
+    topic: 'RANK 1',
+    starts: [
+      ['字彙', 1],
+      ['TIPS：開始留學的準備工作', 11],
+      ['TIPS：安排適合自己的應考計畫', 21],
+      ['TIPS：看似相近、實則不同的單字', 31],
+      ['Vocabulary Building：字首', 36],
+      ['Vocabulary Building：字根', 39],
+      ['Vocabulary Building：數字字首', 42],
+      ['Vocabulary Building：聯想法', 44],
+    ],
+    end: 44,
+  },
+  {
+    topic: 'RANK 2',
+    starts: [
+      ['字彙', 45],
+      ['TIPS：TOEFL 測驗的單字範圍', 65],
+      ['TIPS：拼字或發音相似的單字', 85],
+      ['TIPS：關於一字多義', 105],
+    ],
+    end: 114,
+  },
+  {
+    topic: 'RANK 3',
+    starts: [
+      ['字彙', 115],
+      ['TIPS：閱讀測驗解題法', 125],
+      ['TIPS：聽力測驗解題法', 145],
+      ['TIPS：口說測驗解題法', 165],
+      ['TIPS：寫作測驗解題法', 185],
+    ],
+    end: 196,
+  },
+  {
+    topic: 'RANK 4',
+    starts: [
+      ['字彙', 197],
+      ['TIPS：讓語意更清楚的字詞①', 207],
+      ['TIPS：讓語意更清楚的字詞②', 227],
+      ['TIPS：讓語意更清楚的字詞③', 247],
+    ],
+    end: 270,
+  },
+  { topic: '索引', starts: [['索引', 271]], end: 298 },
+]);
 
 export const BOOK_PAGE_MAPS: Record<PageMappedBook, BookPageSection[]> = {
   [DEEP_FIFTEEN_BOOK]: deepFifteen,
@@ -298,6 +342,8 @@ export const BOOK_PAGE_MAPS: Record<PageMappedBook, BookPageSection[]> = {
   [ENGLISH_WEEKLY_PLAN_BOOK]: englishWeeklyPlan,
   [ENGLISH_MIXED_30_BOOK]: englishMixed30,
   [ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK]: englishHighFrequencyVocabulary,
+  [UNLOCK_3_BOOK]: unlock3,
+  [TOEFL_VOCABULARY_3800_BOOK]: toeflVocabulary3800,
   [GEOGRAPHY_WEEKLY_PLAN_BOOK]: geographyWeeklyPlan,
   [HISTORY_WEEKLY_PLAN_BOOK]: historyWeeklyPlan,
   [HISTORY_HAOHAOXUE_BOOK]: historyHaohaoxue,
@@ -338,6 +384,8 @@ export function canonicalPageMappedBook(value: unknown): PageMappedBook | null {
   if (title.includes('主題百匯') && title.includes('閱讀寫作新進化')) return CHINESE_TOPIC_BOOK;
   if (title.includes('主題百匯') && (title.includes('篇章結構') || title.includes('閱讀測驗'))) return ENGLISH_TOPIC_READING_BOOK;
   if (title.includes('主題百匯') && title.includes('克漏字')) return ENGLISH_TOPIC_CLOZE_BOOK;
+  if (/unlock\s*3\b/i.test(title)) return UNLOCK_3_BOOK;
+  if (/托福\s*決戰\s*字[彙匯]\s*3800/i.test(title)) return TOEFL_VOCABULARY_3800_BOOK;
   if ((title.includes('好好學') && title.includes('歷史')) || title.replace(/\s+/g, '').includes('歷史好好學')) return HISTORY_HAOHAOXUE_BOOK;
   const socialWeeklyPlan = inferredSocialWeeklyPlanBook(title);
   if (socialWeeklyPlan) return socialWeeklyPlan;
@@ -354,8 +402,7 @@ export function pageMappedBookSubject(book: PageMappedBook): '國文' | '英文'
 
 export function pageMappedBookSocialSubject(book: PageMappedBook): SocialStudiesSubject | null {
   if (book === GEOGRAPHY_WEEKLY_PLAN_BOOK) return '地理';
-  if (book === HISTORY_WEEKLY_PLAN_BOOK) return '歷史';
-  if (book === HISTORY_HAOHAOXUE_BOOK) return '歷史';
+  if (book === HISTORY_WEEKLY_PLAN_BOOK || book === HISTORY_HAOHAOXUE_BOOK) return '歷史';
   if (book === CIVICS_WEEKLY_PLAN_BOOK) return '公民';
   return null;
 }

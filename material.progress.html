@@ -13,7 +13,7 @@
     <header class="progress-page-header">
       <div>
         <h1>教材進度圖</h1>
-        <p>依 Tracker 已儲存的學習紀錄，按實際完成比例查看各教材進度。</p>
+        <p>查看教材完成比例，並在同一頁新增與管理教材目錄。</p>
       </div>
       <a class="progress-back header-action-link" href="./index.html">回到 Tracker</a>
     </header>
@@ -26,29 +26,19 @@
         </div>
         <span class="materials-panel-toggle" aria-hidden="true"></span>
       </summary>
-
-      <div class="materials-panel-content">
-        <div class="progress-panel-body">
-          <div class="materials-panel-toolbar">
-            <button id="refreshProgress" type="button">重新讀取</button>
-          </div>
-
-          <div class="subject-switch" id="subjectSwitch" role="tablist" aria-label="切換教材科目" data-active="2">
-            <span class="subject-switch-indicator" aria-hidden="true"></span>
-            <button type="button" role="tab" data-subject="chinese" aria-selected="false" tabindex="-1">國文</button>
-            <button type="button" role="tab" data-subject="english" aria-selected="false" tabindex="-1">英文</button>
-            <button type="button" role="tab" data-subject="math" aria-selected="true">數學</button>
-            <button type="button" role="tab" data-subject="natural" aria-selected="false" tabindex="-1">自然</button>
-            <button type="button" role="tab" data-subject="social" aria-selected="false" tabindex="-1">社會</button>
-          </div>
-
-          <div class="selection-heading">
-            <p>勾選要放入教材進度圖的教材。</p>
-            <strong id="selectionSummary"></strong>
-          </div>
-          <div id="materialSelectionList" class="material-selection-list" role="group" aria-label="選擇我的教材"></div>
+      <div class="materials-panel-content"><div class="progress-panel-body">
+        <div class="materials-panel-toolbar"><button id="refreshProgress" class="material-control" type="button">重新讀取</button></div>
+        <div class="subject-switch" id="subjectSwitch" role="tablist" aria-label="切換教材科目" data-active="2">
+          <span class="subject-switch-indicator" aria-hidden="true"></span>
+          <button type="button" role="tab" data-subject="chinese" aria-selected="false" tabindex="-1">國文</button>
+          <button type="button" role="tab" data-subject="english" aria-selected="false" tabindex="-1">英文</button>
+          <button type="button" role="tab" data-subject="math" aria-selected="true">數學</button>
+          <button type="button" role="tab" data-subject="natural" aria-selected="false" tabindex="-1">自然</button>
+          <button type="button" role="tab" data-subject="social" aria-selected="false" tabindex="-1">社會</button>
         </div>
-      </div>
+        <div class="selection-heading"><p>勾選要放入教材進度圖與自行新增選單的教材。</p><strong id="selectionSummary"></strong></div>
+        <div id="materialSelectionList" class="material-selection-list" role="group" aria-label="選擇我的教材"></div>
+      </div></div>
     </details>
 
     <section class="progress-panel progress-results" aria-labelledby="progressTitle">
@@ -60,6 +50,31 @@
       </div>
 
       <div class="progress-panel-body">
+        <div class="material-toolbar">
+          <label class="material-search" for="catalogSearch">搜尋教材<input id="catalogSearch" type="search" placeholder="輸入書名或科目" /></label>
+          <label class="material-retired"><input id="showRetiredMaterials" type="checkbox" />顯示已停用教材</label>
+          <button id="newMaterial" class="material-control" type="button" hidden>新增教材</button>
+          <button id="toggleMaterialEditing" class="material-control primary" type="button" aria-pressed="false" aria-controls="newMaterial catalogEditor materialProgressList">編輯</button>
+        </div>
+        <p id="catalogStatus" class="progress-note" role="status" aria-live="polite"></p>
+        <p id="catalogError" class="progress-error" role="alert" hidden></p>
+        <section id="catalogEditor" class="catalog-editor" aria-labelledby="catalogEditorTitle" hidden>
+          <h2 id="catalogEditorTitle">新增教材</h2>
+          <form id="catalogForm">
+            <div class="catalog-fields">
+              <label>書名<input id="catalogTitle" required maxlength="180" /></label>
+              <label>科目<select id="catalogSubject" aria-label="科目" required><option>國文</option><option>英文</option><option>數學</option><option>物理</option><option>化學</option><option>生物</option><option>地科</option><option>公民</option><option>歷史</option><option>地理</option></select></label>
+              <label>分類<select id="catalogGroup" aria-label="分類"></select></label>
+              <label>範圍模板<select id="catalogMode" aria-label="範圍模板"><option value="pages">頁碼</option><option value="unit">Unit</option><option value="round">回次</option></select></label>
+              <label><span id="catalogTotalLabel">總頁數</span><input id="catalogTotal" type="number" min="1" max="10000" step="1" required /></label>
+            </div>
+            <h3>章節對照</h3>
+            <p class="progress-note">相同大單元可分列小主題。進度圖依大單元分界；紀錄卡輸入範圍時顯示小主題。章節可留空，範圍不得重疊。</p>
+            <div id="catalogSections"></div>
+            <button id="addCatalogSection" class="material-control" type="button">新增章節</button>
+            <div class="catalog-editor-actions"><button class="material-control primary" type="submit">儲存教材</button><button id="cancelCatalogEdit" class="material-control" type="button">取消編輯</button><button id="deleteCatalogMaterial" class="material-control danger" type="button" hidden>刪除目錄</button></div>
+          </form>
+        </section>
 
         <div class="progress-legend" aria-label="圖例">
           <span><i class="legend-recorded" aria-hidden="true"></i>已完成比例</span>
@@ -68,6 +83,7 @@
         </div>
 
         <div id="materialProgressList" class="material-progress-list" role="tabpanel"></div>
+        <p id="materialEmpty" class="progress-note" hidden>請先在「我的教材」勾選要顯示的教材。</p>
         <p class="progress-note">頁碼型數學教材必須同時具備實際填入並儲存的頁碼，以及已勾選完成，才會填色；單獨勾選 Calendar 建議項目不會直接增加頁數。回次、Unit 與其他分項仍依實際完成紀錄填色。滑鼠移到色塊上可查看完成百分比。</p>
         <p id="progressError" class="progress-error" role="alert" hidden></p>
       </div>

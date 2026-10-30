@@ -4,6 +4,7 @@ import test from 'node:test';
 
 import {
   decideRevisionSync,
+  markRecordLocallyEdited,
   markRecordSynced,
   mergeStudyRecordsForUpload,
   mergeStudyRecordsThreeWay,
@@ -185,6 +186,64 @@ test('three-way merge preserves deliberate blank fields when cloud is unchanged'
   assert.equal(merged.record.items[0].f.topic, '');
 });
 
+test('empty optional fields and omitted optional fields do not create a conflict', () => {
+  const base = markRecordSynced({
+    date: '2026-09-12',
+    items: [item('biology', '20', { reason: '原本有內容' })],
+  });
+  const local = structuredClone(base);
+  const cloud = structuredClone(base);
+  local.items[0].f.reason = '';
+  delete cloud.items[0].f.reason;
+  local.localDirty = true;
+
+  const merged = mergeStudyRecordsThreeWay(local, cloud);
+
+  assert.equal(merged.conflicts.length, 0);
+  assert.equal(merged.record.items[0].f.reason, '');
+});
+
+test('completion animation flags merge without creating study-data conflicts', () => {
+  const base = markRecordSynced({
+    date: '2026-09-12',
+    items: [],
+    completionCelebrations: { version: 3, half: false, complete: false },
+  } as StudyRecord);
+  const local = structuredClone(base) as StudyRecord & { completionCelebrations: Record<string, unknown> };
+  const cloud = structuredClone(base) as StudyRecord & { completionCelebrations: Record<string, unknown> };
+  local.completionCelebrations.half = true;
+  cloud.completionCelebrations.complete = true;
+  local.localDirty = true;
+
+  const merged = mergeStudyRecordsThreeWay(local, cloud);
+  const celebrations = (merged.record as StudyRecord & { completionCelebrations: Record<string, unknown> }).completionCelebrations;
+
+  assert.equal(merged.conflicts.length, 0);
+  assert.equal(celebrations.half, true);
+  assert.equal(celebrations.complete, true);
+});
+
+test('editing during an unresolved conflict preserves the conflict and latest local draft', () => {
+  const previous = markRecordSynced({ date: '2026-09-12', notes: '本機文字', items: [] });
+  previous.localDirty = true;
+  previous.syncConflict = true;
+  previous.syncConflictDetails = [{
+    path: '$.notes', kind: 'same-field', baseExists: true, localExists: true, cloudExists: true,
+    base: '原始', local: '本機文字', cloud: '雲端文字',
+  }];
+  previous.syncConflictLocal = { date: previous.date, notes: '本機文字', items: [] };
+  previous.syncConflictCloud = { date: previous.date, notes: '雲端文字', items: [] };
+  const edited = structuredClone(previous);
+  edited.notes = '本機繼續輸入';
+
+  const preserved = markRecordLocallyEdited(edited, previous);
+
+  assert.equal(preserved.syncConflict, true);
+  assert.equal(preserved.syncConflictCloud?.notes, '雲端文字');
+  assert.equal(preserved.syncConflictLocal?.notes, '本機繼續輸入');
+  assert.equal(preserved.syncConflictDetails?.[0].path, '$.notes');
+});
+
 test('three-way merge keeps item and nested word deletions deleted', () => {
   const base: StudyRecord = {
     date: '2026-09-12',
@@ -230,6 +289,24 @@ test('three-way merge combines changes to different fields and flags the same fi
   assert.equal(conflict.conflicts.length, 1);
   assert.equal(conflict.conflicts[0].path, '$.notes');
   assert.equal(recordSyncConflicts(conflict.record).length, 1);
+});
+
+test('routine fields merge independently across tabs', () => {
+  const base = markRecordSynced({
+    date: '2026-09-20', wakeTime: '07:00',
+    bedtime: { time: '23:30', dateTime: '2026-09-20T23:30', nextDay: false },
+    items: [],
+  });
+  const local = structuredClone(base);
+  const cloud = structuredClone(base);
+  local.wakeTime = '07:20';
+  local.localDirty = true;
+  cloud.bedtime = { time: '23:45', dateTime: '2026-09-20T23:45', nextDay: false };
+
+  const merged = mergeStudyRecordsThreeWay(local, cloud);
+  assert.equal(merged.conflicts.length, 0);
+  assert.equal(merged.record.wakeTime, '07:20');
+  assert.deepEqual(merged.record.bedtime, cloud.bedtime);
 });
 
 test('a stale tab cannot undo a completion saved by another tab', () => {
@@ -306,6 +383,9 @@ test('the save queue merges tab snapshots and reloads cloud inside the date lock
   assert.match(runtime, /words\.push\(\{id:uid\('word'\),text:''/);
   assert.match(runtime, /ensureEnglishReviewWordEntryIds\(data\)/);
   assert.match(runtime, /recordSyncConflicts\(snapshot\)/);
+  assert.match(runtime, /if\(comparedConflicts\.length\)/);
+  assert.match(runtime, /prepareConflictFreePullMerge\(local,cloud,compared\)/);
+  assert.match(runtime, /markRecordLocallyEdited\(data,previous\)/);
   assert.match(runtime, /cloudReplaceRecord\(exact,true\)/);
   assert.match(runtime, /saveCloudConflictBackup/);
 });

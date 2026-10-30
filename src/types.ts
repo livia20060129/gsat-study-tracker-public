@@ -27,6 +27,13 @@ export interface PageRange {
 
 export interface StudyItemFields {
   [key: string]: unknown;
+  /** Local date when an overdue reminder was intentionally skipped. */
+  overdueSkippedOn?: string;
+  /** Recent action shown in the overdue-task undo list for at most 72 hours. */
+  overdueTodoAction?: {
+    kind: 'complete' | 'skip';
+    handledAt: string;
+  };
   /** Legacy strings are migrated to entries with a stable ID before saving. */
   words?: Array<string | EnglishReviewWordEntry>;
   interactiveEntries?: StudyItem[];
@@ -39,19 +46,19 @@ export interface StudyItemFields {
   dailyWorkSourceItems?: StudyItem[];
   /** Manual/timer mode and resumable elapsed-time state for this item. */
   timeTracking?: StudyTimerState;
-  /** Local date when this unfinished item was dismissed from the overdue list. */
-  overdueSkippedOn?: string;
-  /** Recent action shown in the overdue-task undo list for at most 72 hours. */
-  overdueTodoAction?: {
-    kind: 'complete' | 'skip';
-    handledAt: string;
-  };
 }
+
+export type GsatVocabularyLevel = 1 | 2 | 3 | 4 | 5 | 6;
+export type EnglishReviewPartOfSpeech = 'noun' | 'verb' | 'adjective' | 'adverb' | 'preposition' | 'conjunction' | 'pronoun' | 'article' | 'auxiliary';
+export type VocabularyTranslations = Partial<Record<EnglishReviewPartOfSpeech | 'unclassified', string[]>>;
 
 export interface EnglishReviewWordEntry extends Record<string, unknown> {
   id?: string;
   text?: string;
   translation?: string;
+  gsatLevel?: GsatVocabularyLevel;
+  showGsatLevel?: boolean;
+  translationsByPartOfSpeech?: VocabularyTranslations;
 }
 
 export type StudyTimeMode = 'manual' | 'timer';
@@ -120,6 +127,8 @@ export interface BedtimeRecord {
 }
 
 export interface StudyRecord {
+  /** Versioned textbook definitions share the existing account-scoped record sync. */
+  materialCatalog?: import('./study/materialCatalog.ts').CatalogMaterial[];
   /** Explicit JSON payload schema; absent records are decoded as legacy schema 0. */
   schemaVersion?: number;
   date: string;
@@ -138,14 +147,14 @@ export interface StudyRecord {
   /** A local payload failed decoding. Saving and cloud sync stay blocked until recovery. */
   storageIssue?: StudyRecordStorageIssue;
   mood?: string;
+  /** Which English task is active when mixed writing and a timed mock share a date. */
+  englishTaskChoice?: 'mixed' | 'mock';
   wakeTime?: string;
   /** Bedtime for this study date's evening, with its resolved calendar date. */
   bedtime?: BedtimeRecord;
   biggestBlock?: string;
   firstThingTomorrow?: string;
   notes?: string;
-  /** Active choice when scheduled mixed writing and a timed mock overlap. */
-  englishTaskChoice?: 'mixed' | 'mock';
   items: StudyItem[];
 }
 

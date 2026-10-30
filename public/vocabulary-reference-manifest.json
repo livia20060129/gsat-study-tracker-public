@@ -1,0 +1,26 @@
+{
+  "generatedOn": "2026-10-24",
+  "official": {
+    "title": "高中英文參考詞彙表（111學年度起適用）",
+    "author": "財團法人大學入學考試中心基金會",
+    "edition": "109年7月",
+    "source": "https://www.ceec.edu.tw/xmdoc?xsmsid=0K213553204833715309",
+    "sha256": "27b010f8230b2e8763653ddb35783fe9e0140c143b0040f13839046aebb2a126",
+    "printedPages": "53-103",
+    "permission": "原檔聲明僅供非營利目的使用，轉載註明出處，營利用途需事前書面同意",
+    "rows": 6012,
+    "lookupSpellings": 6191
+  },
+  "translations": {
+    "source": "https://github.com/skywind3000/ECDICT",
+    "download": "https://raw.githubusercontent.com/skywind3000/ECDICT/master/ecdict.csv",
+    "sha256": "1a6947e04785db63613a92e14903cdae7954f7e84860b10e68e5c7cbb3f9c3cf",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2025 Linwei",
+    "lookupSpellingsWithAtLeastOneTranslation": 6155,
+    "transformations": ["僅取官方表內拼法", "依詞性對應", "移除人名釋義", "分列意思", "OpenCC s2twp 簡轉繁"]
+  },
+  "buildTool": "scripts/build_vocabulary_reference.py",
+  "converter": "opencc-python-reimplemented 0.1.7 (Apache-2.0)",
+  "note": "有翻譯的拼法不代表所有官方詞性都有翻譯；不猜填缺少欄位。"
+}

@@ -1,5 +1,8 @@
 import { isListeningTestBookTitle, listeningTestNumbers } from '../data/englishBooks.ts';
 import { lectureIdentifierMatch } from '../data/lecturePageMaps.ts';
+import { bookUnitNumbers, unitBook } from '../data/unitBooks.ts';
+import { numberedScopeMaximum, numberedScopesInText, type NumberedScope } from '../data/numberedScopes.ts';
+import { hasStudyPartAnnotation } from '../data/studyPartAnnotation.ts';
 import {
   AZAR_GRAMMAR_BOOK_TITLE,
   azarGrammarChaptersForPages,
@@ -16,8 +19,8 @@ import {
   pageMappedBookSocialSubject,
   pageMappedBookUsesScopeSelection,
   pageMappedBookSubject,
-  type SocialStudiesSubject,
   type PageMappedBook,
+  type SocialStudiesSubject,
 } from '../data/bookPageMaps.ts';
 
 export interface CalendarTaskRow {
@@ -69,6 +72,8 @@ export type CalendarRecognizedSubject =
   | '社會';
 
 export type ParsedCalendarTask =
+  | (ParsedBase & { kind: 'pageScope'; subject: CalendarRecognizedSubject; book: string; startPage: number | null; endPage: number | null })
+  | (ParsedBase & { kind: 'numberedScope'; subject: CalendarRecognizedSubject; book: string; scopes: NumberedScope[] })
   | (ParsedBase & {
       kind: 'math';
       material: string;
@@ -81,6 +86,12 @@ export type ParsedCalendarTask =
   | (ParsedBase & { kind: 'ace'; rounds: number[] })
   | (ParsedBase & { kind: 'listeningA'; tests: number[] })
   | (ParsedBase & { kind: 'gujin'; rounds: number[] })
+  | (ParsedBase & {
+      kind: 'bookUnits';
+      subject: '英文';
+      book: PageMappedBook;
+      units: number[];
+    })
   | (ParsedBase & {
       kind: 'bookPages';
       subject: '國文' | '英文' | '社會';
@@ -202,7 +213,7 @@ function canonicalMathBook(value: string): string {
 
 function canonicalMathMaterial(value: string): string {
   const text = normalized(value).replace(/\s+/g, '');
-  return ['對話式複習講義', '對話式', '新大滿貫', '教學講義', '智慧型', '新關鍵', '複習週記'].find(material => text.includes(material)) ?? normalized(value);
+  return ['教學講義', '智慧型', '新關鍵', '複習週記'].find(material => text.includes(material)) ?? normalized(value);
 }
 
 function mathHeading(title: string, description: string): { title: string; book: string } | null {
@@ -334,7 +345,7 @@ function naturalPageRange(value: string): [number | null, number | null] {
 }
 
 function naturalMaterial(value: string): string {
-  return ['123日的淬鍊', '好考點', '新關鍵', '新大滿貫', '大滿貫', '領航', '優勢', '逆轉勝']
+  return ['123日的淬鍊', '好考點', '新關鍵', '大滿貫']
     .find(material => value.includes(material)) ?? '';
 }
 
@@ -376,7 +387,7 @@ export function calendarStructuredNote(description: string): CalendarStructuredN
 }
 
 function progressFraction(value: string): [number | null, number | null] {
-  const match = value.match(/(?:第\s*)?(\d+)\s*[／/]\s*(\d+)/);
+  const match = value.normalize('NFKC').match(/(?:第\s*)?(\d+)\s*[／/]\s*(\d+)/);
   if (!match) return [null, null];
   const current = Number(match[1]);
   const total = Number(match[2]);
@@ -430,11 +441,7 @@ function focusText(title: string, description: string): string {
   return field(description, '重點');
 }
 
-function integrationPageItems(description: string): Array<{
-  subject: '物理' | '化學' | '生物' | '地科';
-  start: number;
-  end: number;
-}> {
+function integrationPageItems(description: string) {
   const section = bracketSection(description, '講義／頁碼') || description;
   const items: Array<{ subject: '物理' | '化學' | '生物' | '地科'; start: number; end: number }> = [];
   const regex = /(物理|化學|生物|地科)(?:《123日的淬鍊》)?\s*p\.?\s*(\d+)\s*[–—~-]\s*(\d+)/g;
@@ -453,6 +460,44 @@ function integrationPageItems(description: string): Array<{
 }
 
 export function parseCalendarTask(row: CalendarTaskRow): ParsedCalendarTask {
+  const parsed = parseCalendarTaskByBook(row);
+  const note = calendarStructuredNote(parsed.description);
+  const scopes = numberedScopesInText(`${parsed.title}\n${note.unitProgress}\n${note.hasStandardFields ? '' : parsed.description}`);
+  const split = [parsed.title, note.unitProgress, note.hasStandardFields ? '' : parsed.description].some(hasStudyPartAnnotation);
+  if (!scopes.length && !(split && ['bookUnits', 'essentialGrammar'].includes(parsed.kind))) return parsed;
+  const kind = scopes[0]?.kind ?? 'unit';
+  const nativeUnit = kind === 'unit' && ['bookUnits', 'essentialGrammar'].includes(parsed.kind);
+  const nativeRound = kind === 'round' && (
+    (parsed.kind === 'ace' && parsed.rounds.length > 0)
+    || (parsed.kind === 'listeningA' && parsed.tests.length > 0)
+    || (parsed.kind === 'gujin' && parsed.rounds.length > 0)
+    || (parsed.kind === 'writing' && parsed.round !== null && scopes.length === 1 && scopes[0].start === scopes[0].end)
+    || parsed.kind === 'bookScope'
+  );
+  if (!split && (nativeUnit || nativeRound)) return parsed;
+  const maximum = numberedScopeMaximum(kind, parsed.title);
+  if (!split && maximum && scopes.some(scope => Number(scope.end) > maximum)) return parsed;
+  let subject = recognizableCalendarSubject(parsed.title);
+  if ('subject' in parsed) subject = parsed.subject;
+  if (!subject && ['azarGrammar', 'bookScope', 'bookUnits', 'grammar', 'essentialGrammar', 'writing', 'ace', 'listeningA'].includes(parsed.kind)) subject = '英文';
+  if (!subject && parsed.kind === 'math') subject = '數學';
+  if (!subject && parsed.kind === 'gujin') subject = '國文';
+  // Unknown events still need a recognizable subject, even when a Unit/round is present.
+  if (!subject) return parsed;
+  const heading = parsed.title.split(/\b(?:Units?|Rounds?|Tests?)\s*[:：#]?\s*\d|第\s*\d|(?:回次|單元)\s*[:：#]?\s*\d/i)[0];
+  const book = ('book' in parsed && parsed.book) || note.material || note.book
+    || heading.replace(/^(?:國文|英文|數學|物理|化學|生物|地科|自然|社會)\s*[｜:：]?\s*/, '').replace(/[｜:：\s]+$/, '')
+    || parsed.title;
+  if (split) {
+    const [startPage, endPage] = note.hasStandardFields
+      ? structuredPageRange(note.pageRange)
+      : pageRange(`${parsed.title}\n${parsed.description}`);
+    return { ...parsed, kind: 'pageScope', subject, book, startPage, endPage };
+  }
+  return { ...parsed, kind: 'numberedScope', subject, book, scopes: scopes.filter(scope => scope.kind === kind) };
+}
+
+function parseCalendarTaskByBook(row: CalendarTaskRow): ParsedCalendarTask {
   const rawTitle = normalized(row.title ?? '');
   const routed = rawTitle.match(/^(今日項目|今日|本週項目|本周項目|本週|本周)｜(.+)$/);
   const routedTitle = normalized(routed?.[2] ?? rawTitle);
@@ -469,12 +514,11 @@ export function parseCalendarTask(row: CalendarTaskRow): ParsedCalendarTask {
     || /補做(?:項目)?\s*(?:\d|[｜:：]|$)/.test(title)
     || /(?:^|[｜＋+])\s*補(?:做)?\s*\d{1,2}\s*\/\s*\d{1,2}/.test(title)
     || deferredSource;
-  let route: 'today' | 'week' | undefined;
-  if (makeup) {
-    route = 'today';
-  } else if (routed) {
-    route = /^(本週|本周)/.test(routed[1]) ? 'week' : 'today';
-  }
+  const route: 'today' | 'week' | undefined = makeup
+    ? 'today'
+    : routed
+    ? (/^(本週|本周)/.test(routed[1]) ? 'week' : 'today')
+    : undefined;
   const base: ParsedBase = {
     eventKey: row.event_key,
     sourceEventId: row.source_event_id,
@@ -499,15 +543,9 @@ export function parseCalendarTask(row: CalendarTaskRow): ParsedCalendarTask {
     && ['對話式', '對話式複習講義', '教學講義', '智慧型', '新關鍵', '新大滿貫', '複習週記'].includes(structuredMathMaterial);
   if (row.category === 'math' || parsedMathHeading || structuredMathNote || identifiedLecture?.kind === 'math') {
     const legacyProgress = description.match(/(?:【|\[)?\s*單元進度\s*(?:】|\])?\s*[:：]?\s*(\d+)\s*\/\s*(\d+)/);
-    let legacyProgressIndex: number | null = null;
-    let legacyProgressTotal: number | null = null;
-    if (!note.hasStandardFields && legacyProgress) {
-      legacyProgressIndex = Number(legacyProgress[1]);
-      legacyProgressTotal = Number(legacyProgress[2]);
-    }
     const [structuredProgress, structuredTotal] = note.pageRange
       ? [null, null]
-      : progressFraction(note.unitProgress);
+      : progressFraction(note.unitProgress || (hasStudyPartAnnotation(title) ? title : ''));
     const bookMatch = description.match(/冊別[:：]\s*([^\s]+)/);
     const [startPage, endPage] = note.hasStandardFields
       ? structuredPageRange(note.pageRange)
@@ -518,8 +556,8 @@ export function parseCalendarTask(row: CalendarTaskRow): ParsedCalendarTask {
       kind: 'math',
       material: structuredMathMaterial || (note.hasStandardFields ? '' : canonicalMathMaterial(field(description, '講義版本'))),
       book: structuredMathBook || canonicalMathBook(parsedMathHeading?.book || normalized(bookMatch?.[1] ?? title.split('｜')[0] ?? '')),
-      progressIndex: structuredProgress ?? legacyProgressIndex,
-      progressTotal: structuredTotal ?? legacyProgressTotal,
+      progressIndex: structuredProgress ?? (note.hasStandardFields ? null : (legacyProgress ? Number(legacyProgress[1]) : null)),
+      progressTotal: structuredTotal ?? (note.hasStandardFields ? null : (legacyProgress ? Number(legacyProgress[2]) : null)),
       startPage,
       endPage,
     };
@@ -543,7 +581,7 @@ export function parseCalendarTask(row: CalendarTaskRow): ParsedCalendarTask {
   if (isAzarGrammarBookTitle(azarSource) || isAzarGrammarIdentifier(note.identifier)) {
     const [startPage, endPage] = note.hasStandardFields
       ? structuredPageRange(note.pageRange)
-      : pageRange(`${title}\n${description}`);
+      : naturalPageRange(`${title}\n${description}`);
     return {
       ...base,
       title: withoutOriginalDate(title),
@@ -558,6 +596,15 @@ export function parseCalendarTask(row: CalendarTaskRow): ParsedCalendarTask {
   const pageMappedBook = calendarPageMappedBook(`${title}\n${note.material}\n${note.book}\n${note.identifier}\n${description}`);
   if (pageMappedBook) {
     const subject = pageMappedBookSubject(pageMappedBook);
+    const unitDefinition = unitBook(pageMappedBook);
+    if (unitDefinition) {
+      const unitSource = `${title}\n${note.unitProgress}\n${note.hasStandardFields ? '' : description}`;
+      const units = bookUnitNumbers(unitSource, unitDefinition.total);
+      if (units.length || /(?:\bUnits?|單元)\s*[:：#]?\s*[0-9０-９]/i.test(unitSource)
+        || !pageRange(note.pageRange || `${title}\n${description}`)[0]) {
+        return { ...base, title: withoutOriginalDate(title), kind: 'bookUnits', subject: '英文', book: pageMappedBook, units };
+      }
+    }
     if (subject === '英文' && pageMappedBookUsesScopeSelection(pageMappedBook)) {
       const scopeText = normalized(`${title}\n${note.unitProgress}\n${description}`);
       const topic = bookTopics(pageMappedBook).find(candidate => scopeText.includes(candidate)) ?? '';

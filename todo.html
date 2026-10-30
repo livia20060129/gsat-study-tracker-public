@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f5f8fc" />
   <link rel="icon" type="image/png" href="./book.png" />
   <link rel="apple-touch-icon" href="./book.png" />
-  <title>待辦事項｜每日讀書完成度紀錄卡</title>
+  <title>每日讀書完成度紀錄卡</title>
 </head>
 <body>
   <main class="todo-page">
@@ -28,6 +28,15 @@
       </div>
 
       <div class="todo-panel-body">
+        <div class="todo-period-filter">
+          <div class="period-switch" id="periodSwitch" role="group" aria-label="依期間篩選待辦事項" data-active="0">
+            <span class="period-switch-indicator" aria-hidden="true"></span>
+            <button type="button" data-period="all" aria-pressed="true">全部</button>
+            <button type="button" data-period="month" aria-pressed="false">本月</button>
+            <button type="button" data-period="week" aria-pressed="false">本週</button>
+          </div>
+          <p id="todoPeriodRange">依原排程日期篩選</p>
+        </div>
         <div class="subject-switch" id="subjectSwitch" role="tablist" aria-label="依科目篩選待辦事項" data-active="0">
           <span class="subject-switch-indicator" aria-hidden="true"></span>
           <button type="button" role="tab" data-subject="all" aria-selected="true">全部</button>
@@ -38,7 +47,15 @@
           <button type="button" role="tab" data-subject="other" aria-selected="false" tabindex="-1">其他</button>
         </div>
 
-        <div class="todo-summary">
+        <div class="todo-item-filter">
+          <label for="todoItemFilter">查看項目</label>
+          <select id="todoItemFilter" aria-controls="todoList" aria-describedby="todoItemFilterHint">
+            <option value="">全部項目</option>
+          </select>
+          <p id="todoItemFilterHint">同一教材的不同回次、單元一併顯示，並依目前科目及期間篩選。</p>
+        </div>
+
+        <div class="todo-summary" role="status" aria-live="polite">
           <strong id="todoSummary"></strong>
           <span>時間、計時與進度會直接回寫原紀錄；「跳過」不會視為完成。</span>
         </div>

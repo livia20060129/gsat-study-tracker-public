@@ -25,7 +25,7 @@ test('public edition only creates presets from the connected Google Calendar cac
   assert.match(runtime, /function presetsForDate\(date\)\{\s*return dedupePresetDefinitions\(calendarDefsForDate\(date\)\);\s*\}/);
   assert.match(runtime, /function calendarDateHasBuiltInMathStudy\(\)\{return false\}/);
   assert.match(runtime, /function calendarWeekMathTarget\(date\)\{\s*return 0;\s*\}/);
-  assert.doesNotMatch(runtime, /function resolveCloudMathPlan\(parsed\)\{[^}]*CALENDAR_MATH_PLAN/s);
+  assert.match(runtime, /function resolveCloudMathPlan\(parsed\)\{\s*return resolveMathCalendarPlan\(parsed,CALENDAR_MATH_PLAN\|\|\{\}\);\s*\}/);
   assert.match(runtime, /function calendarNaturalRecommended\(date,item\)\{\s*if\(!\(calendarConnected&&calendarCacheLoaded\)\)return null;/);
   assert.match(runtime, /var defs=calendarConnected&&calendarCacheLoaded\?\(cloudNaturalIntegrationItemsByDate\[date\]\|\|null\):null;/);
 });
@@ -40,7 +40,7 @@ test('Calendar prompt publishes the Haohaoxue History identifier and complete pa
 });
 
 test('public edition removes legacy built-in preset items while retaining custom items', () => {
-  assert.match(runtime, /x&&x\.source==='preset'&&!\/\^cal_\/\.test\(x\.presetKey\|\|''\)&&!allowed\[x\.presetKey\]/);
+  assert.match(runtime, /x&&x\.source==='preset'&&managed\[x\.presetKey\]&&!allowed\[x\.presetKey\]/);
   assert.doesNotMatch(runtime, /function presetsForDate\(date\)\{[^}]*weekdayPresets/s);
 });
 

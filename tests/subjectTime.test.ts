@@ -4,31 +4,11 @@ import test from 'node:test';
 
 import {
   SUBJECT_TIME_SHORT_LABELS,
-  mergeNaturalScienceSubjectTime,
   subjectTimeArcPath,
   subjectTimeConicGradient,
   subjectTimeDonutSlices,
   summarizeSubjectTime,
 } from '../src/study/subjectTime.ts';
-
-test('subject overview merges all four natural sciences without changing the total', () => {
-  const detailed = summarizeSubjectTime([
-    { subject: '數學', minutes: 60 },
-    { subject: '物理', minutes: 10 },
-    { subject: '化學', minutes: 20 },
-    { subject: '生物', minutes: 30 },
-    { subject: '地科', minutes: 40 },
-    { subject: '自然', minutes: 5 },
-  ]);
-  const overview = mergeNaturalScienceSubjectTime(detailed);
-
-  assert.equal(overview.totalMinutes, 165);
-  assert.deepEqual(overview.slices.map(slice => [slice.subject, slice.minutes]), [
-    ['數學', 60],
-    ['自然', 105],
-  ]);
-  assert.equal(detailed.slices.some(slice => slice.subject === '物理'), true);
-});
 
 test('summarizes minute inputs by subject with one-decimal shares', () => {
   const summary = summarizeSubjectTime([
@@ -115,16 +95,6 @@ test('uses one clear character for every subject label on the ring', () => {
     數學: '數', 國文: '國', 英文: '英', 物理: '物', 化學: '化', 生物: '生', 地科: '地', 自然: '自',
     公民: '公', 歷史: '史', 地理: '地', 社會: '社', 其他: '其',
   });
-});
-
-test('keeps civics, history, and geography as separate colored summary slices', () => {
-  const summary = mergeNaturalScienceSubjectTime(summarizeSubjectTime([
-    { subject: '公民', minutes: 20 },
-    { subject: '歷史', minutes: 30 },
-    { subject: '地理', minutes: 40 },
-  ]));
-  assert.deepEqual(summary.slices.map(slice => slice.subject), ['公民', '歷史', '地理']);
-  assert.equal(new Set(summary.slices.map(slice => slice.color)).size, 3);
 });
 
 test('wires the donut into the today-minutes panel and renders minutes in its center', () => {

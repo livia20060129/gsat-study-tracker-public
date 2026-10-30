@@ -13,17 +13,11 @@ import {
   canonicalPageMappedBook,
   CHINESE_TOPIC_BOOK,
   DEEP_FIFTEEN_BOOK,
-  CIVICS_WEEKLY_PLAN_BOOK,
+  ENGLISH_MIXED_30_BOOK,
   ENGLISH_TOPIC_CLOZE_BOOK,
   ENGLISH_TOPIC_READING_BOOK,
-  ENGLISH_MIXED_30_BOOK,
   ENGLISH_WEEKLY_PLAN_BOOK,
-  ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK,
-  GEOGRAPHY_WEEKLY_PLAN_BOOK,
-  HISTORY_HAOHAOXUE_BOOK,
-  HISTORY_WEEKLY_PLAN_BOOK,
-  pageMappedBookSocialSubject,
-  pageMappedBookSubject,
+  UNLOCK_3_BOOK,
 } from '../src/data/bookPageMaps.ts';
 import { cloneOriginalItemForMakeup } from '../src/study/makeup.ts';
 import type { StudyItem } from '../src/types.ts';
@@ -33,98 +27,10 @@ test('identifies every supported book from punctuation and surrounding Calendar 
   assert.equal(canonicalPageMappedBook('主題百匯 閱讀寫作新進化'), CHINESE_TOPIC_BOOK);
   assert.equal(canonicalPageMappedBook('英文｜主題百匯：篇章結構．閱讀測驗'), ENGLISH_TOPIC_READING_BOOK);
   assert.equal(canonicalPageMappedBook('【講義版本】主題百匯 克漏字'), ENGLISH_TOPIC_CLOZE_BOOK);
-  assert.equal(canonicalPageMappedBook('英文 學測週計畫'), ENGLISH_WEEKLY_PLAN_BOOK);
-  assert.equal(canonicalPageMappedBook('英文｜混合題30篇 實戰演練'), ENGLISH_MIXED_30_BOOK);
-  assert.equal(canonicalPageMappedBook('【識別碼】GSAT-ENG-WEEKPLAN'), ENGLISH_WEEKLY_PLAN_BOOK);
-  assert.equal(canonicalPageMappedBook('GSAT-ENG-MIXED30'), ENGLISH_MIXED_30_BOOK);
-  assert.equal(canonicalPageMappedBook('【識別碼】GSAT-ENG-HIGHFREQ-VOCAB-20260928-U01'), ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK);
-  assert.equal(canonicalPageMappedBook('英文高頻字彙完全攻略'), ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK);
-  assert.equal(canonicalPageMappedBook('英語 高頻字彙 完全攻略'), ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK);
-  assert.equal(canonicalPageMappedBook('GSAT-GEO-WEEKPLAN-20260924-01'), GEOGRAPHY_WEEKLY_PLAN_BOOK);
-  assert.equal(canonicalPageMappedBook('【識別碼】GSAT-HIST-WEEKPLAN'), HISTORY_WEEKLY_PLAN_BOOK);
-  assert.equal(canonicalPageMappedBook('【識別碼】GSAT-HIST-HAOHAOXUE-20261023-U09'), HISTORY_HAOHAOXUE_BOOK);
-  assert.equal(canonicalPageMappedBook('好好學 歷史'), HISTORY_HAOHAOXUE_BOOK);
-  assert.equal(canonicalPageMappedBook('GSAT-CIVICS-WEEKPLAN'), CIVICS_WEEKLY_PLAN_BOOK);
-});
-
-test('distinguishes social weekly plans by subject and uniquely matching unit names', () => {
-  assert.equal(canonicalPageMappedBook('地理｜學測週計劃｜氣候系統'), GEOGRAPHY_WEEKLY_PLAN_BOOK);
-  assert.equal(canonicalPageMappedBook('人群的移動與交流'), HISTORY_WEEKLY_PLAN_BOOK);
-  assert.equal(canonicalPageMappedBook('媒體與公共意見'), CIVICS_WEEKLY_PLAN_BOOK);
-  assert.equal(canonicalPageMappedBook('東亞文化圈的形成與發展'), GEOGRAPHY_WEEKLY_PLAN_BOOK);
-  assert.equal(canonicalPageMappedBook('英文｜學測週計畫｜第15回'), ENGLISH_WEEKLY_PLAN_BOOK);
-  assert.equal(pageMappedBookSubject(GEOGRAPHY_WEEKLY_PLAN_BOOK), '社會');
-  assert.equal(pageMappedBookSocialSubject(GEOGRAPHY_WEEKLY_PLAN_BOOK), '地理');
-  assert.equal(pageMappedBookSocialSubject(HISTORY_WEEKLY_PLAN_BOOK), '歷史');
-  assert.equal(pageMappedBookSocialSubject(HISTORY_HAOHAOXUE_BOOK), '歷史');
-  assert.equal(pageMappedBookSocialSubject(CIVICS_WEEKLY_PLAN_BOOK), '公民');
-  assert.equal(pageMappedBookSocialSubject(ENGLISH_WEEKLY_PLAN_BOOK), null);
-});
-
-test('uses the photographed start pages for geography, history, and civics weekly plans', () => {
-  assert.equal(
-    bookPageText(GEOGRAPHY_WEEKLY_PLAN_BOOK, 24, 34),
-    '地理學測週計畫｜第3週｜氣候系統（p.24–34）',
-  );
-  assert.equal(
-    bookPageText(HISTORY_WEEKLY_PLAN_BOOK, 114, 145),
-    '歷史學測週計畫｜單元5｜人群的移動與交流（p.114–145）',
-  );
-  assert.equal(
-    bookPageText(CIVICS_WEEKLY_PLAN_BOOK, 313, 324),
-    '公民學測週計畫｜單元19｜外部性與政府對策（p.313–324）',
-  );
-  assert.equal(
-    bookPageText(GEOGRAPHY_WEEKLY_PLAN_BOOK, 126, 130),
-    '地理學測週計畫｜第14週｜115學年度學科能力測驗試題（p.126–130）',
-  );
-});
-
-test('maps every Haohaoxue History unit through the supplied final page 281', () => {
-  assert.equal(BOOK_PAGE_MAPS[HISTORY_HAOHAOXUE_BOOK].length, 9);
-  assert.equal(
-    bookPageText(HISTORY_HAOHAOXUE_BOOK, 2, 24),
-    '好好學 歷史｜單元1｜多元族群社會的形成（p.2–24）',
-  );
-  assert.equal(
-    bookPageText(HISTORY_HAOHAOXUE_BOOK, 252, 281),
-    '好好學 歷史｜單元9｜世界變遷與現代性（p.252–281）',
-  );
-  assert.equal(bookPageText(HISTORY_HAOHAOXUE_BOOK, 282, 282), '頁碼不在已建立的教材本文範圍內。');
-});
-
-test('uses the supplied endings for the two new English lecture books', () => {
-  assert.equal(
-    bookPageText(ENGLISH_WEEKLY_PLAN_BOOK, 156, 165),
-    '學測模擬試題｜第16回（第1～5冊）（p.156–165）',
-  );
-  assert.equal(
-    bookPageText(ENGLISH_WEEKLY_PLAN_BOOK, 183, 191),
-    '附錄｜附錄2 113學年度學科能力測驗試題（p.183–191）',
-  );
-  assert.equal(
-    bookPageText(ENGLISH_MIXED_30_BOOK, 62, 63),
-    'Chapter 6 聚焦臺灣｜Test 1（p.62–63）',
-  );
-  assert.equal(bookPageText(ENGLISH_MIXED_30_BOOK, 71, 71), '附錄｜測驗用答案紙（p.71）');
-  assert.equal(bookPageText(ENGLISH_MIXED_30_BOOK, 72, 72), '頁碼不在已建立的教材本文範圍內。');
-});
-
-test('maps every photographed High-Frequency Vocabulary section and keeps the unknown index ending open', () => {
-  assert.equal(
-    bookPageText(ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK, 8, 12),
-    'Part 1 Basic｜Unit 1｜The Melting Ice Caps｜極地冰冠融化中（p.8–12）',
-  );
-  assert.equal(
-    bookPageText(ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK, 224, 230),
-    'Part 2 Advanced｜Unit 16｜Watching Your Words: The Issue of Political Correctness｜政治正確語言，使用對了嗎？（p.224–230）',
-  );
-  assert.equal(
-    bookPageText(ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK, 245, 253),
-    '附錄｜學測模擬試題（p.245–253）',
-  );
-  assert.equal(bookPageText(ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK, 254, 260), '附錄｜單字索引（p.254–260）');
-  assert.equal(BOOK_PAGE_MAPS[ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK].length, 38);
+  assert.equal(canonicalPageMappedBook('英文｜Unlock 3 (Listening, Speaking, Critical Thinking)'), UNLOCK_3_BOOK);
+  assert.equal(canonicalPageMappedBook('Unlock 3 (Linstening, speaking, critical thinking)'), UNLOCK_3_BOOK);
+  assert.equal(canonicalPageMappedBook('英文｜學測週計畫'), ENGLISH_WEEKLY_PLAN_BOOK);
+  assert.equal(canonicalPageMappedBook('英文｜混合題30篇實戰演練'), ENGLISH_MIXED_30_BOOK);
 });
 
 test('looks up the requested topic and lesson, level, or round', () => {
@@ -140,6 +46,13 @@ test('looks up the requested topic and lesson, level, or round', () => {
   assert.deepEqual(bookDetails(ENGLISH_TOPIC_READING_BOOK), ['第一回', '第二回']);
   assert.deepEqual(bookDetails(ENGLISH_TOPIC_CLOZE_BOOK), ['第一回', '第二回', '第三回', '第四回']);
   assert.deepEqual(bookDetailsForTopic(ENGLISH_TOPIC_CLOZE_BOOK, '新新世代'), ['第一回', '第二回', '第三回', '第四回']);
+  assert.equal(bookPageText(UNLOCK_3_BOOK, 14, 35), 'Unit 1｜Animals（p.14–35）');
+  assert.equal(
+    bookPageText(UNLOCK_3_BOOK, 34, 38),
+    'Unit 1｜Animals（p.34–35）、Unit 2｜The environment（p.36–38）',
+  );
+  assert.equal(bookPageText(UNLOCK_3_BOOK, 223, 223), 'Reference｜Acknowledgements（p.223）');
+  assert.equal(bookPageText(UNLOCK_3_BOOK, 224, 224), '頁碼不在已建立的教材本文範圍內。');
 });
 
 test('a page range crossing sections lists each affected section with its own clipped pages', () => {

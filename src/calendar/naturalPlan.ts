@@ -21,11 +21,14 @@ export function resolveNaturalCalendarPlan(
     && (!task.material || task.material === fallback.material) ? fallback : null;
   const selected = prioritizeCalendarPageRanges(task.startPage, task.endPage, compatible?.ranges);
   if (!selected.ranges.length) return null;
+  const basis = selected.source === 'calendar'
+    ? 'Google Calendar 明確頁碼範圍。'
+    : compatible?.basis || '';
   return {
     subject: task.subject,
     material: task.material || compatible?.material || '123日的淬鍊',
     label: task.topic,
-    basis: selected.source === 'calendar' ? 'Google Calendar 明確頁碼範圍。' : (compatible?.basis || ''),
+    basis,
     ranges: selected.ranges,
     calendarRangeSource: selected.source,
   };

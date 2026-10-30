@@ -262,4 +262,3 @@ export function naturalNewKeyPageText(subject: unknown, startValue: unknown, end
   if (subject === '地科') return earthScienceNewKeyPageText(startValue, endValue);
   return '此科目的「新關鍵」尚未建立頁碼對應。';
 }
-

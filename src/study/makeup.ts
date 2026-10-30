@@ -1,5 +1,6 @@
-import type { StudyItem } from '../types.ts';
+import type { StudyItem } from '../types';
 import { contiguousRangeClusters, numericPageRange } from './rangeMerge.ts';
+import { numberedStudyScope } from '../data/numberedScopes.ts';
 
 export interface MakeupCloneOptions {
   id: string;
@@ -102,8 +103,11 @@ function mergeGroupedEntryProgress(templateEntries: StudyItem[], existingEntries
     if (existing.deferredCompletedOn) merged.deferredCompletedOn = existing.deferredCompletedOn;
     else delete merged.deferredCompletedOn;
     merged.f = { ...cloneJson(template.f || {}), ...cloneJson(existing.f || {}) };
-    for (const key of ['title', 'book', 'topic', 'start', 'end', 'round', 'calendarBookRangeLocked', 'calendarMathMaterialLocked', 'calendarScopeParseError', 'calendarEventId', 'calendarEventIds', 'calendarEventKey', 'calendarEventKeys', 'calendarSourceDate', 'calendarSourceDates']) {
-      if (template.f?.[key] !== undefined) merged.f[key] = cloneJson(template.f[key]);
+    for (const key of ['title', 'book', 'topic', 'start', 'end', 'scopeKind', 'unitStart', 'unitEnd', 'round', 'roundEnd', 'calendarBookRangeLocked', 'calendarMathMaterialLocked', 'calendarScopeParseError', 'calendarEventId', 'calendarEventIds', 'calendarEventKey', 'calendarEventKeys', 'calendarSourceDate', 'calendarSourceDates']) {
+      const overrides = existing.f.dailyWorkUserFields;
+      const overridden = numberedStudyScope(existing) && overrides && typeof overrides === 'object'
+        && Object.prototype.hasOwnProperty.call(overrides, key);
+      if (template.f?.[key] !== undefined && !overridden) merged.f[key] = cloneJson(template.f[key]);
     }
     restoreNaturalCalendarSchedule(merged, template);
     return merged;

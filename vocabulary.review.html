@@ -13,7 +13,9 @@
     <header class="vocabulary-page-header">
       <div>
         <h1>英文單字複習</h1>
-        <p>彙整 Tracker 中自行新增的單字、組合與句子，可依字母或詞性檢視。</p>
+        <p id="vocabularyReferences" class="vocabulary-reference-sources">參考來源：<a href="https://www.ceec.edu.tw/xmdoc?xsmsid=0K213553204833715309" target="_blank" rel="noopener noreferrer">大考中心（詞性／Level）</a>｜<a href="https://github.com/skywind3000/ECDICT" target="_blank" rel="noopener noreferrer">ECDICT（中文翻譯）</a>｜<a href="./vocabulary.sources.html">單字資料來源與授權</a></p>
+        <p id="vocabularyLegacySources" class="vocabulary-reference-sources" hidden>部分既有資料保留 Cambridge Dictionary 的歷史出處；該線上服務已停用，新查詢皆使用 ECDICT。</p>
+        <p>彙整 Tracker 中自行新增的單字、組合與句子，可依字母、詞性或學測 Level 檢視。</p>
       </div>
       <a class="vocabulary-back header-action-link" href="./index.html">回到 Tracker</a>
     </header>
@@ -21,7 +23,7 @@
     <section class="vocabulary-panel" aria-labelledby="vocabularyTitle">
       <div class="vocabulary-panel-head">
         <div>
-          <h2 id="vocabularyTitle">已整理內容</h2>
+          <h2 id="vocabularyTitle">已整理單字</h2>
           <p id="vocabularySource">正在讀取本機紀錄…</p>
         </div>
         <button id="refreshVocabulary" type="button">重新讀取</button>
@@ -45,17 +47,24 @@
           <button type="button" data-content-kind="組合" aria-pressed="false">組合</button>
           <button type="button" data-content-kind="句子" aria-pressed="false">句子</button>
         </div>
+        <div class="vocabulary-view-toolbar">
         <div id="vocabularyGrouping" class="vocabulary-grouping-switch" data-active="0" role="group" aria-label="單字排列方式">
           <span class="vocabulary-grouping-indicator" aria-hidden="true"></span>
           <button type="button" data-grouping-mode="alphabetical" aria-pressed="true">字母排序</button>
           <button type="button" data-grouping-mode="partOfSpeech" aria-pressed="false">詞性</button>
+          <button type="button" data-grouping-mode="gsatLevel" aria-pressed="false">Level</button>
         </div>
-        <p class="vocabulary-help">字母排序直接顯示 A～Z 清單；詞性模式可使用詞性索引。按「編輯」後可修改英文內容、單字／組合／句子分類、詞性與中文翻譯。</p>
+        <button id="toggleVocabularyTranslations" type="button" aria-controls="vocabularyList" aria-pressed="false">隱藏中文</button>
+        <label class="vocabulary-accent">發音口音 <select id="vocabularyAccent"><option value="en-US">美式</option><option value="en-GB">英式</option></select></label>
+        <button type="button" data-export-vocabulary="translated">匯出 PDF（有翻譯）</button>
+        <button type="button" data-export-vocabulary="blank">匯出 PDF（無翻譯）</button>
+        </div>
         <div id="vocabularyPartOfSpeechIndex" class="vocabulary-pos-index" aria-label="按詞性篩選單字" hidden></div>
         <div id="vocabularyList" class="vocabulary-list"></div>
         <p id="vocabularyEmpty" class="vocabulary-empty" hidden></p>
         <p id="vocabularyError" class="vocabulary-error" role="alert" hidden></p>
         <p id="vocabularySaveStatus" class="vocabulary-save-status" aria-live="polite"></p>
+        <p id="vocabularySpeechStatus" class="vocabulary-save-status" role="status" aria-live="polite"></p>
       </div>
     </section>
   </main>

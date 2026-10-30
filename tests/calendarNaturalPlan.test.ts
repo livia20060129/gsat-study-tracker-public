@@ -11,7 +11,10 @@ import { applyDailyWorkRangeOverrides, groupDailyWorkItems, propagateDailyWorkFi
 import { summarizeCompletionUnits } from '../src/study/completionMetrics.ts';
 import { cloneOriginalItemForMakeup, effectiveTemplatePresetKey, mergeMakeupProgress } from '../src/study/makeup.ts';
 import { reconcileCalendarNaturalPriorCoverage } from '../src/study/calendarNaturalCompletion.ts';
-import { includesCompletionInPeriod } from '../src/study/learningSummary.ts';
+import { completionIncludedInPeriod } from '../src/study/learningSummary.ts';
+import { isInteractiveStudyItem } from '../src/study/interactiveTasks.ts';
+import { numberedStudyScope, usesSharedNumberedTemplate } from '../src/data/numberedScopes.ts';
+import { applyNumberedScope } from '../src/study/numberedScopeProgress.ts';
 
 const date = '2026-09-02';
 function row(id: string, title: string, description: string): CalendarTaskRow {
@@ -35,6 +38,9 @@ function loadRuntime(ctx: ReturnType<typeof createContext>, names: string[]) {
 // Exercise the real runtime orchestration without network, DOM, or user storage.
 function app(rows = [biology, chemistry]) {
   const ctx = createContext({
+    managedMaterialForItem: () => null,
+    isInteractiveStudyItem,
+    numberedStudyScope, usesSharedNumberedTemplate,
     buildCalendarStudyTaskPlan, resolveNaturalCalendarPlan, combineNaturalCalendarPlans,
     calendarFixedTemplate, dedupePresetDefinitions, presetDefinitionSemanticKey,
     groupDailyWorkItems, ungroupDailyWorkItems, applyDailyWorkRangeOverrides,
@@ -65,6 +71,43 @@ test('the real September 2 note parses biology as 16–18, despite its outer bac
   if (parsed.kind !== 'natural') throw new Error('Expected natural');
   assert.deepEqual([parsed.startPage, parsed.endPage], [16, 18]);
   assert.equal(resolveNaturalCalendarPlan(parsed)?.material, '123日的淬鍊');
+});
+
+test('generic numbered Calendar definitions preserve manual ranges and completion on repeated refresh', () => {
+  for (const title of ['英文｜新教材｜Unit 4', '物理｜新教材｜第 3 回']) {
+    const ctx = app([row('generic', title, '【頁碼範圍】p.10–20')]);
+    const rec = { date, items: [] as any[] };
+    ctx.ensureDailyPresets(rec, date);
+    assert.equal(rec.items.length, 1);
+    const original = rec.items[0];
+    assert.equal(original.f.start, undefined);
+    const kind = numberedStudyScope(original)!.kind;
+    assert.equal(kind, title.includes('Unit') ? 'unit' : 'round');
+    original.done = true; original.checkedOn = date; original.minutes = '35'; original.f.graded = true;
+    applyNumberedScope(original, '6', '7');
+    const restored = clone(rec);
+    ctx.ensureDailyPresets(restored, date);
+    ctx.ensureDailyPresets(restored, date);
+    assert.equal(numberedStudyScope(restored.items[0])?.start, '6');
+    assert.equal(numberedStudyScope(restored.items[0])?.end, '7');
+    assert.equal(restored.items[0].done, true);
+    assert.equal(restored.items[0].checkedOn, date);
+    assert.equal(restored.items[0].minutes, '35');
+    assert.equal(restored.items[0].f.graded, true);
+  }
+});
+
+test('replacing an old Calendar page fallback with a numbered template retains user data', () => {
+  const ctx = app([row('generic', '英文｜新教材｜Unit 4', '')]);
+  const rec = { date, items: [{ id: 'old', type: 'general', source: 'preset', required: true,
+    presetKey: 'cal_subject_old', title: '英文｜新教材｜Unit 4', done: true, checkedOn: date, minutes: '18',
+    f: { subject: '英文', calendarEventKey: 'primary:generic', start: '10', end: '20', graded: true, reason: '筆記' } }] };
+  ctx.ensureDailyPresets(rec, date);
+  assert.equal(rec.items.length, 1);
+  const updated = rec.items[0];
+  assert.equal(numberedStudyScope(updated)?.start, '4');
+  assert.deepEqual([updated.done, updated.checkedOn, updated.minutes, updated.f.graded, updated.f.reason,
+    updated.f.start, updated.f.end], [true, date, '18', true, '筆記', '10', '20']);
 });
 
 test('runtime cards keep biology and chemistry pages independent in either fetch order', () => {
@@ -208,7 +251,7 @@ function editingApp(day: string, separated: boolean | 'biology', deferred = fals
   const ctx = app(separated === 'biology' ? [current, { ...biology, event_date: day }] : separated ? [current, makeup] : [current]);
   const elements = new Map<string, { innerHTML: string; textContent: string }>();
   Object.assign(ctx, {
-    propagateDailyWorkField, propagateDailyWorkRangeField, summarizeCompletionUnits, includesCompletionInPeriod,
+    propagateDailyWorkField, propagateDailyWorkRangeField, summarizeCompletionUnits, completionIncludedInPeriod,
     data: { date: day, items: [] },
     loadData: (date: string) => ({ date, items: [] }),
     visibleItems: (record: any) => record.items,
@@ -219,6 +262,9 @@ function editingApp(day: string, separated: boolean | 'biology', deferred = fals
     selected: (a: unknown, b: unknown) => a === b ? ' selected' : '',
     checked: (value: unknown) => value ? ' checked' : '',
     isCalendarPageMappedBook: () => false,
+    syncCardPageRangeConstraint: () => null,
+    orderCardPageRange: () => ({ endAdjusted: false, end: '' }),
+    validateCardPageRange: () => ({ valid: true, message: '' }),
     scienceMaterialOptions: () => '<option>123日的淬鍊</option>',
     calendarTopicSourceRow: () => '',
   });
@@ -226,8 +272,8 @@ function editingApp(day: string, separated: boolean | 'biology', deferred = fals
   runInContext(runtime.slice(mapStart, runtime.indexOf('function day123PageMap(', mapStart)), ctx);
   loadRuntime(ctx, ['pad', 'dateString', 'parseDate', 'mondayOf', 'findRecursive', 'findItem',
     'isWeeklyCalendarItem', 'studyRecordForOverview', 'completionMetricsForWeek', 'renderWeeklyItems',
-    'day123PageMap', 'day123Matches', 'day123Text', 'normalizeScience', 'reasonField', 'refreshCorrectionReasonField',
-    'renderScienceFields', 'refreshAuto', 'handleInput', 'handleChange']);
+    'day123PageMap', 'day123Matches', 'day123Text', 'normalizeScience', 'reasonField',
+    'refreshCorrectionReasonField', 'renderScienceFields', 'refreshAuto', 'handleInput', 'handleChange']);
   ctx.ensureDailyPresets(ctx.data, day);
   if (deferred) {
     const carried = cloneOriginalItemForMakeup(ctx.data.items[0], { id: 'carried-chemistry', presetKey: 'deferred_chemistry', originDate: '2026-08-31' });
@@ -248,19 +294,10 @@ function editingApp(day: string, separated: boolean | 'biology', deferred = fals
     .find((x: any) => x.f.calendarEventKey === current.event_key && !x.deferredCarry);
   ctx.targetId = target.id;
   const chapter = { textContent: '' };
-  const correctionInner = {
-    classList: { contains: (value: string) => value === 'inner' },
-    insertAdjacentHTML: (_position: string, html: string) => { ctx.html = html; },
-  };
-  const card = {
-    children: [correctionInner],
+  const card: any = {
+    children: [],
     getAttribute: () => ctx.targetId,
-    querySelector: (selector: string) => {
-      if (selector !== '[data-correction-reason]') return chapter;
-      return String(ctx.html ?? '').includes('data-correction-reason')
-        ? { remove: () => { ctx.html = ''; } }
-        : null;
-    },
+    querySelector: (selector: string) => selector === '[data-science-auto]' ? chapter : null,
   };
   const control = (kind: 'field' | 'check', key: string, value: string | boolean) => ({
     target: {
@@ -270,7 +307,7 @@ function editingApp(day: string, separated: boolean | 'biology', deferred = fals
       value: String(value), checked: value === true,
     },
   });
-  return { ctx, target, chapter, control };
+  return { ctx, target, chapter, card, control };
 }
 
 test('chemistry 109–114 maps only to Chapter 3; page boundaries are unchanged', () => {
@@ -343,6 +380,44 @@ test('typing pages then checking correction preserves the card target and reveal
     assert.equal(reloaded.f.reason, '反應熱的正負號');
     assert.match(ctx.renderScienceFields(reloaded, false), /反應熱的正負號/);
   }
+});
+
+test('checking correction saves first and patches only its card without refreshing siblings', () => {
+  const { ctx, target, card, control } = editingApp('2026-09-04', 'biology');
+  const sibling = ctx.data.items.flatMap((item: any) => item.f.groupedWorkEntries || [item])
+    .find((item: any) => item.id !== target.id);
+  sibling.f.reason = '另一項已填內容';
+  sibling.minutes = '35';
+  const siblingBefore = JSON.stringify(sibling);
+  const events: string[] = [];
+  let correctionReason: { remove: () => void } | null = null;
+  const inner = {
+    classList: { contains: (name: string) => name === 'inner' },
+    insertAdjacentHTML: (_position: string, html: string) => {
+      events.push('patch');
+      assert.match(html, /data-correction-reason/);
+      correctionReason = { remove: () => { events.push('remove'); correctionReason = null; } };
+    },
+  };
+  card.children = [inner];
+  card.querySelector = (selector: string) => {
+    if (selector === '[data-correction-reason]') return correctionReason;
+    return null;
+  };
+  ctx.render = () => { events.push('render'); };
+  ctx.persist = () => { events.push('persist'); ctx.saved = clone(ctx.data); return true; };
+  ctx.updateSummary = () => { events.push('summary'); };
+
+  ctx.handleChange(control('check', 'corrected', true));
+  assert.deepEqual(events, ['persist', 'patch', 'summary']);
+  assert.equal(ctx.saved.items.flatMap((item: any) => item.f.groupedWorkEntries || [item])
+    .find((item: any) => item.id === target.id).f.corrected, true);
+  assert.equal(JSON.stringify(sibling), siblingBefore);
+
+  events.length = 0;
+  ctx.handleChange(control('check', 'corrected', false));
+  assert.deepEqual(events, ['persist', 'remove', 'summary']);
+  assert.equal(JSON.stringify(sibling), siblingBefore);
 });
 
 test('overview prepares other days but reads today as an isolated snapshot of unsaved edits', () => {

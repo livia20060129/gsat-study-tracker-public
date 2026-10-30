@@ -1,0 +1,16 @@
+/* Editor layout shares the progress page's controls, palette and card borders. */
+.catalog-editor { margin: 16px 0; padding: 16px; border: 1px solid #d7e0ec; border-radius: 15px; background: #f8faff; }
+.catalog-editor h2 { margin: 0 0 16px; font-size: 18px; }
+.catalog-editor h3 { margin: 20px 0 0; font-size: 15px; }
+.catalog-editor label { display: flex; flex-direction: column; gap: 5px; min-width: 0; color: #64748b; font-size: 12px; }
+.catalog-fields { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 12px; }
+.catalog-section { display: grid; grid-template-columns: 2fr 2fr 1fr 1fr auto; gap: 10px; align-items: end; padding: 14px 0; border-bottom: 1px solid #dfe6ef; }
+.catalog-section button { white-space: nowrap; }
+.catalog-editor-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+#addCatalogSection { margin-top: 14px; }
+@media (max-width: 700px) {
+  .catalog-editor { padding: 12px; }
+  .catalog-fields, .catalog-section { grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
+  .catalog-fields label:first-child { grid-column: 1 / -1; }
+  .catalog-section button { justify-self: start; }
+}

@@ -1,4 +1,4 @@
-import type { StudyItem, StudyRecord } from '../types.ts';
+import type { StudyItem, StudyRecord } from '../types';
 
 const NESTED_ITEM_FIELDS = [
   'makeupEntries',
@@ -36,14 +36,6 @@ function legacyWordEntryId(itemId: string, entry: Record<string, unknown>, occur
   return `word:v2:${shortHash(itemId || 'item')}:${shortHash(seed)}:${occurrence}`;
 }
 
-function normalizedWordEntry(entry: unknown): Record<string, unknown> {
-  if (typeof entry === 'string') return { text: entry };
-  if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
-    return entry as Record<string, unknown>;
-  }
-  return { text: '' };
-}
-
 /**
  * Gives every editable English-review row an immutable identity.
  *
@@ -64,7 +56,11 @@ export function ensureEnglishReviewWordEntryIds(record: StudyRecord): boolean {
     if (Array.isArray(item.f.words)) {
       const occurrences = new Map<string, number>();
       item.f.words = item.f.words.map((entry) => {
-        const word = normalizedWordEntry(entry);
+        const word = typeof entry === 'string'
+          ? { text: entry }
+          : entry && typeof entry === 'object' && !Array.isArray(entry)
+            ? entry
+            : { text: '' };
         if (word !== entry) changed = true;
         const currentId = String(word.id ?? '').trim();
         if (!currentId || LEGACY_INDEX_ID.test(currentId)) {

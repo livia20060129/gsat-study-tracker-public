@@ -6,13 +6,13 @@
   <meta name="theme-color" content="#f5f8fc" />
   <link rel="icon" type="image/png" href="./book.png" />
   <link rel="apple-touch-icon" href="./book.png" />
-  <title>學習總結｜GSAT Study Tracker</title>
+  <title>每日讀書完成度紀錄卡</title>
 </head>
 <body>
   <main class="summary-page">
     <header class="summary-header">
       <div class="summary-heading">
-        <div><h1>學習總結</h1><p>回顧過去，調整下一步。</p></div>
+        <div><h1>週／月總結</h1><p>回顧過去，調整下一步。</p></div>
       </div>
       <div class="summary-period-nav" aria-label="切換統計期間">
         <button id="previousPeriod" type="button" aria-label="上一週">‹</button>
@@ -41,7 +41,7 @@
         <span><i class="legend-completion" aria-hidden="true"></i>外圍圓環＝當日完成率</span>
         <span><i class="legend-complete" aria-hidden="true"></i>亮綠完整圓環＝100% 完成</span>
         <span><i class="legend-unwell" aria-hidden="true"></i>紅色圓心＝身體不適</span>
-        <span><i class="legend-tired" aria-hidden="true"></i>橘色圓心＝疲倦（較疲累）</span>
+        <span><i class="legend-tired" aria-hidden="true"></i>橘色圓心＝疲倦</span>
         <span><i class="legend-out" aria-hidden="true"></i>黃色圓心＝外出</span>
       </div>
     </section>
@@ -102,6 +102,16 @@
           <p>僅統計就寢及起床時間皆有效的夜晚。</p>
         </aside>
       </div>
+    </section>
+    <section class="summary-card summary-completed-card" aria-labelledby="completedItemsTitle">
+      <div class="summary-section-head">
+        <div><h2 id="completedItemsTitle">本週完成項目</h2><p>依完成日期列出，包含待辦事項與未記錄分鐘的項目。</p></div>
+        <div class="summary-completed-controls">
+          <span id="completedItemsCount" class="summary-completed-count" aria-live="polite"></span>
+          <button id="clearCompletedSubjectFilter" class="summary-subject-back" type="button" hidden>顯示全部科目</button>
+        </div>
+      </div>
+      <div id="summaryCompletedItems"></div>
     </section>
     <p id="summarySource" class="summary-source" aria-live="polite"></p>
     <p id="summaryError" class="summary-error" role="alert" hidden></p>

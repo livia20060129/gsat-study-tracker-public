@@ -24,4 +24,3 @@ export async function withOperationTimeout<T>(
     if (timeoutId !== undefined) clearTimeout(timeoutId);
   }
 }
-

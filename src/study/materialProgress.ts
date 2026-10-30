@@ -4,36 +4,30 @@ import {
   CHINESE_TOPIC_BOOK,
   CIVICS_WEEKLY_PLAN_BOOK,
   DEEP_FIFTEEN_BOOK,
+  ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK,
+  ENGLISH_MIXED_30_BOOK,
   ENGLISH_TOPIC_CLOZE_BOOK,
   ENGLISH_TOPIC_READING_BOOK,
-  ENGLISH_MIXED_30_BOOK,
   ENGLISH_WEEKLY_PLAN_BOOK,
-  ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK,
   GEOGRAPHY_WEEKLY_PLAN_BOOK,
   HISTORY_HAOHAOXUE_BOOK,
   HISTORY_WEEKLY_PLAN_BOOK,
+  pageMappedBookSocialSubject,
   pageMappedBookSubject,
+  TOEFL_VOCABULARY_3800_BOOK,
+  UNLOCK_3_BOOK,
   type PageMappedBook,
 } from '../data/bookPageMaps.ts';
-import { LISTENING_TEST_BOOK_TITLE, isListeningTestBookTitle } from '../data/englishBooks.ts';
+import { LISTENING_TEST_BOOK_TITLE, SUPPLEMENT_ENGLISH_TITLES, isListeningTestBookTitle } from '../data/englishBooks.ts';
+import { numberedStudyScope, usesSharedPageTemplate } from '../data/numberedScopes.ts';
 import {
   AZAR_GRAMMAR_BOOK_TITLE,
   AZAR_GRAMMAR_CHAPTERS,
   AZAR_GRAMMAR_SECTIONS,
   isAzarGrammarBookTitle,
 } from '../data/azarGrammar.ts';
-import {
-  DIALOGUE_REVIEW_12_PAGE_MAP,
-  DIALOGUE_REVIEW_34_PAGE_MAP,
-  NEWKEY_12_PAGE_MAP,
-  NEWKEY_34_PAGE_MAP,
-} from '../data/mathMaterialPageMaps.ts';
-import {
-  CHEMISTRY_NAVIGATOR_PAGE_MAP,
-  MATH_GRAND_SLAM_PAGE_MAP,
-  PHYSICS_ADVANTAGE_PAGE_MAP,
-  PHYSICS_COMEBACK_PAGE_MAP,
-} from '../data/lecturePageMaps.ts';
+import { DIALOGUE_REVIEW_12_PAGE_MAP, DIALOGUE_REVIEW_34_PAGE_MAP, NEWKEY_12_PAGE_MAP, NEWKEY_34_PAGE_MAP } from '../data/mathMaterialPageMaps.ts';
+import { CHEMISTRY_NAVIGATOR_PAGE_MAP, MATH_GRAND_SLAM_PAGE_MAP, PHYSICS_ADVANTAGE_PAGE_MAP, PHYSICS_COMEBACK_PAGE_MAP } from '../data/lecturePageMaps.ts';
 import {
   BIOLOGY_NEW_KEY_PAGE_MAP,
   CHEMISTRY_NEW_KEY_PAGE_MAP,
@@ -43,11 +37,27 @@ import {
 import { ACTIVE_RECORD_PREFIX_KEY } from '../storage/local.ts';
 import type { CalendarNaturalIntegrationEntry, StudyItem, StudyRecord } from '../types.ts';
 import { recordedPageRangeFields } from './recordedPageRange.ts';
+import { unitBookSections } from '../data/unitBooks.ts';
+import { bookUnitRange } from './unitBookProgress.ts';
+import { catalogLargeSections, catalogMaterialMatchesItem, catalogOverrides, catalogProgressSubject, catalogRange, type CatalogMaterial, type CatalogSubject } from './materialCatalog.ts';
 
 export { ACTIVE_RECORD_PREFIX_KEY } from '../storage/local.ts';
 
 export const MATERIAL_PROGRESS_SUBJECTS = ['chinese', 'english', 'math', 'natural', 'social'] as const;
 export type MaterialProgressSubject = (typeof MATERIAL_PROGRESS_SUBJECTS)[number];
+export type MaterialProgressGroup =
+  | '國文教材'
+  | '學測'
+  | '補充'
+  | '複習講義'
+  | '分冊講義'
+  | '物理'
+  | '化學'
+  | '生物'
+  | '地科'
+  | '公民'
+  | '歷史'
+  | '地理';
 
 export interface MaterialProgressSegment {
   key: string;
@@ -63,6 +73,7 @@ export interface MaterialProgressSegment {
 export interface MaterialProgressRow {
   id: string;
   subject: MaterialProgressSubject;
+  group: MaterialProgressGroup;
   title: string;
   unitLabel: string;
   recorded: number;
@@ -81,6 +92,8 @@ interface SegmentDefinition {
   label: string;
   start: number;
   end: number;
+  /** Smaller exact sections summarized inside one visible chapter block. */
+  memberKeys?: string[];
   topic?: string;
   detail?: string;
 }
@@ -88,6 +101,7 @@ interface SegmentDefinition {
 interface MaterialDefinition {
   id: string;
   subject: MaterialProgressSubject;
+  group: MaterialProgressGroup;
   title: string;
   unitLabel: string;
   segments: SegmentDefinition[];
@@ -200,19 +214,10 @@ function numberedSegments(total: number, noun: string): SegmentDefinition[] {
   }));
 }
 
-function mappedSegmentLabel(row: PageMapRow): string {
-  const [start, end, title, detail] = row;
-  let pageRange = String(start);
-  if (start !== end) {
-    pageRange += `–${end === Number.MAX_SAFE_INTEGER ? '末' : end}`;
-  }
-  return `${title}${detail ? `｜${detail}` : ''}（p.${pageRange}）`;
-}
-
 function mappedSegments(rows: readonly PageMapRow[]): SegmentDefinition[] {
   return rows.map((row, index) => ({
     key: String(index + 1),
-    label: mappedSegmentLabel(row),
+    label: `${row[2]}${row[3] ? `｜${row[3]}` : ''}（p.${row[0]}${row[0] === row[1] ? '' : `–${row[1] === Number.MAX_SAFE_INTEGER ? '末' : row[1]}`}）`,
     start: row[0],
     end: row[1],
   }));
@@ -239,21 +244,28 @@ function largeTopicSegments(rows: readonly PageMapRow[]): SegmentDefinition[] {
 function bookDefinition(book: PageMappedBook): MaterialDefinition {
   const mappedSubject = pageMappedBookSubject(book);
   const subject = mappedSubject === '國文' ? 'chinese' : mappedSubject === '社會' ? 'social' : 'english';
+  let group: MaterialProgressGroup = '學測';
+  if (subject === 'chinese') group = '國文教材';
+  else if (subject === 'social') group = pageMappedBookSocialSubject(book) ?? '歷史';
+  else if (book === UNLOCK_3_BOOK || book === TOEFL_VOCABULARY_3800_BOOK) group = '補充';
+  const sections = BOOK_PAGE_MAPS[book];
+  const largeTopics = book === TOEFL_VOCABULARY_3800_BOOK;
   return {
     id: `book:${book}`,
     subject,
+    group,
     title: book,
-    unitLabel: subject === 'social' ? '單元' : '篇',
-    segments: BOOK_PAGE_MAPS[book].map((section, index) => ({
-      key: String(index + 1),
-      label: section.end === Number.MAX_SAFE_INTEGER
-        ? `${section.topic}｜${section.detail}（p.${section.start} 起）`
-        : `${section.topic}｜${section.detail}（p.${section.start}${section.start === section.end ? '' : `–${section.end}`}）`,
-      start: section.start,
-      end: section.end,
-      topic: section.topic,
-      detail: section.detail,
-    })),
+    unitLabel: largeTopics ? '大單元' : subject === 'social' ? '單元' : '篇',
+    segments: largeTopics
+      ? largeTopicSegments(sections.map(section => [section.start, section.end, section.topic]))
+      : sections.map((section, index) => ({
+        key: String(index + 1),
+        label: `${section.topic}｜${section.detail}（p.${section.start}${section.start === section.end ? '' : `–${section.end}`}）`,
+        start: section.start,
+        end: section.end,
+        topic: section.topic,
+        detail: section.detail,
+      })),
   };
 }
 
@@ -261,6 +273,7 @@ function mathDefinition(material: string, book: string, rows: readonly PageMapRo
   return {
     id: material === '複習週記' ? 'math:複習週記' : `math:${material}:${book}`,
     subject: 'math',
+    group: material === '教學講義' || material === '對話式' ? '分冊講義' : '複習講義',
     title: material === '複習週記' ? '數學｜複習週記' : `數學｜${material}｜${book}`,
     unitLabel: '單元',
     segments: mappedSegments(rows),
@@ -268,24 +281,26 @@ function mathDefinition(material: string, book: string, rows: readonly PageMapRo
 }
 
 const MATERIAL_DEFINITIONS: MaterialDefinition[] = [
-  { id: 'chinese:gujin', subject: 'chinese', title: '國文｜古今悅讀一百', unitLabel: '回', segments: numberedSegments(100, '第') },
+  { id: 'chinese:gujin', subject: 'chinese', group: '國文教材', title: '國文｜古今悅讀一百', unitLabel: '回', segments: numberedSegments(100, '第') },
   bookDefinition(DEEP_FIFTEEN_BOOK),
   bookDefinition(CHINESE_TOPIC_BOOK),
-  { id: 'english:ace', subject: 'english', title: '英文｜ACE Reading', unitLabel: '回', segments: numberedSegments(60, '第') },
-  { id: 'english:listening', subject: 'english', title: `英文｜${LISTENING_TEST_BOOK_TITLE}`, unitLabel: 'Test', segments: numberedSegments(10, 'Test') },
-  { id: 'english:essential', subject: 'english', title: '英文｜Essential Grammar in Use', unitLabel: 'Unit', segments: numberedSegments(115, 'Unit') },
-  { id: 'english:writing', subject: 'english', title: '英文｜英文寫作測驗', unitLabel: '回', segments: numberedSegments(40, '第') },
-  { id: 'english:grammar', subject: 'english', title: '英文｜英文文法總複習講義', unitLabel: '章節', segments: mappedSegments(GRAMMAR_REVIEW_PAGE_MAP) },
+  { id: 'english:ace', subject: 'english', group: '學測', title: '英文｜ACE Reading', unitLabel: '回', segments: numberedSegments(60, '第') },
+  { id: 'english:listening', subject: 'english', group: '學測', title: `英文｜${LISTENING_TEST_BOOK_TITLE}`, unitLabel: 'Test', segments: numberedSegments(10, 'Test') },
+  { id: 'english:essential', subject: 'english', group: '補充', title: '英文｜Essential Grammar in Use', unitLabel: 'Unit', segments: numberedSegments(115, 'Unit') },
+  { id: 'english:writing', subject: 'english', group: '學測', title: '英文｜英文寫作測驗', unitLabel: '回', segments: numberedSegments(40, '第') },
+  { id: 'english:grammar', subject: 'english', group: '學測', title: '英文｜英文文法總複習講義', unitLabel: '章節', segments: mappedSegments(GRAMMAR_REVIEW_PAGE_MAP) },
   {
     id: 'english:azar-intermediate',
     subject: 'english',
+    group: '補充',
     title: `英文｜${AZAR_GRAMMAR_BOOK_TITLE}`,
     unitLabel: '章',
     segments: AZAR_GRAMMAR_CHAPTERS.map(chapter => ({
       key: String(chapter.number),
-      label: `${chapter.label}（p.${chapter.start}–${chapter.end}）`,
+      label: `Ch.${chapter.number} ${chapter.title}（p.${chapter.start}–${chapter.end}）`,
       start: chapter.start,
       end: chapter.end,
+      memberKeys: chapter.sections.map(section => section.code),
     })),
   },
   bookDefinition(ENGLISH_TOPIC_READING_BOOK),
@@ -293,6 +308,8 @@ const MATERIAL_DEFINITIONS: MaterialDefinition[] = [
   bookDefinition(ENGLISH_WEEKLY_PLAN_BOOK),
   bookDefinition(ENGLISH_MIXED_30_BOOK),
   bookDefinition(ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK),
+  bookDefinition(UNLOCK_3_BOOK),
+  bookDefinition(TOEFL_VOCABULARY_3800_BOOK),
   bookDefinition(CIVICS_WEEKLY_PLAN_BOOK),
   bookDefinition(HISTORY_WEEKLY_PLAN_BOOK),
   bookDefinition(HISTORY_HAOHAOXUE_BOOK),
@@ -308,35 +325,92 @@ const MATERIAL_DEFINITIONS: MaterialDefinition[] = [
   mathDefinition('新關鍵', '3A~4A', NEWKEY_34_PAGE_MAP),
   mathDefinition('新大滿貫', 'A', MATH_GRAND_SLAM_PAGE_MAP),
   ...Object.entries(DAY123_PAGE_MAPS).map(([subject, rows]) => ({
-    id: `natural:${subject}:123日的淬鍊`, subject: 'natural' as const,
+    id: `natural:${subject}:123日的淬鍊`, subject: 'natural' as const, group: subject as MaterialProgressGroup,
     title: `自然｜${subject}｜123日的淬鍊`, unitLabel: '章', segments: mappedSegments(rows),
   })),
   ...Object.entries(GOODPOINT_PAGE_MAPS).map(([subject, rows]) => ({
-    id: `natural:${subject}:好考點`, subject: 'natural' as const,
+    id: `natural:${subject}:好考點`, subject: 'natural' as const, group: subject as MaterialProgressGroup,
     title: `自然｜${subject}｜好考點`, unitLabel: '單元', segments: mappedSegments(rows),
   })),
   {
-    id: 'natural:生物:新關鍵', subject: 'natural',
+    id: 'natural:生物:新關鍵', subject: 'natural', group: '生物',
     title: '自然｜生物｜新關鍵', unitLabel: '大主題', segments: largeTopicSegments(BIOLOGY_NEW_KEY_PAGE_MAP),
   },
   {
-    id: 'natural:化學:新關鍵', subject: 'natural',
+    id: 'natural:化學:新關鍵', subject: 'natural', group: '化學',
     title: '自然｜化學｜新關鍵', unitLabel: '大主題', segments: largeTopicSegments(CHEMISTRY_NEW_KEY_PAGE_MAP),
   },
   {
-    id: 'natural:物理:新關鍵', subject: 'natural',
+    id: 'natural:物理:新關鍵', subject: 'natural', group: '物理',
     title: '自然｜物理｜新關鍵', unitLabel: '大主題', segments: largeTopicSegments(PHYSICS_NEW_KEY_PAGE_MAP),
   },
   {
-    id: 'natural:地科:新關鍵', subject: 'natural',
+    id: 'natural:地科:新關鍵', subject: 'natural', group: '地科',
     title: '自然｜地科｜新關鍵', unitLabel: '大主題', segments: largeTopicSegments(EARTH_SCIENCE_NEW_KEY_PAGE_MAP),
   },
-  { id: 'natural:化學:領航', subject: 'natural', title: '自然｜化學｜領航', unitLabel: '分項', segments: mappedSegments(CHEMISTRY_NAVIGATOR_PAGE_MAP) },
-  { id: 'natural:物理:優勢', subject: 'natural', title: '自然｜物理｜優勢', unitLabel: '分項', segments: mappedSegments(PHYSICS_ADVANTAGE_PAGE_MAP) },
-  { id: 'natural:物理:逆轉勝', subject: 'natural', title: '自然｜物理｜逆轉勝', unitLabel: '主題', segments: mappedSegments(PHYSICS_COMEBACK_PAGE_MAP) },
+  { id: 'natural:化學:領航', subject: 'natural', group: '化學', title: '自然｜化學｜領航', unitLabel: '分項', segments: mappedSegments(CHEMISTRY_NAVIGATOR_PAGE_MAP) },
+  { id: 'natural:物理:優勢', subject: 'natural', group: '物理', title: '自然｜物理｜優勢', unitLabel: '分項', segments: mappedSegments(PHYSICS_ADVANTAGE_PAGE_MAP) },
+  { id: 'natural:物理:逆轉勝', subject: 'natural', group: '物理', title: '自然｜物理｜逆轉勝', unitLabel: '主題', segments: mappedSegments(PHYSICS_COMEBACK_PAGE_MAP) },
 ];
 
 const definitionById = new Map(MATERIAL_DEFINITIONS.map(definition => [definition.id, definition]));
+
+/** Editable definitions expose the original fine sections, independently of the progress bar grouping. */
+export function builtInMaterialCatalog(): CatalogMaterial[] {
+  const entries = MATERIAL_DEFINITIONS.map(function editableDefinition(definition): CatalogMaterial {
+    const parts = definition.id.split(':');
+    let rows: readonly PageMapRow[] | undefined;
+    let match: CatalogMaterial['match'];
+    let subject: CatalogSubject;
+    let mode: CatalogMaterial['mode'] = 'pages';
+    let title = definition.title.replace(/^(?:國文|英文|數學|自然|公民|歷史|地理)｜/, '');
+    if (definition.subject === 'natural') {
+      subject = definition.group as CatalogSubject;
+      title = parts[2];
+      match = { material: title };
+      if (title === '123日的淬鍊') rows = DAY123_PAGE_MAPS[subject];
+      if (title === '好考點') rows = GOODPOINT_PAGE_MAPS[subject];
+      if (title === '新關鍵') rows = ({ 生物: BIOLOGY_NEW_KEY_PAGE_MAP, 化學: CHEMISTRY_NEW_KEY_PAGE_MAP, 物理: PHYSICS_NEW_KEY_PAGE_MAP, 地科: EARTH_SCIENCE_NEW_KEY_PAGE_MAP })[subject as '生物'];
+      if (title === '領航') rows = CHEMISTRY_NAVIGATOR_PAGE_MAP;
+      if (title === '優勢') rows = PHYSICS_ADVANTAGE_PAGE_MAP;
+      if (title === '逆轉勝') rows = PHYSICS_COMEBACK_PAGE_MAP;
+    } else if (definition.subject === 'math') {
+      subject = '數學';
+      match = { material: parts[1], ...(parts[2] ? { book: parts[2] } : {}) };
+      if (parts[1] === '教學講義') rows = TEACHING_MATH_PAGE_MAP[parts[2]];
+      if (parts[1] === '對話式') rows = TEACHING_MATH_PAGE_MAP[parts[2]];
+      if (parts[1] === '對話式複習講義') rows = parts[2] === '1~2' ? DIALOGUE_REVIEW_12_PAGE_MAP : DIALOGUE_REVIEW_34_PAGE_MAP;
+      if (parts[1] === '複習週記') rows = REVIEW_WEEKLY_PAGE_MAP;
+      if (parts[1] === '智慧型') rows = parts[2] === '1~2' ? SMART_12_PAGE_MAP : SMART_34_PAGE_MAP;
+      if (parts[1] === '新關鍵') rows = parts[2] === '1~2' ? NEWKEY_12_PAGE_MAP : NEWKEY_34_PAGE_MAP;
+      if (parts[1] === '新大滿貫') rows = MATH_GRAND_SLAM_PAGE_MAP;
+    } else if (definition.subject === 'social') {
+      const book = parts.slice(1).join(':') as PageMappedBook;
+      subject = pageMappedBookSocialSubject(book) ?? '歷史';
+      title = definition.title.replace(/^(?:公民|歷史|地理)｜/, '');
+      match = { title: book };
+      rows = BOOK_PAGE_MAPS[book].map(section => [section.start, section.end, section.topic, section.detail]);
+    } else {
+      subject = definition.subject === 'chinese' ? '國文' : '英文';
+      match = definition.id === 'chinese:gujin' ? { kind: 'reading' } : { title };
+      if (definition.id.startsWith('book:')) rows = BOOK_PAGE_MAPS[parts.slice(1).join(':') as PageMappedBook].map(section => [section.start, section.end, section.topic, section.detail]);
+      if (definition.id === 'english:grammar') rows = GRAMMAR_REVIEW_PAGE_MAP;
+      if (definition.id === 'english:azar-intermediate') rows = AZAR_GRAMMAR_SECTIONS.map(section => [section.start, section.end, section.chapterLabel, section.title]);
+      if (['english:ace', 'english:listening', 'english:writing', 'chinese:gujin'].includes(definition.id)) mode = 'round';
+      if (definition.id === 'english:essential') mode = 'unit';
+    }
+    const sections = rows
+      ? rows.map((row, index) => ({ id: `section-${index + 1}`, start: row[0], end: row[1], topic: row[2], detail: row[3] ?? '' }))
+      : definition.segments.map(segment => ({ id: segment.key, start: segment.start, end: segment.end, topic: segment.label.replace(/（p\..*$/, ''), detail: '' }));
+    return { id: definition.id, title, subject, group: definition.group, mode,
+      total: Math.max(...sections.map(section => section.end)), sections, match, revision: 0, updatedAt: '' };
+  });
+  for (const title of SUPPLEMENT_ENGLISH_TITLES) {
+    if (!entries.some(entry => entry.subject === '英文' && entry.title === title)) entries.push({ id: `supplement:${title}`, title, subject: '英文', group: '補充', mode: 'pages', total: Number.MAX_SAFE_INTEGER, sections: [], match: { title }, revision: 0, updatedAt: '' });
+  }
+  for (const subject of ['物理', '化學', '生物', '地科'] as const) entries.push({ id: `natural:${subject}:大滿貫`, title: '大滿貫', subject, group: subject, mode: 'pages', total: Number.MAX_SAFE_INTEGER, sections: [], match: { material: '大滿貫' }, revision: 0, updatedAt: '' });
+  return entries;
+}
 
 function objectValue(value: unknown): LooseRecord {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as LooseRecord : {};
@@ -426,63 +500,87 @@ function markLinear(recorded: Map<string, MaterialCoverage>, definitionId: strin
 function markExact(recorded: Map<string, MaterialCoverage>, definitionId: string, keyValue: unknown): void {
   const definition = definitionById.get(definitionId);
   const key = String(keyValue ?? '').trim();
-  if (!definition || !key || !definition.segments.some(segment => segment.key === key)) return;
+  const knownKey = definition?.segments.some(segment => (
+    segment.key === key || segment.memberKeys?.includes(key)
+  ));
+  if (!definition || !key || !knownKey) return;
   coverageFor(recorded, definitionId).exactKeys.add(key);
-}
-
-function markAzarSection(recorded: Map<string, MaterialCoverage>, sectionCodeValue: unknown): void {
-  const sectionCode = String(sectionCodeValue ?? '').trim();
-  const section = AZAR_GRAMMAR_SECTIONS.find(candidate => candidate.code === sectionCode);
-  if (!section) return;
-  markRange(recorded, 'english:azar-intermediate', section.start, section.end);
 }
 
 function markStudyItem(recorded: Map<string, MaterialCoverage>, item: StudyItem): void {
   const fields = objectValue(item.f);
+  const scope = numberedStudyScope(item);
   const delegatesRangeToChildren = ['groupedWorkEntries', 'dailyWorkSourceItems']
     .some(key => Array.isArray(fields[key]) && (fields[key] as unknown[]).length > 0);
   const type = String(item.type ?? '');
   const actualMathFields = type === 'mathStudy' || type === 'mathLecture' || type === 'mathPractice'
     ? recordedPageRangeFields(item.f)
     : null;
-  if (!delegatesRangeToChildren && item.done === true && actualMathFields) {
+  if (!scope && !delegatesRangeToChildren && item.done === true && actualMathFields) {
     const material = normalizeMathMaterial(actualMathFields.material);
     const book = normalizeMathBook(actualMathFields.book);
     const definitionId = material === '複習週記' ? 'math:複習週記' : `math:${material}:${book}`;
     markRange(recorded, definitionId, actualMathFields.start, actualMathFields.end);
   }
-  if (hasRecordedActivity(item) && !delegatesRangeToChildren) {
+  const hasCompletedAzarSection = Array.isArray(fields.azarLegacySections)
+    && (fields.azarLegacySections as StudyItem[]).some(section => section?.done === true);
+  if ((hasRecordedActivity(item) || hasCompletedAzarSection) && !delegatesRangeToChildren) {
     const title = String(fields.title ?? item.title ?? '');
     const mappedBook = canonicalPageMappedBook(fields.book ?? fields.title ?? item.title);
 
     if (type === 'chineseReading') {
-      if (String(fields.kind ?? '') === 'reading' || /古今悅讀一百/.test(title)) {
-        markLinear(recorded, 'chinese:gujin', fields.round);
-      } else if (mappedBook && pageMappedBookSubject(mappedBook) === '國文') {
+      if (usesSharedPageTemplate(item)) {
+        if (mappedBook) markRange(recorded, `book:${mappedBook}`, fields.start, fields.end);
+      } else if (String(fields.kind ?? '') === 'reading' || /古今悅讀一百/.test(title)) {
+        if (scope?.kind !== 'unit') markLinear(recorded, 'chinese:gujin', fields.round, fields.roundEnd ?? fields.round);
+      } else if (!scope && mappedBook && pageMappedBookSubject(mappedBook) === '國文') {
         markBookSelection(recorded, mappedBook, fields);
       }
     }
 
     if (type === 'extra' || type === 'aceReading') {
-      if (/ACE\s*Reading/i.test(title)) markLinear(recorded, 'english:ace', fields.round);
-      else if (isListeningTestBookTitle(title)) markLinear(recorded, 'english:listening', fields.round);
+      if (usesSharedPageTemplate(item)) {
+        if (isAzarGrammarBookTitle(title)) markRange(recorded, 'english:azar-intermediate', fields.start, fields.end);
+        else if (/英文文法總複習講義/.test(title)) markRange(recorded, 'english:grammar', fields.start, fields.end);
+        else if (mappedBook) markRange(recorded, `book:${mappedBook}`, fields.start, fields.end);
+      }
+      else if (/ACE\s*Reading/i.test(title)) { if (scope?.kind !== 'unit') markLinear(recorded, 'english:ace', fields.round, fields.roundEnd ?? fields.round); }
+      else if (isListeningTestBookTitle(title)) { if (scope?.kind !== 'unit') markLinear(recorded, 'english:listening', fields.round, fields.roundEnd ?? fields.round); }
       else if (/Essential\s+Grammar\s+in\s+Use/i.test(title)) markLinear(recorded, 'english:essential', fields.unitStart ?? fields.unit, fields.unitEnd ?? fields.unitStart ?? fields.unit);
-      else if (/英文寫作測驗/.test(title)) markLinear(recorded, 'english:writing', fields.round);
-      else if (isAzarGrammarBookTitle(title)) {
-        if (fields.azarSectionCode) markAzarSection(recorded, fields.azarSectionCode);
+      else if (/英文寫作測驗/.test(title)) { if (scope?.kind !== 'unit') markLinear(recorded, 'english:writing', fields.round, fields.roundEnd ?? fields.round); }
+      else if (!scope && isAzarGrammarBookTitle(title)) {
+        if (fields.azarSectionCode) markExact(recorded, 'english:azar-intermediate', fields.azarSectionCode);
+        else if (fields.azarChapterNumber) {
+          if (item.done) markRange(recorded, 'english:azar-intermediate', fields.start, fields.end);
+          else if (Array.isArray(fields.azarLegacySections)) {
+            (fields.azarLegacySections as StudyItem[])
+              .filter(section => section?.done === true && !!section.f)
+              .forEach(section => markRange(recorded, 'english:azar-intermediate', section.f.start, section.f.end));
+          }
+        }
         else markRange(recorded, 'english:azar-intermediate', fields.start, fields.end);
       }
-      else if (/英文文法總複習講義/.test(title)) markRange(recorded, 'english:grammar', fields.start, fields.end);
-      else if (mappedBook && pageMappedBookSubject(mappedBook) === '英文') markBookSelection(recorded, mappedBook, fields);
+      else if (!scope && /英文文法總複習講義/.test(title)) markRange(recorded, 'english:grammar', fields.start, fields.end);
+      else if (mappedBook && pageMappedBookSubject(mappedBook) === '英文') {
+        const range = bookUnitRange(item);
+        const explicitUnits = fields.unitStart !== undefined || fields.unit !== undefined;
+        if (unitBookSections(mappedBook).length && range.start && (explicitUnits || !fields.start)) {
+          const sections = unitBookSections(mappedBook).filter(section => section.unit >= Number(range.start) && section.unit <= Number(range.end));
+          for (const section of sections) markRange(recorded, `book:${mappedBook}`, section.start, section.end);
+        } else if (!scope || (scope.kind === 'round' && fields.topic)
+          || (unitBookSections(mappedBook).length && !explicitUnits && !fields.scopeKind)) {
+          markBookSelection(recorded, mappedBook, fields);
+        }
+      }
     }
 
-    if (type === 'scienceReview') {
+    if (!scope && type === 'scienceReview') {
       const subject = normalizeNaturalSubject(fields.subject);
       const material = normalizeNaturalMaterial(fields.material);
       markRange(recorded, `natural:${subject}:${material}`, fields.start, fields.end);
     }
 
-    if (type === 'socialStudy' || type === 'general') {
+    if (!scope && (type === 'socialStudy' || type === 'general' || type === 'calendarStudy')) {
       if (mappedBook && pageMappedBookSubject(mappedBook) === '社會') {
         markBookSelection(recorded, mappedBook, fields);
       }
@@ -536,19 +634,47 @@ function coveredLength(ranges: readonly [number, number][], start: number, end: 
 
 function segmentCompletionPercent(segment: SegmentDefinition, coverage: MaterialCoverage): number {
   if (coverage.exactKeys.has(segment.key)) return 100;
+  const exactMemberPercent = segment.memberKeys?.length
+    ? Math.round((segment.memberKeys.filter(key => coverage.exactKeys.has(key)).length / segment.memberKeys.length) * 100)
+    : 0;
   const touched = coverage.ranges.some(([low, high]) => high >= segment.start && low <= segment.end);
-  if (!touched) return 0;
+  if (!touched) return exactMemberPercent;
   // A legacy open-ended map has no reliable final page, so it remains an exact recorded unit.
   if (segment.end === Number.MAX_SAFE_INTEGER) return 100;
   const total = segment.end - segment.start + 1;
-  return Math.min(100, Math.round((coveredLength(coverage.ranges, segment.start, segment.end) / total) * 100));
+  const pagePercent = Math.round((coveredLength(coverage.ranges, segment.start, segment.end) / total) * 100);
+  return Math.min(100, Math.max(exactMemberPercent, pagePercent));
 }
 
 export function materialProgressRows(records: readonly StudyRecord[]): MaterialProgressRow[] {
   const recorded = new Map<string, MaterialCoverage>();
   const visited = new WeakSet<object>();
   records.forEach(record => (record.items ?? []).forEach(item => visitStudyItem(recorded, item, visited)));
-  return MATERIAL_DEFINITIONS.map(definition => {
+  const definitions = new Map(MATERIAL_DEFINITIONS.map(definition => [definition.id, definition]));
+  const managed = catalogOverrides(records).filter(entry => !entry.reset);
+  for (const entry of managed) {
+    if (entry.deleted) { definitions.delete(entry.id); continue; }
+    const subject = catalogProgressSubject(entry.subject);
+    const group = (subject === 'natural' ? entry.subject : entry.group) as MaterialProgressGroup;
+    definitions.set(entry.id, { id: entry.id, title: `${entry.subject}｜${entry.title}`, subject, group,
+      unitLabel: '大單元', segments: catalogLargeSections(entry).map(section => ({ key: section.id, label: section.topic, start: section.start, end: section.end })) });
+    const coverage = { ranges: [] as Array<[number, number]>, exactKeys: new Set<string>() };
+    const seen = new WeakSet<object>();
+    function visitManaged(item: StudyItem): void {
+      if (!item || typeof item !== 'object' || seen.has(item)) return;
+      seen.add(item);
+      const children = ['groupedWorkEntries', 'dailyWorkSourceItems', 'makeupEntries', 'reviewEntries', 'interactiveEntries', 'calendarIntegrationEntries']
+        .flatMap(key => Array.isArray(item.f?.[key]) ? item.f[key] as StudyItem[] : []);
+      if (catalogMaterialMatchesItem(entry, item) && hasRecordedActivity(item) && !children.length) {
+        const range = catalogRange(entry, item);
+        if (range.start > 0 && range.end >= range.start) coverage.ranges.push([range.start, range.end]);
+      }
+      children.forEach(visitManaged);
+    }
+    records.forEach(record => record.items.forEach(visitManaged));
+    recorded.set(entry.id, coverage);
+  }
+  return [...definitions.values()].map(definition => {
     const found = recorded.get(definition.id) ?? { ranges: [], exactKeys: new Set<string>() };
     const segments = definition.segments.map((segment, index) => {
       const completionPercent = segmentCompletionPercent(segment, found);
@@ -574,6 +700,7 @@ export function materialProgressRows(records: readonly StudyRecord[]): MaterialP
     return {
       id: definition.id,
       subject: definition.subject,
+      group: definition.group,
       title: definition.title,
       unitLabel: definition.unitLabel,
       recorded: segments.filter(segment => segment.recorded).length,

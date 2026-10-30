@@ -2,38 +2,41 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-test('daily overview keeps the completed-time subject donut', () => {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+import {
+  adjacentOverviewMetric,
+  normalizeOverviewMetric,
+  overviewMetricIndex,
+} from '../src/ui/overviewMetricView.ts';
 
-  assert.match(html, /id="overviewStats"/);
-  assert.match(html, /class="overview-metric-title">今日完成時間<\/div>/);
-  assert.match(html, /id="metricMinutesPanel"/);
-  assert.match(html, /id="subjectTimeDonut"/);
+test('normalizes the three overview metric segments', () => {
+  assert.equal(normalizeOverviewMetric('minutes'), 'minutes');
+  assert.equal(normalizeOverviewMetric('mathToday'), 'mathToday');
+  assert.equal(normalizeOverviewMetric('mathWeek'), 'mathWeek');
+  assert.equal(normalizeOverviewMetric('unknown'), 'minutes');
 });
 
-test('daily overview no longer renders either math page statistic', () => {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-
-  assert.doesNotMatch(html, /今日數學頁數|本週數學頁數/);
-  assert.doesNotMatch(html, /overviewMetricTabs|metricMathTodayPanel|metricMathWeekPanel/);
-  assert.doesNotMatch(html, /mathPagesTop|weekMathPages|weekMathTarget|weekMathBar|weekMathPercent/);
+test('returns the correct slider position for every segment', () => {
+  assert.equal(overviewMetricIndex('minutes'), 0);
+  assert.equal(overviewMetricIndex('mathToday'), 1);
+  assert.equal(overviewMetricIndex('mathWeek'), 2);
 });
 
-test('daily overview runtime no longer calculates or switches math metrics', () => {
+test('keyboard segment navigation wraps in both directions', () => {
+  assert.equal(adjacentOverviewMetric('minutes', 1), 'mathToday');
+  assert.equal(adjacentOverviewMetric('mathWeek', 1), 'minutes');
+  assert.equal(adjacentOverviewMetric('minutes', -1), 'mathWeek');
+});
+
+test('overview keeps only the completed-time panel and centered completion metrics', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const styles = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8');
   const runtime = readFileSync(new URL('../src/legacy-app.ts', import.meta.url), 'utf8');
 
-  assert.doesNotMatch(runtime, /overviewMetricView|overviewMetricTabs|updateOverviewMetricView/);
-  assert.doesNotMatch(runtime, /MathProgressIndex|calculateMathProgress|mathProgressIndex/);
-  assert.doesNotMatch(runtime, /mathProgressHistory|initHistoricalMathProgressGuard/);
-});
-
-test('completed-time panel remains sized while completion metrics stay aligned', () => {
-  const styles = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8');
-
-  assert.match(styles, /overview-metric-title\{[^}]*font-size:13px/);
-  assert.match(styles, /metric-minutes-panel\{[^}]*display:flex;[^}]*min-height:282px/);
+  assert.match(html, /id="overviewStats"/);
+  assert.match(html, /class="overview-metric-title">今日完成時間/);
+  assert.doesNotMatch(html, /今日數學頁數|本週數學頁數|metricMathTodayPanel|metricMathWeekPanel/);
+  assert.doesNotMatch(runtime, /overviewMetricTabs|updateOverviewMetricView/);
   assert.match(styles, /completion-stat #completionRatePanel\{grid-template-columns:minmax\(0,420px\);justify-content:center;align-content:center/);
   assert.match(styles, /completion-stat \.completion-metric-head\{flex-direction:row;align-items:baseline;justify-content:space-between;text-align:left\}/);
   assert.match(styles, /completion-stat \.completion-metric \.small\{text-align:left\}/);
-  assert.doesNotMatch(styles, /metric-panel-stage|metric-math-panel|metric-segments/);
 });

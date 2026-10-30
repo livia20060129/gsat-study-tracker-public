@@ -127,10 +127,7 @@ export function summarizeSubjectTime(entries: SubjectTimeEntry[]): SubjectTimeSu
   };
 }
 
-/**
- * Keeps the stored fine-grained science subjects intact while presenting one
- * Natural Science slice in the top-level subject distribution.
- */
+/** Keeps science detail while presenting one Natural Science slice in the top-level distribution. */
 export function mergeNaturalScienceSubjectTime(summary: SubjectTimeSummary): SubjectTimeSummary {
   if (!summary.slices.length || summary.totalMinutes <= 0) return summary;
   const totals = new Map<SubjectTimeSubject, number>();

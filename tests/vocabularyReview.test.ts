@@ -70,7 +70,7 @@ test('keeps combinations and sentences separate from parts of speech', () => {
   assert.deepEqual(entries[1].tags, []);
 });
 
-test('updates every matching word occurrence with editable parts of speech and translation', () => {
+test('updates every matching word occurrence with editable English text, parts of speech, and translation', () => {
   const records = [
     record('2026-09-19', [item('one', [{ text: 'Leverage', noun: true }])]),
     record('2026-09-20', [item('two', [{ text: ' leverage ', verb: true }])]),
@@ -78,58 +78,46 @@ test('updates every matching word occurrence with editable parts of speech and t
   const partsOfSpeech = new Set<'adjective' | 'verb'>(['verb', 'adjective']);
 
   assert.equal(updateVocabularyWordEntries(records[0], 'leverage', {
+    text: 'Applied leverage',
     partsOfSpeech,
     translation: '運用；影響力',
   }), true);
   assert.equal(updateVocabularyWordEntries(records[1], 'leverage', {
+    text: 'Applied leverage',
     partsOfSpeech,
     translation: '運用；影響力',
   }), true);
 
   const entries = vocabularyReviewEntries(records);
+  assert.equal(entries[0].text, 'Applied leverage');
   assert.deepEqual(entries[0].tags, ['Verb', 'Adjective']);
   assert.equal(entries[0].translation, '運用；影響力');
   assert.equal((records[0].items[0].f.words?.[0] as Record<string, unknown>).noun, false);
+  assert.equal((records[1].items[0].f.words?.[0] as Record<string, unknown>).text, 'Applied leverage');
 });
 
-test('changes every matching occurrence between word, combination, and sentence', () => {
+test('changes every matching occurrence between word, combination, and sentence content kinds', () => {
   const records = [
-    record('2026-09-19', [item('one', [{ text: 'take action', noun: true }])]),
-    record('2026-09-20', [item('two', [{ text: ' take action ', fixedCombination: true }])]),
+    record('2026-09-19', [item('one', [{ text: 'well-off', noun: true }])]),
+    record('2026-09-20', [item('two', [{ text: ' well-off ', fixedCombination: true }])]),
   ];
 
-  for (const current of records) {
-    assert.equal(updateVocabularyWordEntries(current, 'take action', { contentKind: 'sentence' }), true);
-  }
-  for (const current of records) {
-    const word = current.items[0].f.words?.[0] as Record<string, unknown>;
-    assert.equal(word.fixedCombination, false);
-    assert.equal(word.beautifulSentences, true);
+  for (const recordEntry of records) {
+    assert.equal(updateVocabularyWordEntries(recordEntry, 'well-off', { contentKind: '句子' }), true);
   }
   assert.deepEqual(vocabularyReviewEntries(records)[0].contentKinds, ['句子']);
-
-  for (const current of records) {
-    assert.equal(updateVocabularyWordEntries(current, 'take action', { contentKind: 'word' }), true);
+  for (const recordEntry of records) {
+    const word = recordEntry.items[0].f.words?.[0] as Record<string, unknown>;
+    assert.equal(word.fixedCombination, false);
+    assert.equal(word.beautifulSentences, true);
+    assert.equal(updateVocabularyWordEntries(recordEntry, 'well-off', { contentKind: '組合' }), true);
+    assert.equal(word.fixedCombination, true);
+    assert.equal(word.beautifulSentences, false);
+    assert.equal(updateVocabularyWordEntries(recordEntry, 'well-off', { contentKind: '單字' }), true);
+    assert.equal(word.fixedCombination, false);
+    assert.equal(word.beautifulSentences, false);
   }
   assert.deepEqual(vocabularyReviewEntries(records)[0].contentKinds, ['單字']);
-});
-
-test('renames every matching occurrence and rebuilds the review key', () => {
-  const records = [
-    record('2026-09-19', [item('one', [{ text: 'Leverage', noun: true }])]),
-    record('2026-09-20', [item('two', [{ text: ' leverage ', verb: true }])]),
-  ];
-
-  for (const current of records) {
-    assert.equal(updateVocabularyWordEntries(current, 'leverage', { text: 'leverage power' }), true);
-  }
-
-  const entries = vocabularyReviewEntries(records);
-  assert.equal(entries.length, 1);
-  assert.equal(entries[0].key, 'leverage power');
-  assert.equal(entries[0].text, 'leverage power');
-  assert.equal(entries[0].occurrenceCount, 2);
-  assert.deepEqual(entries[0].tags, ['Noun', 'Verb']);
 });
 
 test('uses the longest useful English run for an Oxford search link', () => {

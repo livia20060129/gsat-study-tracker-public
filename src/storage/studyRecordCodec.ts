@@ -76,9 +76,11 @@ export function decodeStudyRecord(
   let migrated = cloneObject(parsed);
   if (fromVersion < CURRENT_STUDY_RECORD_SCHEMA_VERSION) migrated = migrateRecord(migrated);
 
-  let date: string | null = null;
-  if (validDate(authoritativeDate)) date = authoritativeDate;
-  else if (validDate(migrated.date)) date = migrated.date;
+  const date = validDate(authoritativeDate)
+    ? authoritativeDate
+    : validDate(migrated.date)
+      ? migrated.date
+      : null;
   if (!date) return { ok: false, error: 'invalid-record' };
 
   migrated.date = date;

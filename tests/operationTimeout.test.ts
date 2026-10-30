@@ -26,4 +26,3 @@ test('rejects and runs cancellation when an external operation stalls', async ()
   );
   assert.equal(cancelled, true);
 });
-

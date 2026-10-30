@@ -105,4 +105,3 @@ test('Earth Science New Key maps unit boundaries and advanced inquiry details', 
   assert.match(earthScienceNewKeyPageText(259, 260), /鐵皮屋的開窗設計/);
   assert.equal(earthScienceNewKeyPageMatches(261, 261).length, 0);
 });
-

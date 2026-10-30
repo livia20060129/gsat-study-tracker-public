@@ -25,3 +25,18 @@ export function validatePageRange(start: unknown, end: unknown): PageRangeValida
   }
   return { valid: true, message: '' };
 }
+
+/** Keeps the end boundary at the start boundary when an edited range would be reversed. */
+export function orderedEndPage(start: unknown, end: unknown): string {
+  const normalizedStart = String(start ?? '').trim();
+  const normalizedEnd = String(end ?? '').trim();
+  const startPage = pageNumber(normalizedStart);
+  const endPage = pageNumber(normalizedEnd);
+  if (
+    startPage !== null && endPage !== null
+    && Number.isInteger(startPage) && startPage >= 1
+    && Number.isInteger(endPage) && endPage >= 1
+    && endPage < startPage
+  ) return String(startPage);
+  return normalizedEnd;
+}

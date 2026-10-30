@@ -76,6 +76,7 @@ test('Supabase repository hides table and RPC details from callers', async () =>
     updated_at: '2026-09-04T11:00:00Z',
   }];
   const calls: string[] = [];
+  let savedPayload: unknown;
   const query = {
     gte(column: string, value: string) { calls.push(`gte:${column}:${value}`); return this; },
     gt(column: string, value: string) { calls.push(`gt:${column}:${value}`); return this; },
@@ -92,6 +93,7 @@ test('Supabase repository hides table and RPC details from callers', async () =>
     },
     rpc(name: string, parameters: Record<string, unknown>) {
       calls.push(`rpc:${name}:${String(parameters.p_base_revision)}`);
+      savedPayload = parameters.p_payload;
       return Promise.resolve({ data: [{ applied: true, payload: rows[0].payload, revision: 3, updated_at: rows[0].updated_at }], error: null });
     },
   } as unknown as SupabaseStudyRecordClient;
@@ -99,11 +101,16 @@ test('Supabase repository hides table and RPC details from callers', async () =>
 
   const loaded = await repository.loadMany('2026-09-01T00:00:00Z');
   assert.equal(loaded[0]?.record.date, '2026-09-04');
-  const saved = await repository.save(record('2026-09-04'), 2);
+  const routineRecord = record('2026-09-04');
+  routineRecord.wakeTime = '07:20';
+  routineRecord.bedtime = { time: '01:30', dateTime: '2026-09-05T01:30', nextDay: true };
+  const saved = await repository.save(routineRecord, 2);
   assert.equal(saved.applied, true);
   assert.equal(saved.revision, 3);
   assert.ok(calls.includes('from:study_records'));
   assert.ok(calls.includes('rpc:upsert_study_record:2'));
+  assert.equal((savedPayload as StudyRecord).wakeTime, '07:20');
+  assert.deepEqual((savedPayload as StudyRecord).bedtime, routineRecord.bedtime);
 });
 
 test('Supabase repository reads every page with an updated_at + study_date cursor', async () => {

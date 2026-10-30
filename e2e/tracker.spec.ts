@@ -7,7 +7,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('public edition starts without built-in schedule cards', async ({ page }) => {
-  await expect(page.locator('#dailyNotice')).toContainText('尚無可辨識的 Google Calendar');
+  await expect(page.locator('#dailyNotice')).toContainText('今日尚無 Google Calendar 匯入項目');
   await expect(page.locator('#dailyItemList [data-item]')).toHaveCount(0);
   await expect(page.locator('#dailyItemList')).toContainText('今日沒有項目');
 });
@@ -24,21 +24,21 @@ test('overdue task page filters subjects and persists skip without marking compl
       date,
       items: [
         {
-          id: 'todo-english', type: 'englishPractice', title: '英文閱讀', done: false,
-          minutes: '', required: true, source: 'preset',
-          f: { subject: '英文', book: 'ACE Reading', round: '12', topic: '閱讀測驗', progress: true },
+          id: 'todo-english', type: 'extra', title: '英文閱讀', done: false,
+          minutes: '', required: true, source: 'preset', presetKey: 'cal_test_todo_english',
+          f: { subject: '英文', title: 'ACE Reading', book: 'ACE Reading', round: '12', topic: '閱讀測驗', progress: true },
         },
         {
           id: 'todo-math', type: 'mathStudy', title: '數學講義', done: false,
-          minutes: '', required: true, source: 'preset', f: { subject: '數學A' },
+          minutes: '', required: true, source: 'preset', presetKey: 'cal_test_todo_math', f: { subject: '數學A' },
         },
         {
           id: 'todo-done', type: 'scienceReview', title: '已完成自然', done: true,
-          minutes: '', required: true, source: 'preset', f: { subject: '物理' },
+          minutes: '', required: true, source: 'preset', presetKey: 'cal_test_todo_done', f: { subject: '物理' },
         },
         {
           id: 'todo-deferred', type: 'chineseReading', title: '已延期國文', done: false,
-          minutes: '', required: true, source: 'preset', deferred: true, deferredTargetDay: 5,
+          minutes: '', required: true, source: 'preset', presetKey: 'cal_test_todo_deferred', deferred: true, deferredTargetDay: 5,
           f: { subject: '國文' },
         },
       ],
@@ -222,16 +222,16 @@ test('English vocabulary review sorts entries and persists editable parts of spe
   await expect(links).toHaveText(['pay an insurance premium']);
   await expect(page.getByRole('group', { name: '單字排列方式' })).toBeHidden();
   const combinationRow = page.locator('.vocabulary-row[data-entry-key="pay an insurance premium"]');
-  await expect(combinationRow.locator('.vocabulary-readonly-details')).not.toContainText('詞性');
+  await expect(combinationRow.locator('.vocabulary-readonly-details')).toHaveCount(0);
   await combinationRow.getByRole('button', { name: '編輯「pay an insurance premium」' }).click();
   await expect(combinationRow.locator('.vocabulary-pos-editor')).toBeHidden();
   await expect(combinationRow.locator('[data-vocabulary-translation]')).toHaveCount(1);
-  await combinationRow.getByRole('button', { name: '單字', exact: true }).click();
-  await expect(combinationRow.locator('[data-vocabulary-pos]')).toHaveCount(6);
+  await combinationRow.getByRole('radio', { name: '單字', exact: true }).check();
+  await expect(combinationRow.locator('[data-vocabulary-pos]')).toHaveCount(9);
   await expect(combinationRow.locator('.vocabulary-pos-editor')).toBeVisible();
-  await combinationRow.getByRole('button', { name: '句子', exact: true }).click();
+  await combinationRow.getByRole('radio', { name: '句子', exact: true }).check();
   await expect(combinationRow.locator('.vocabulary-pos-editor')).toBeHidden();
-  await combinationRow.getByRole('button', { name: '組合', exact: true }).click();
+  await combinationRow.getByRole('radio', { name: '組合', exact: true }).check();
   await expect(combinationRow.locator('.vocabulary-pos-editor')).toBeHidden();
   await combinationRow.getByRole('button', { name: '完成「pay an insurance premium」' }).click();
   await page.getByRole('button', { name: '句子', exact: true }).click();
@@ -239,21 +239,23 @@ test('English vocabulary review sorts entries and persists editable parts of spe
   await expect(page.locator('.vocabulary-row [data-vocabulary-pos]')).toHaveCount(0);
   await page.getByRole('button', { name: '單字', exact: true }).click();
   await expect(links).toHaveText(['Leverage', 'novelty']);
-  await expect(page.getByText('已整理 2 次')).toBeVisible();
+  await expect(page.getByText('🔥 記錄 2 次')).toBeVisible();
   await expect(page.getByText('最近紀錄')).toHaveCount(0);
   const leverageRow = page.locator('.vocabulary-row[data-entry-key="leverage"]');
   await expect(leverageRow.locator('[data-vocabulary-pos], [data-vocabulary-translation]')).toHaveCount(0);
-  await expect(leverageRow.locator('.vocabulary-readonly-details')).toContainText('Noun、Verb');
+  await expect(leverageRow.locator('.vocabulary-readonly-translations strong')).toHaveText(['Noun', 'Verb']);
   await leverageRow.getByRole('button', { name: '編輯「Leverage」' }).click();
   await expect(leverageRow.getByLabel('Noun', { exact: true })).toBeChecked();
   await expect(leverageRow.getByLabel('Verb', { exact: true })).toBeChecked();
   await leverageRow.getByLabel('Adjective', { exact: true }).check();
-  await leverageRow.getByLabel('中文翻譯').fill('運用；影響力');
-  await leverageRow.getByLabel('中文翻譯').press('Tab');
+  await leverageRow.getByLabel('Noun 中文翻譯 1').fill('運用');
+  await leverageRow.getByLabel('Verb 中文翻譯 1').fill('影響力');
+  await leverageRow.getByLabel('Verb 中文翻譯 1').press('Tab');
   await expect(page.getByText('已儲存「Leverage」的整理資料')).toBeVisible();
   await leverageRow.getByRole('button', { name: '完成「Leverage」' }).click();
   await expect(leverageRow.locator('[data-vocabulary-pos], [data-vocabulary-translation]')).toHaveCount(0);
-  await expect(leverageRow.locator('.vocabulary-readonly-details')).toContainText('運用；影響力');
+  await expect(leverageRow.locator('.vocabulary-readonly-translations')).toContainText('運用');
+  await expect(leverageRow.locator('.vocabulary-readonly-translations')).toContainText('影響力');
   const storedWords = await page.evaluate(() => ['2026-09-19', '2026-09-20'].map(date => {
     const record = JSON.parse(localStorage.getItem(`study-v11:guest:${date}`) ?? '{}');
     const word = record.items?.[0]?.f?.words?.find((candidate: { text?: string }) => (
@@ -262,8 +264,8 @@ test('English vocabulary review sorts entries and persists editable parts of spe
     return { word, localDirty: record.localDirty };
   }));
   expect(storedWords).toEqual([
-    { word: expect.objectContaining({ text: 'Leverage', noun: true, verb: true, adjective: true, translation: '運用；影響力' }), localDirty: true },
-    { word: expect.objectContaining({ text: ' leverage ', noun: true, verb: true, adjective: true, translation: '運用；影響力' }), localDirty: true },
+    { word: expect.objectContaining({ text: 'Leverage', noun: true, verb: true, adjective: true, translationsByPartOfSpeech: expect.objectContaining({ noun: ['運用'], verb: ['影響力'] }) }), localDirty: true },
+    { word: expect.objectContaining({ text: ' leverage ', noun: true, verb: true, adjective: true, translationsByPartOfSpeech: expect.objectContaining({ noun: ['運用'], verb: ['影響力'] }) }), localDirty: true },
   ]);
 
   await page.getByRole('button', { name: '詞性', exact: true }).click();
@@ -289,7 +291,7 @@ test('English vocabulary review sorts entries and persists editable parts of spe
   const englishText = leverageRow.getByLabel('英文內容');
   await englishText.fill('   ');
   await englishText.press('Tab');
-  await expect(page.getByText('英文內容不可空白，原內容已保留。')).toBeVisible();
+  await expect(page.getByText('英文內容不能留白。')).toBeVisible();
   await expect(englishText).toHaveValue('Leverage');
   await englishText.fill('leverage power');
   await englishText.press('Tab');
@@ -343,7 +345,7 @@ test('material progress only shows checked materials and keeps the selection', a
 
   await page.getByRole('tab', { name: '英文' }).click();
   await expect(page.locator('#materialProgressList .material-row')).toHaveCount(0);
-  await expect(page.locator('#materialProgressList')).toContainText('請先在「我的教材」勾選');
+  await expect(page.locator('#materialEmpty')).toContainText('請先在「我的教材」勾選');
   await expect(page.locator('#materialSelectionList .material-selection-group > h3')).toHaveText(['學測', '其他']);
   const englishExamGroup = page.locator('[data-material-group="english-exam"]');
   const englishOtherGroup = page.locator('[data-material-group="english-other"]');
@@ -693,7 +695,7 @@ test('completing deferred work records its date and checks the original day', as
   await expect(deferredCard).toHaveCount(1);
   const checkbox = deferredCard.locator('[data-done]').first();
   await checkbox.check();
-  await expect(deferredCard.locator('.completion-checked-on')).toHaveText('延期完成：2026-09-17');
+  await expect(deferredCard.locator('[data-completion-date]')).toHaveValue('2026-09-17');
 
   const completedOrigin = await page.evaluate(() => JSON.parse(localStorage.getItem('study-v11:guest:2026-09-16') || '{}').items.find((item: { id: string }) => item.id === 'deferred-origin'));
   expect(completedOrigin.done).toBe(true);
@@ -758,7 +760,7 @@ test('learning summary uses one week/month control for the complete page', async
     }));
   });
   await page.reload();
-  await expect(page.getByRole('heading', { name: '學習總結' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '週／月總結' })).toBeVisible();
   await expect(page.locator('#summaryModeSwitch')).toHaveCount(1);
   await expect(page.locator('#summaryCalendar .summary-day')).toHaveCount(7);
   await expect(page.locator('#calendarTitle')).toHaveText('週曆');
@@ -773,11 +775,11 @@ test('learning summary uses one week/month control for the complete page', async
   await expect(includeStatusDays).not.toBeChecked();
   await expect(page.locator('#statusDaysCompletionState')).toHaveText('不列入');
   await includeStatusDays.check();
-  await expect(page.locator('#summaryTotalCompletion')).toHaveText('92%');
+  await expect(page.locator('#summaryTotalCompletion')).toHaveText('86%');
   await expect(page.locator('#statusDaysCompletionState')).toHaveText('列入');
   await page.reload();
   await expect(page.locator('#includeStatusDaysCompletion')).toBeChecked();
-  await expect(page.locator('#summaryTotalCompletion')).toHaveText('92%');
+  await expect(page.locator('#summaryTotalCompletion')).toHaveText('86%');
   await expect(page.locator('[data-summary-subject="自然"]')).toHaveCount(1);
   await expect(page.locator('[data-summary-subject="物理"], [data-summary-subject="化學"], [data-summary-subject="生物"], [data-summary-subject="地科"]')).toHaveCount(0);
   await page.locator('#summaryCalendar .summary-day.is-mood-unwell [data-summary-day]').click();
