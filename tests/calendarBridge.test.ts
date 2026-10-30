@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   calendarDescriptionText,
   calendarStructuredNote,
+  isTrackerCalendarIdentifier,
   parseCalendarTask,
   type CalendarTaskRow,
 } from '../src/calendar/calendarBridge.ts';
@@ -83,6 +84,30 @@ test('keeps an unprefixed subject item and ignores a fully unknown item', () => 
   assert.equal(generic.route, 'today');
   assert.equal(unknown.kind, 'other');
   assert.equal(essentialGrammar.route, 'today');
+});
+
+test('imports related Tracker identifiers without limiting them to built-in material codes', () => {
+  const generic = parseCalendarTask(row(
+    '自訂複習項目',
+    '【識別碼】GSAT-CUSTOM-REVIEW-20261030',
+  ));
+  const physics = parseCalendarTask(row(
+    '自訂範圍',
+    '【識別碼】GSAT-PHYS-CUSTOM-20261030',
+  ));
+  const unrelated = parseCalendarTask(row(
+    '準備明天行程',
+    '【識別碼】MEETING-20261030',
+  ));
+
+  assert.equal(isTrackerCalendarIdentifier('GSAT-CUSTOM-REVIEW-20261030'), true);
+  assert.equal(isTrackerCalendarIdentifier('GAST-AZAR-2026-003'), true);
+  assert.equal(isTrackerCalendarIdentifier('MEETING-20261030'), false);
+  assert.equal(generic.kind, 'subjectItem');
+  if (generic.kind === 'subjectItem') assert.equal(generic.subject, '其他');
+  assert.equal(physics.kind, 'subjectItem');
+  if (physics.kind === 'subjectItem') assert.equal(physics.subject, '物理');
+  assert.equal(unrelated.kind, 'other');
 });
 
 test('routes Essential Grammar to this week only with the weekly prefix', () => {

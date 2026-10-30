@@ -71,6 +71,8 @@ export type CalendarRecognizedSubject =
   | '自然'
   | '社會';
 
+export type CalendarSubjectItemSubject = CalendarRecognizedSubject | '其他';
+
 export type ParsedCalendarTask =
   | (ParsedBase & { kind: 'pageScope'; subject: CalendarRecognizedSubject; book: string; startPage: number | null; endPage: number | null })
   | (ParsedBase & { kind: 'numberedScope'; subject: CalendarRecognizedSubject; book: string; scopes: NumberedScope[] })
@@ -141,11 +143,33 @@ export type ParsedCalendarTask =
       time: string;
       pageItems: Array<{ subject: '物理' | '化學' | '生物' | '地科'; start: number; end: number }>;
     })
-  | (ParsedBase & { kind: 'subjectItem'; subject: CalendarRecognizedSubject })
+  | (ParsedBase & { kind: 'subjectItem'; subject: CalendarSubjectItemSubject })
   | (ParsedBase & { kind: 'other' });
 
 function normalized(value: string): string {
   return value.replace(/\r/g, '').replace(/[ \t]+/g, ' ').trim();
+}
+
+/** Accepts Tracker study identifiers without treating the built-in material list as a whitelist. */
+export function isTrackerCalendarIdentifier(value: string): boolean {
+  const identifier = normalized(value).replace(/[\s\u200b-\u200d\ufeff]+/g, '').toUpperCase();
+  return /^(?:GSAT|GAST)-[A-Z0-9][A-Z0-9._-]{2,127}$/.test(identifier);
+}
+
+function calendarSubjectFromIdentifier(value: string): CalendarRecognizedSubject | null {
+  if (!isTrackerCalendarIdentifier(value)) return null;
+  const parts = value.toUpperCase().split(/[-_.]+/).filter(Boolean);
+  const includesAny = (...candidates: string[]) => candidates.some(candidate => parts.includes(candidate));
+  if (includesAny('PHYS', 'PHYSICS')) return '物理';
+  if (includesAny('CHEM', 'CHEMISTRY')) return '化學';
+  if (includesAny('BIO', 'BIOLOGY')) return '生物';
+  if (includesAny('EARTH', 'EARTHSCIENCE')) return '地科';
+  if (includesAny('NATURAL', 'SCIENCE')) return '自然';
+  if (includesAny('MATH', 'MATHA')) return '數學';
+  if (includesAny('CHINESE', 'GUJIN', 'DEEP15')) return '國文';
+  if (includesAny('ENG', 'ENGLISH', 'AZAR', 'EGIU', 'ACE', 'WRITING', 'VOCAB')) return '英文';
+  if (includesAny('SOCIAL', 'HIST', 'HISTORY', 'GEO', 'GEOGRAPHY', 'CIVICS')) return '社會';
+  return null;
 }
 
 /** Minimum admission rule for Calendar rows without a supported template. */
@@ -477,12 +501,12 @@ export function parseCalendarTask(row: CalendarTaskRow): ParsedCalendarTask {
   if (!split && (nativeUnit || nativeRound)) return parsed;
   const maximum = numberedScopeMaximum(kind, parsed.title);
   if (!split && maximum && scopes.some(scope => Number(scope.end) > maximum)) return parsed;
-  let subject = recognizableCalendarSubject(parsed.title);
-  if ('subject' in parsed) subject = parsed.subject;
+  let subject = recognizableCalendarSubject(parsed.title) ?? calendarSubjectFromIdentifier(note.identifier);
+  if ('subject' in parsed && parsed.subject !== '其他') subject = parsed.subject;
   if (!subject && ['azarGrammar', 'bookScope', 'bookUnits', 'grammar', 'essentialGrammar', 'writing', 'ace', 'listeningA'].includes(parsed.kind)) subject = '英文';
   if (!subject && parsed.kind === 'math') subject = '數學';
   if (!subject && parsed.kind === 'gujin') subject = '國文';
-  // Unknown events still need a recognizable subject, even when a Unit/round is present.
+  // A related identifier admits the row, but an unknown subject keeps its generic card.
   if (!subject) return parsed;
   const heading = parsed.title.split(/\b(?:Units?|Rounds?|Tests?)\s*[:：#]?\s*\d|第\s*\d|(?:回次|單元)\s*[:：#]?\s*\d/i)[0];
   const book = ('book' in parsed && parsed.book) || note.material || note.book
@@ -708,7 +732,7 @@ function parseCalendarTaskByBook(row: CalendarTaskRow): ParsedCalendarTask {
     return { ...base, kind: 'fixedTemplate', template: fixedTemplate, startPage, endPage };
   }
 
-  const recognizedSubject = recognizableCalendarSubject(title);
+  const recognizedSubject = recognizableCalendarSubject(title) ?? calendarSubjectFromIdentifier(note.identifier);
   if (recognizedSubject) {
     return {
       ...base,
@@ -718,6 +742,15 @@ function parseCalendarTaskByBook(row: CalendarTaskRow): ParsedCalendarTask {
     };
   }
 
-  // A route prefix alone is insufficient: fully unknown rows stay in Calendar.
+  if (isTrackerCalendarIdentifier(note.identifier)) {
+    return {
+      ...base,
+      route: route ?? 'today',
+      kind: 'subjectItem',
+      subject: '其他',
+    };
+  }
+
+  // A route prefix or unrelated identifier alone is insufficient: unknown rows stay in Calendar.
   return { ...base, route: route ?? 'today', kind: 'other' };
 }

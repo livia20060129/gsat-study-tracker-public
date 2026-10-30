@@ -33,6 +33,18 @@ test('application service ignores a Calendar row without a recognizable subject'
   assert.equal(task, null);
 });
 
+test('application service accepts an otherwise unknown row with a related Tracker identifier', () => {
+  const task = createCalendarStudyTask({
+    ...baseRow,
+    event_key: 'primary:event-custom:2026-09-05',
+    title: '自訂複習項目',
+    description: '【識別碼】GSAT-CUSTOM-REVIEW-20260905',
+  });
+  assert.equal(task?.kind, 'subjectItem');
+  if (task?.kind === 'subjectItem') assert.equal(task.subject, '其他');
+  assert.equal(task?.taskId, 'google-calendar:GSAT-CUSTOM-REVIEW-20260905');
+});
+
 test('Calendar makeup is normalized to today by the application service', () => {
   const task = createCalendarStudyTask({
     ...baseRow,

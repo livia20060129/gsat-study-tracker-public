@@ -59,6 +59,12 @@ test('public edition removes the three social weekly plans from Calendar recogni
   assert.match(calendarPrompt, /歷史《好好學》/);
 });
 
+test('Calendar prompt treats material identifiers as mappings instead of an import whitelist', () => {
+  assert.match(calendarPrompt, /匯入不是白名單/);
+  assert.match(calendarPrompt, /任何格式有效的 <code>GSAT-\.\.\.<\/code> 相關識別碼/);
+  assert.match(calendarPrompt, /未命中下表時會保留標題並建立一般讀書項目/);
+});
+
 test('Calendar prompt publishes the High-Frequency Vocabulary identifier and photographed ranges', () => {
   assert.ok(calendarPrompt.includes(LECTURE_IDENTIFIERS.englishHighFrequencyVocabulary));
   assert.match(calendarPrompt, /英語高頻字彙完全攻略/);

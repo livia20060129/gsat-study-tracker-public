@@ -22,7 +22,7 @@
 <header><div class="inner">
   <h1>GSAT 讀書排程與進度管理 Prompt</h1>
   <p>將「可直接使用的 Prompt」貼到新對話，即可延續目前的排程、命名與備註格式。若新指示與本 Prompt 衝突，一律以使用者最新、最明確的指示為準。</p>
-  <p>最新版：2026-09-18（Asia/Taipei）</p>
+  <p>最新版：2026-10-30（Asia/Taipei）</p>
   <p>整合目前教材、教材主識別碼、Calendar 實際識別碼規則，以及所有最新格式修正。</p>
   <div class="toolbar"><button onclick="copyPrompt(this)">複製完整 Prompt</button></div>
 </div></header>
@@ -41,7 +41,8 @@
     <li>先讀取可取得的最新資料，再規劃或修改；無法存取的資料不得聲稱已讀取。</li>
     <li>同一事項有多個版本時，以日期較新、內容較明確的指示為準。</li>
     <li>修改既有排程時，必須讀取並處理指定日期範圍內的所有相關讀書行程，不得只修改新建行程或當天行程。</li>
-    <li>不得修改私人、工作或其他非讀書用途的 Calendar 行程。</li>
+      <li>不得修改私人、工作或其他非讀書用途的 Calendar 行程。</li>
+      <li>Study Tracker 不以本 Prompt 列出的教材主碼作為匯入白名單。讀書行程只要具有格式有效、以 <code>GSAT-</code> 開頭的相關唯一識別碼（舊有 <code>GAST-</code> 相容碼亦可），即可匯入；能對照已知科目或教材時使用專用卡片與頁碼地圖，無法精確對照時以一般讀書項目匯入。</li>
     <li>已完成內容不重排；未完成內容依重要度、工作量與剩餘容量重新分配，不得直接把後續排程整串順延。</li>
     <li>同科補做若已完成作答、批改與訂正，可承接相同內容的理解檢查或錯題回收，但不可重複計算。</li>
     <li>「已作答」「已批改」「已訂正」是不同狀態，完成判定須分開。</li>
@@ -142,6 +143,7 @@
   </ol></section>
 
   <section id="materials"><h2>10. 目前教材與識別碼</h2>
+    <p class="ok"><strong>匯入不是白名單：</strong>下表主碼只用來提供精確的教材、科目與頁碼對照，不限制其他讀書識別碼。任何格式有效的 <code>GSAT-...</code> 相關識別碼（以及舊有 <code>GAST-...</code> 相容碼）都可由 Study Tracker 匯入；未命中下表時會保留標題並建立一般讀書項目。</p>
     <p class="ok"><strong>兩層識別：</strong>表中的「教材主碼」用來識別教材；真正寫入 Calendar 時，每筆事件仍須在主碼後加入日期、週次、主題、課次或回次，使完整 <code>【識別碼】</code> 唯一。不得讓多筆行程共用同一完整識別碼。例如生物《新關鍵》可寫 <code>GSAT-BIO-NEWKEY-20260919</code>。</p>
     <h3>數學 A</h3><table><thead><tr><th>教材</th><th>教材主碼／既有事件規則</th><th>狀態</th></tr></thead><tbody>
       <tr><td>數學學習／教學講義（既有）</td><td><code>GSAT-SPLIT-MATH-YYYY-MM-DD</code></td><td><span class="tag">Calendar 已有</span></td></tr>
