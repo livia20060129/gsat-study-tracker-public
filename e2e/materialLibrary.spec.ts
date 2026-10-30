@@ -27,6 +27,30 @@ async function fillBook(page: Page, title: string, mode = 'pages'): Promise<void
   await page.locator('#catalogTotal').fill('20');
 }
 
+test('subject switch stays outside and above both material cards', async ({ page }) => {
+  await page.goto('/material.progress.html');
+  const placement = await page.locator('#subjectSwitch').evaluate(switcher => {
+    const materials = document.querySelector('#materialsPanel');
+    const progress = document.querySelector('.progress-results');
+    return {
+      directPageChild: switcher.parentElement?.classList.contains('progress-page') ?? false,
+      outsideMaterials: !materials?.contains(switcher),
+      outsideProgress: !progress?.contains(switcher),
+      beforeMaterials: Boolean(materials && (switcher.compareDocumentPosition(materials) & Node.DOCUMENT_POSITION_FOLLOWING)),
+      beforeProgress: Boolean(progress && (switcher.compareDocumentPosition(progress) & Node.DOCUMENT_POSITION_FOLLOWING)),
+    };
+  });
+  expect(placement).toEqual({
+    directPageChild: true,
+    outsideMaterials: true,
+    outsideProgress: true,
+    beforeMaterials: true,
+    beforeProgress: true,
+  });
+  await expect(page.getByRole('tab', { name: '數學', exact: true })).toBeVisible();
+  await expect(page.locator('#materialsPanel')).not.toHaveAttribute('open', '');
+});
+
 test('toolbar edit reveals material creation and finishing edit preserves a draft without saving it', async ({ page }) => {
   await openLibrary(page);
   const toggle = page.locator('#toggleMaterialEditing');
