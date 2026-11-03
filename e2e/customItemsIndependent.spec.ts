@@ -1,3 +1,4 @@
+import { selectStudyDate } from './helpers/siteNavigation.ts';
 import { expect, test } from '@playwright/test';
 
 const prefix = 'study-v11:guest:';
@@ -12,8 +13,7 @@ test('manually adding the same book and round twice keeps both editable cards an
     localStorage.setItem('study-v11:guest:material-selection', JSON.stringify(['english:ace']));
   });
   await page.reload();
-  await page.locator('#studyDate').fill(date);
-  await page.locator('#studyDate').dispatchEvent('change');
+  await selectStudyDate(page, date);
   const ids: string[] = [];
   for (const minutes of ['11', '22']) {
     await page.locator('#itemType').selectOption('extra');
@@ -30,8 +30,7 @@ test('manually adding the same book and round twice keeps both editable cards an
   await expect(page.locator('#itemList')).not.toContainText('已合併');
   await page.locator(`#itemList [data-item="${ids[0]}"] [data-done]`).check();
   await page.reload();
-  await page.locator('#studyDate').fill(date);
-  await page.locator('#studyDate').dispatchEvent('change');
+  await selectStudyDate(page, date);
   for (let index = 0; index < ids.length; index++) {
     const card = page.locator(`#itemList [data-item="${ids[index]}"]`);
     await expect(card.locator('[data-field="title"]')).toHaveValue('ACE Reading');
@@ -60,8 +59,7 @@ test('old mixed aggregates restore manual page cards separately from scheduled w
     }] }));
   }, { prefix, date });
   await page.reload();
-  await page.locator('#studyDate').fill(date);
-  await page.locator('#studyDate').dispatchEvent('change');
+  await selectStudyDate(page, date);
   await expect(page.locator('#itemList > [data-item]')).toHaveCount(2);
   await expect(page.locator('#dailyItemList [data-item="scheduled-source"]')).toHaveCount(1);
   const first = page.locator('#itemList [data-item="manual-first"]');
@@ -74,8 +72,7 @@ test('old mixed aggregates restore manual page cards separately from scheduled w
   await first.locator('[data-field="end"]').fill('12');
   await first.locator('[data-field="end"]').blur();
   await page.reload();
-  await page.locator('#studyDate').fill(date);
-  await page.locator('#studyDate').dispatchEvent('change');
+  await selectStudyDate(page, date);
   await expect(page.locator('#itemList > [data-item]')).toHaveCount(2);
   await expect(first.locator('[data-field="end"]')).toHaveValue('12');
   await expect(second.locator('[data-field="start"]')).toHaveValue('11');

@@ -1,6 +1,7 @@
 import type { StudyItem } from '../types';
 import { contiguousRangeClusters, numericPageRange } from './rangeMerge.ts';
 import { numberedStudyScope } from '../data/numberedScopes.ts';
+import { restoreMathScheduleFields } from './mathScheduleFields.ts';
 
 export interface MakeupCloneOptions {
   id: string;
@@ -110,6 +111,7 @@ function mergeGroupedEntryProgress(templateEntries: StudyItem[], existingEntries
       if (template.f?.[key] !== undefined && !overridden) merged.f[key] = cloneJson(template.f[key]);
     }
     restoreNaturalCalendarSchedule(merged, template);
+    restoreMathScheduleFields(merged, template, existing);
     return merged;
   });
 }
@@ -219,6 +221,7 @@ export function mergeMakeupProgress(template: StudyItem, existing: StudyItem): S
     delete merged.f.deferredGroupedWork;
   }
   restoreNaturalCalendarSchedule(merged, template);
+  restoreMathScheduleFields(merged, template, existing);
   return merged;
 }
 

@@ -2,11 +2,14 @@ import assert from 'node:assert/strict';
 import { resolveMathCalendarPlan } from '../src/calendar/mathPlan.ts';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { renderStudyReference } from '../src/ui/studyReference.ts';
+import { studyCardDescription } from '../src/ui/studyDescription.ts';
 import { runInNewContext } from 'node:vm';
 import * as completion from '../src/study/completionMetrics.ts';
 import { isInteractiveStudyItem } from '../src/study/interactiveTasks.ts';
 import { isConfirmedDeferred } from '../src/study/deferDays.ts';
 import { renderItemDeleteFooter } from '../src/ui/itemActions.ts';
+import { restoreMathScheduleFields } from '../src/study/mathScheduleFields.ts';
 import { propagateDailyWorkField } from '../src/study/dailyWorkGroup.ts';
 import { normalizeStudyTimerState } from '../src/study/studyTimer.ts';
 import { studyItemSubject } from '../src/study/subjectOrder.ts';
@@ -37,6 +40,9 @@ function runtimeFunction<T>(name: string, dependencies: Record<string, unknown>)
   const end = runtime.indexOf('\nfunction ', start + 1);
   assert.ok(start >= 0 && end > start, `Missing runtime function: ${name}`);
   return runInNewContext(`${runtime.slice(start, end)}\n${name}`, {
+    renderStudyReference,
+    studyCardDescription,
+    restoreMathScheduleFields,
     managedMaterialForItem: () => null,
     completionDateMarkup: () => '',
     isInteractiveStudyItem,
@@ -247,6 +253,7 @@ test('cloud bootstrap renders the saved day without replacing it with fallback p
     {
       id: (name: keyof typeof nodes) => nodes[name],
       loadData: (date: string) => ({ date, items: [{ id: 'saved-calendar-item' }] }),
+      readStoredRecord: (date: string) => ({ date, items: [{ id: 'saved-calendar-item' }] }),
       cloneRecord: (record: StudyRecord) => structuredClone(record),
       updateCloudConflictUI: () => {},
       updateStorageRecoveryUI: () => {},
@@ -520,6 +527,37 @@ test('Calendar New Key material and grouped book replace stale defaults unless t
     [manual.f.material, manual.f.book, manual.f.start, manual.f.end],
     ['智慧型', '3A~4A', '5', '8'],
   );
+});
+
+test('a partially initialized math card fills known schedule pages without overriding explicit blanks or another book', () => {
+  const apply = runtimeFunction<(record: StudyRecord, date: string) => boolean>('applyCalendarMathPlan', {
+    activeCalendarMathPlan: () => ({ material: '教學講義', book: '2', title: '2｜三角比', start: 237, end: 245, calendarRangeSource: 'unit' }),
+    CALENDAR_MATH_UNIT_TARGET_OVERRIDES: {}, calendarWeekMathTarget: () => 0, applyMathAuto: () => {},
+  });
+  for (const [fields, expected] of [
+    [{ material: '教學講義', book: '2', start: '', end: '' }, ['237', '245']],
+    [{ material: '教學講義', book: '2', start: '', end: '', dailyWorkUserFields: { start: '', end: '' } }, ['', '']],
+    [{ material: '新關鍵', book: '1~2', start: '', end: '' }, ['', '']],
+    [{ material: '教學講義', book: '4A', start: '', end: '' }, ['', '']],
+  ] as const) {
+    const card = item({ type: 'mathStudy', source: 'preset', f: structuredClone(fields) });
+    apply({ date: '2026-10-14', items: [card] }, '2026-10-14');
+    assert.deepEqual([card.f.start, card.f.end], expected);
+  }
+});
+
+test('Calendar grouped math refresh repairs blank ranges, retains manual ranges and survives unresolved definitions', () => {
+  const merge = runtimeFunction<(template: StudyItem, existing: StudyItem) => StudyItem>('mergeGroupedEntry', {
+    cloneValue: (value: unknown) => structuredClone(value), numberedStudyScope,
+  });
+  const template = item({ type: 'mathStudy', f: { material: '教學講義', book: '2', start: '237', end: '245' } });
+  const blank = item({ type: 'mathStudy', minutes: '17', f: { material: '教學講義', book: '2', start: '', end: '', reason: '筆記' } });
+  const repaired = merge(template, blank);
+  assert.deepEqual([repaired.f.start, repaired.f.end, repaired.minutes, repaired.f.reason], ['237', '245', '17', '筆記']);
+  const manual = item({ type: 'mathStudy', f: { start: '240', end: '243', dailyWorkUserFields: { start: '240', end: '243' } } });
+  assert.deepEqual([merge(template, manual).f.start, merge(template, manual).f.end], ['240', '243']);
+  const unresolved = { ...template, f: { ...template.f, start: '', end: '' } };
+  assert.deepEqual([merge(unresolved, repaired).f.start, merge(unresolved, repaired).f.end], ['237', '245']);
 });
 
 test('ten-minute cloud save uploads the current record without interrupting its timer', async () => {

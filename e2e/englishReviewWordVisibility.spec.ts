@@ -1,3 +1,4 @@
+import { selectStudyDate } from './helpers/siteNavigation.ts';
 import { expect, test } from '@playwright/test';
 
 test('review POS follows word/combination/sentence modes on mobile, preserves checks and reloads correctly', async ({ page }) => {
@@ -19,8 +20,7 @@ test('review POS follows word/combination/sentence modes on mobile, preserves ch
     }] }));
   });
   await page.reload();
-  await page.locator('#studyDate').fill('2026-10-22');
-  await page.locator('#studyDate').dispatchEvent('change');
+  await selectStudyDate(page, '2026-10-22');
   const card = page.locator('[data-item="review-visibility"]');
   const word = card.locator('.field').filter({ has: page.locator('[data-word-text][data-index="0"]') });
   const phrase = card.locator('.field').filter({ has: page.locator('[data-word-text][data-index="1"]') });
@@ -46,8 +46,7 @@ test('review POS follows word/combination/sentence modes on mobile, preserves ch
   await expect(sentence.getByLabel('Adverb', { exact: true })).toBeChecked();
   await sentence.getByRole('button', { name: '句子', exact: true }).click();
   await page.reload();
-  await page.locator('#studyDate').fill('2026-10-22');
-  await page.locator('#studyDate').dispatchEvent('change');
+  await selectStudyDate(page, '2026-10-22');
   await expect(word.locator('.word-pos-primary')).toBeVisible();
   await expect(phrase.locator('.word-pos-primary')).toBeHidden();
   await expect(sentence.locator('.word-pos-primary')).toBeHidden();

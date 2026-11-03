@@ -1,3 +1,4 @@
+import { selectStudyDate } from './helpers/siteNavigation.ts';
 import { expect, test, type Locator } from '@playwright/test';
 
 test.skip(true, '公開版只顯示已從 Google Calendar 讀取的自然整合項目。');
@@ -19,8 +20,7 @@ test('grouped natural integration updates the selected visible subject rather th
     ] }));
   }, date);
   await page.reload();
-  await page.locator('#studyDate').fill(date);
-  await page.locator('#studyDate').dispatchEvent('change');
+  await selectStudyDate(page, date);
   const card = page.locator(`[data-item="natural-integration-${date}-生物"]`);
   const checked = card.locator(':scope > .item-top > [data-done]');
   await expect(card.locator('xpath=ancestor::*[contains(@class,"grouped-work-entry")]')).toHaveCount(1);
@@ -34,8 +34,7 @@ test('grouped natural integration updates the selected visible subject rather th
     await expect(page.locator(`[data-item="natural-integration-${date}-${subject}"] > .item-top > [data-done]`)).not.toBeChecked();
   }
   await page.reload();
-  await page.locator('#studyDate').fill(date);
-  await page.locator('#studyDate').dispatchEvent('change');
+  await selectStudyDate(page, date);
   await expect(checked).toBeChecked();
   await expect(card.locator('[data-minutes]')).toHaveValue('12.5');
   await expect(card.locator('[data-completion-date]')).toHaveValue('2026-10-23');
@@ -57,8 +56,7 @@ test('natural integration subjects can be completed independently and survive da
   const errors: string[] = [];
   page.on('pageerror', error => { errors.push(error.message); });
   await page.goto('/');
-  await page.locator('#studyDate').fill(date);
-  await page.locator('#studyDate').dispatchEvent('change');
+  await selectStudyDate(page, date);
 
   function completion(subject: string): Locator {
     return page.locator(`[data-item="natural-integration-${date}-${subject}"] > .item-top > [data-done]`);
@@ -70,24 +68,20 @@ test('natural integration subjects can be completed independently and survive da
   for (const subject of subjects.slice(1)) await expect(completion(subject)).not.toBeChecked();
   await expect(page.locator(`[data-item="natural-integration-${date}-生物"] [data-completion-date]`)).toBeVisible();
 
-  await page.locator('#studyDate').fill('2026-10-25');
-  await page.locator('#studyDate').dispatchEvent('change');
-  await page.locator('#studyDate').fill(date);
-  await page.locator('#studyDate').dispatchEvent('change');
+  await selectStudyDate(page, '2026-10-25');
+  await selectStudyDate(page, date);
   await expect(completion('生物')).toBeChecked();
   for (const subject of subjects.slice(1)) await expect(completion(subject)).not.toBeChecked();
 
   for (const subject of subjects.slice(1)) await completion(subject).check();
   await page.reload();
-  await page.locator('#studyDate').fill(date);
-  await page.locator('#studyDate').dispatchEvent('change');
+  await selectStudyDate(page, date);
   for (const subject of subjects) await expect(completion(subject)).toBeChecked();
 
   await completion('物理').uncheck();
   for (const subject of subjects.filter(subject => subject !== '物理')) await expect(completion(subject)).toBeChecked();
   await page.reload();
-  await page.locator('#studyDate').fill(date);
-  await page.locator('#studyDate').dispatchEvent('change');
+  await selectStudyDate(page, date);
   await expect(completion('物理')).not.toBeChecked();
   for (const subject of subjects.filter(subject => subject !== '物理')) await expect(completion(subject)).toBeChecked();
   expect(errors).toEqual([]);

@@ -101,8 +101,11 @@ export async function loadAllCalendarTaskRows(
 
     const result = await query;
     if (result.error) throw new Error(errorMessage(result.error));
-    const page = Array.isArray(result.data) ? result.data : [];
-    rows.push(...page.map(rowFrom).filter((row): row is CalendarTaskRow => row !== null));
+    if (!Array.isArray(result.data)) throw new Error('Calendar 回應格式不完整，已停止更新以保留上一次排程。');
+    const page = result.data;
+    const pageRows = page.map(rowFrom);
+    if (pageRows.some(row => row === null)) throw new Error('Calendar 排程缺少識別碼或日期，已停止更新以保留上一次排程。');
+    rows.push(...pageRows as CalendarTaskRow[]);
 
     if (page.length < CALENDAR_TASK_PAGE_SIZE) break;
     const nextCursor = cursorFromRow(page[page.length - 1]);

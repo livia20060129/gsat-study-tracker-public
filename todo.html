@@ -3,30 +3,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="./page-transitions.js?v=171.6.0-public.48"></script>
   <meta name="theme-color" content="#f5f8fc" />
   <link rel="icon" type="image/png" href="./book.png" />
   <link rel="apple-touch-icon" href="./book.png" />
-  <title>每日讀書完成度紀錄卡</title>
+  <title>待辦事項｜GSAT Study Tracker</title>
 </head>
 <body>
   <main class="todo-page">
-    <header class="todo-page-header">
+    <header class="todo-page-header page-navigation-header">
       <div>
         <h1>待辦事項</h1>
-        <p>直接查看並完成舊日期的排程，不必回原日期尋找紀錄卡。</p>
+        <p class="todo-source-line"><span id="recordSource">正在讀取本機紀錄…</span><a id="refreshTodo" href="./todo.html">重新讀取</a></p>
       </div>
-      <a class="todo-back header-action-link" href="./index.html">回到 Tracker</a>
+      <div class="page-navigation-actions"><a class="todo-back header-action-link" data-navigation="home" href="./index.html">回到 Tracker</a></div>
     </header>
 
-    <section class="todo-panel" aria-labelledby="todoTitle">
-      <div class="todo-panel-head">
-        <div>
-          <h2 id="todoTitle">逾期未完成</h2>
-          <p id="recordSource">正在讀取本機紀錄…</p>
-        </div>
-        <button id="refreshTodo" type="button">重新讀取</button>
-      </div>
-
+    <section class="todo-panel study-record-section" aria-label="逾期未完成">
       <div class="todo-panel-body">
         <div class="todo-period-filter">
           <div class="period-switch" id="periodSwitch" role="group" aria-label="依期間篩選待辦事項" data-active="0">
@@ -60,7 +53,16 @@
           <span>時間、計時與進度會直接回寫原紀錄；「跳過」不會視為完成。</span>
         </div>
 
-        <div id="todoList" class="todo-list" role="tabpanel"></div>
+        <div class="todo-organization-tools">
+          <label for="todoSort">逾期排序<select id="todoSort"><option value="oldest">最久在前</option><option value="newest">最近在前</option></select></label>
+          <button type="button" id="todoBatchSkip" disabled>先選擇科目以批次跳過</button>
+          <p>近期待辦與長期逾期各自依此排序；批次跳過依目前科目、期間與查看項目篩選。</p>
+        </div>
+
+        <div id="todoList" role="tabpanel">
+          <div id="todoRecentList" class="todo-list"></div>
+          <details id="todoLongTerm" class="todo-long-term" hidden><summary><strong>長期逾期</strong><span id="todoLongTermCount"></span></summary><p>原排程超過 30 天，進度與計時資料仍保留。</p><div id="todoLongTermList" class="todo-list"></div></details>
+        </div>
         <p id="todoEmpty" class="todo-empty" hidden>目前沒有符合條件的待辦事項。</p>
         <div id="todoFeedback" class="todo-feedback" role="status" aria-live="polite" hidden>
           <span id="todoFeedbackText"></span>

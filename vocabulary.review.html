@@ -3,21 +3,21 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="./page-transitions.js?v=171.6.0-public.48"></script>
   <meta name="theme-color" content="#f5f8fc" />
   <link rel="icon" type="image/png" href="./book.png" />
   <link rel="apple-touch-icon" href="./book.png" />
-  <title>每日讀書完成度紀錄卡</title>
+  <title>英文單字複習｜GSAT Study Tracker</title>
 </head>
 <body>
   <main class="vocabulary-page">
-    <header class="vocabulary-page-header">
+    <header class="vocabulary-page-header page-navigation-header">
       <div>
         <h1>英文單字複習</h1>
-        <p id="vocabularyReferences" class="vocabulary-reference-sources">參考來源：<a href="https://www.ceec.edu.tw/xmdoc?xsmsid=0K213553204833715309" target="_blank" rel="noopener noreferrer">大考中心（詞性／Level）</a>｜<a href="https://github.com/skywind3000/ECDICT" target="_blank" rel="noopener noreferrer">ECDICT（中文翻譯）</a>｜<a href="./vocabulary.sources.html">單字資料來源與授權</a></p>
+        <p id="vocabularyReferences" class="vocabulary-reference-sources">參考來源：<a href="https://www.ceec.edu.tw/xmdoc?xsmsid=0K213553204833715309" target="_blank" rel="noopener noreferrer">大考中心（Level）</a>｜<a href="https://github.com/skywind3000/ECDICT" target="_blank" rel="noopener noreferrer">ECDICT（中文翻譯／詞性）</a>｜<a href="./vocabulary.sources.html">單字資料來源與授權</a></p>
         <p id="vocabularyLegacySources" class="vocabulary-reference-sources" hidden>部分既有資料保留 Cambridge Dictionary 的歷史出處；該線上服務已停用，新查詢皆使用 ECDICT。</p>
-        <p>彙整 Tracker 中自行新增的單字、組合與句子，可依字母、詞性或學測 Level 檢視。</p>
       </div>
-      <a class="vocabulary-back header-action-link" href="./index.html">回到 Tracker</a>
+      <div class="page-navigation-actions"><a class="vocabulary-back header-action-link" data-navigation="home" href="./index.html">回到 Tracker</a></div>
     </header>
 
     <section class="vocabulary-panel" aria-labelledby="vocabularyTitle">
@@ -54,10 +54,15 @@
           <button type="button" data-grouping-mode="partOfSpeech" aria-pressed="false">詞性</button>
           <button type="button" data-grouping-mode="gsatLevel" aria-pressed="false">Level</button>
         </div>
+        <div class="vocabulary-reading-tools" role="group" aria-label="中文與發音">
         <button id="toggleVocabularyTranslations" type="button" aria-controls="vocabularyList" aria-pressed="false">隱藏中文</button>
         <label class="vocabulary-accent">發音口音 <select id="vocabularyAccent"><option value="en-US">美式</option><option value="en-GB">英式</option></select></label>
+        </div>
+        <div class="vocabulary-export-tools" role="group" aria-label="匯出單字表">
+        <label class="vocabulary-accent">匯出格式 <select id="vocabularyExportFormat"><option value="pdf">PDF（Adobe）</option><option value="docx">Word（DOCX）</option></select></label>
         <button type="button" data-export-vocabulary="translated">匯出 PDF（有翻譯）</button>
         <button type="button" data-export-vocabulary="blank">匯出 PDF（無翻譯）</button>
+        </div>
         </div>
         <div id="vocabularyPartOfSpeechIndex" class="vocabulary-pos-index" aria-label="按詞性篩選單字" hidden></div>
         <div id="vocabularyList" class="vocabulary-list"></div>

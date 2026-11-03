@@ -10,21 +10,24 @@ const pages = [
   ['/privacy.html', ['.header-inner', '.document', '.site-footer']],
   ['/terms.html', ['.header-inner', '.document', '.site-footer']],
   ['/support.html', ['.header-inner', '.document', '.site-footer']],
-  ['/vocabulary.sources.html', ['body']],
+  ['/vocabulary.sources.html', ['body > header', 'body > section']],
 ] as const;
 
-test.use({ viewport: { width: 1440, height: 900 } });
+test.use({ viewport: { width: 1920, height: 900 } });
 
 test('site pages use the same desktop content width', async ({ page }) => {
   for (const [path, selectors] of pages) {
     await page.goto(path);
     for (const selector of selectors) {
-      const layout = await page.locator(selector).evaluate(element => ({
+      const layouts = await page.locator(selector).evaluateAll(elements => elements.map(element => ({
         maxWidth: getComputedStyle(element).maxWidth,
         width: element.getBoundingClientRect().width,
-      }));
-      expect(layout.maxWidth, `${path} ${selector}`).toBe('1050px');
-      expect(layout.width, `${path} ${selector}`).toBeCloseTo(1050, 0);
+      })));
+      expect(layouts.length).toBeGreaterThan(0);
+      for (const layout of layouts) {
+        expect(layout.maxWidth, `${path} ${selector}`).toBe('1050px');
+        expect(layout.width, `${path} ${selector}`).toBeCloseTo(1050, 0);
+      }
     }
   }
 });

@@ -1,6 +1,9 @@
 import { saveCatalogMaterial } from '../application/records/catalogEdits.ts';
 import { catalogGroups, catalogModeNoun, catalogOverrides, catalogValidationError, type CatalogMaterial, type CatalogSection, type CatalogSubject } from '../study/materialCatalog.ts';
 import type { StudyRecord } from '../types.ts';
+import { animateVisibility } from './disclosureMotion.ts';
+
+const NATURAL_SUBJECTS: readonly CatalogSubject[] = ['生物', '物理', '化學', '地科'];
 
 export interface MaterialCatalogContext {
   prefix: string;
@@ -59,10 +62,10 @@ export class MaterialCatalogEditor {
     const toggle = element<HTMLButtonElement>('toggleMaterialEditing');
     toggle.textContent = this.managementEnabled ? '完成' : '編輯';
     toggle.setAttribute('aria-pressed', String(this.managementEnabled));
-    element('newMaterial').hidden = !this.managementEnabled;
-    element('catalogEditor').hidden = !this.managementEnabled || !this.editing;
+    animateVisibility(element('newMaterial'), this.managementEnabled);
+    animateVisibility(element('catalogEditor'), this.managementEnabled && !!this.editing);
     document.querySelectorAll<HTMLElement>('.material-row-actions').forEach(actions => {
-      actions.hidden = !this.managementEnabled;
+      animateVisibility(actions, this.managementEnabled);
     });
   }
 
@@ -73,8 +76,12 @@ export class MaterialCatalogEditor {
   }
 
   private updateGroups(selected?: string): void {
-    const groups = catalogGroups(element<HTMLSelectElement>('catalogSubject').value as CatalogSubject);
+    const subject = element<HTMLSelectElement>('catalogSubject').value as CatalogSubject | '自然';
+    const groups = subject === '自然' ? [...NATURAL_SUBJECTS] : catalogGroups(subject);
     const select = element<HTMLSelectElement>('catalogGroup');
+    const label = subject === '自然' ? '自然科目' : '分類';
+    element('catalogGroupLabel').textContent = label;
+    select.setAttribute('aria-label', label);
     select.replaceChildren(...groups.map(group => new Option(group, group)));
     if (selected && groups.includes(selected)) select.value = selected;
   }
@@ -128,7 +135,7 @@ export class MaterialCatalogEditor {
     element<HTMLInputElement>('catalogTotal').value = this.editing.total > 10000 ? '' : String(this.editing.total);
     this.updateLabels();
     element('catalogSections').replaceChildren(...this.editing.sections.map(section => this.sectionRow(section)));
-    element('catalogEditor').hidden = false;
+    animateVisibility(element('catalogEditor'), true);
     element('catalogEditor').scrollIntoView({ block: 'start' });
     element<HTMLInputElement>('catalogTitle').focus({ preventScroll: true });
   }
@@ -136,7 +143,7 @@ export class MaterialCatalogEditor {
   private close(): void {
     if (this.busy) return;
     this.editing = null;
-    element('catalogEditor').hidden = true;
+    animateVisibility(element('catalogEditor'), false);
   }
 
   private deleteEditingMaterial(): void {
@@ -150,14 +157,17 @@ export class MaterialCatalogEditor {
 
   private readDraft(): CatalogMaterial {
     if (!this.editing) throw new Error('請先選擇教材。');
+    const family = element<HTMLSelectElement>('catalogSubject').value;
+    const group = element<HTMLSelectElement>('catalogGroup').value;
+    const subject = (family === '自然' ? group : family) as CatalogSubject;
     const sections = [...element('catalogSections').querySelectorAll<HTMLElement>('[data-section-id]')].map(function readSection(row): CatalogSection {
       function value(field: string): string { return row.querySelector<HTMLInputElement>(`[data-section-field="${field}"]`)!.value.trim(); }
       return { id: row.dataset.sectionId!, start: Number(value('start')), end: Number(value('end')), topic: value('topic'), detail: value('detail') };
     });
     return {
       ...this.editing, title: element<HTMLInputElement>('catalogTitle').value.trim(),
-      subject: element<HTMLSelectElement>('catalogSubject').value as CatalogSubject,
-      group: element<HTMLSelectElement>('catalogGroup').value,
+      subject,
+      group,
       mode: element<HTMLSelectElement>('catalogMode').value as CatalogMaterial['mode'],
       total: Number(element<HTMLInputElement>('catalogTotal').value),
       sections: sections.sort((left, right) => left.start - right.start), deleted: false, reset: false,
@@ -203,7 +213,7 @@ export class MaterialCatalogEditor {
       await saveCatalogMaterial(localStorage, prefix, updated, base, today());
       if (this.editing?.id === entry.id) {
         this.editing = null;
-        element('catalogEditor').hidden = true;
+        animateVisibility(element('catalogEditor'), false);
       }
       this.options.onSaved(updated);
       this.message('教材已儲存，進度圖已更新；返回 Tracker 後會同步雲端。');

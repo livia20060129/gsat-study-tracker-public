@@ -1,3 +1,4 @@
+import { selectStudyDate } from './helpers/siteNavigation.ts';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
@@ -47,10 +48,8 @@ test('daily interactive card and Monday vocabulary are optional, with completed 
   await expect(child.locator('[data-done]')).toBeChecked();
   await expect(child.locator('[data-minutes]')).toHaveValue('25');
   expect(await completionText(page)).toEqual(before);
-  await page.locator('#studyDate').fill('2026-10-27');
-  await page.locator('#studyDate').dispatchEvent('change');
-  await page.locator('#studyDate').fill(date);
-  await page.locator('#studyDate').dispatchEvent('change');
+  await selectStudyDate(page, '2026-10-27');
+  await selectStudyDate(page, date);
   await expect(child.locator('[data-done]')).toBeChecked();
   expect(await completionText(page)).toEqual(before);
   await card.screenshot({ path: testInfo.outputPath('interactive-optional-mobile.png') });
@@ -78,8 +77,7 @@ test('unopened old required practice does not lower period completion and retain
   await expect(page.locator('#summaryCompletedItems')).not.toContainText('未完成生物互動題');
   expect(await page.evaluate(prefix => localStorage.getItem(prefix + '2026-10-25'), prefix)).toBe(original);
   await page.goto('/');
-  await page.locator('#studyDate').fill('2026-10-25');
-  await page.locator('#studyDate').dispatchEvent('change');
+  await selectStudyDate(page, '2026-10-25');
   const saved = page.locator('[data-item="saved-vocab"]');
   await expect(saved.locator('[data-done]')).toBeChecked();
   await expect(saved.locator('[data-minutes]')).toHaveValue('25');

@@ -76,12 +76,18 @@ export function resolveMathCalendarPlan(
       || index < 1 || index > total) return null;
     if (total !== matches.length) {
       const combinedBook = bookKey(task.title.split('｜')[0]);
-      if (!combinedBook.includes('+')) return null;
-      const combined = matchingPlans({ ...task, book: combinedBook }, plans);
-      if (combined.length !== total || bookKey(combined[index - 1][1].book) !== bookKey(task.book)) return null;
-      matches = combined;
+      const combined = combinedBook.includes('+') ? matchingPlans({ ...task, book: combinedBook }, plans) : [];
+      if (combined.length === total && bookKey(combined[index - 1][1].book) === bookKey(task.book)) {
+        matches = combined;
+      } else {
+        // A moved Calendar unit can have a revised part count. Its original date
+        // selects an existing range within the same material, volume and topic.
+        const sourceDate = sourceDateKey(task.sourceDate, task.date);
+        base = matches.find(([date]) => date === sourceDate)?.[1];
+        if (!base) return null;
+      }
     }
-    base = matches[index - 1]?.[1];
+    base ??= matches[index - 1]?.[1];
   } else {
     const sourceDate = sourceDateKey(task.sourceDate, task.date);
     base = matches.find(([date]) => date === sourceDate)?.[1]

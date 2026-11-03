@@ -52,7 +52,7 @@ jobs:
         run: npm run typecheck:edge
 
       - name: Install browser for end-to-end tests
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium webkit
 
       - name: Browser end-to-end tests
         run: npm run test:e2e

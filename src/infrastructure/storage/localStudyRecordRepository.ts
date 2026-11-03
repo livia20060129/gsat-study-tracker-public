@@ -2,9 +2,10 @@ import type { LocalStudyRecordRepositoryPort } from '../../application/ports/stu
 import type { StudyRecord } from '../../types.ts';
 import {
   decodeStudyRecord,
-  encodeStudyRecord,
+  encodeLocalStudyRecord,
   type StudyRecordDecodeError,
 } from '../../storage/studyRecordCodec.ts';
+import { compactConfirmedRecordStorage, isStorageQuotaError } from './localRecordCompaction.ts';
 
 export interface KeyValueStorage {
   readonly length: number;
@@ -40,6 +41,9 @@ interface StoredRecoveryBackup {
 export class LocalStudyRecordRepository implements LocalStudyRecordRepositoryPort {
   private readonly storage: KeyValueStorage;
   private prefix: string;
+  private lastSaveError = '';
+
+  saveError(): string { return this.lastSaveError; }
 
   constructor(storage: KeyValueStorage, prefix: string) {
     this.storage = storage;
@@ -109,9 +113,21 @@ export class LocalStudyRecordRepository implements LocalStudyRecordRepositoryPor
   save(record: StudyRecord): boolean {
     if (!record?.date) return false;
     try {
-      this.storage.setItem(this.prefix + record.date, encodeStudyRecord(record));
+      const encoded = encodeLocalStudyRecord(record);
+      try {
+        this.storage.setItem(this.prefix + record.date, encoded);
+      } catch (cause) {
+        if (!isStorageQuotaError(cause)) throw cause;
+        compactConfirmedRecordStorage(this.storage);
+        this.storage.setItem(this.prefix + record.date, encoded);
+      }
+      this.lastSaveError = '';
+      if (typeof window !== 'undefined') window.dispatchEvent(new Event('study-records-changed'));
       return true;
-    } catch {
+    } catch (cause) {
+      this.lastSaveError = isStorageQuotaError(cause)
+        ? '瀏覽器本機儲存空間不足；原有紀錄仍保留。'
+        : '瀏覽器無法寫入本機資料；請確認儲存權限。';
       return false;
     }
   }

@@ -52,6 +52,7 @@ export interface LearningSummaryDay {
   hasRecord: boolean;
   mood: string;
   totalMinutes: number;
+  makeupMinutes: number;
   completionPercent: number;
   completionIncludedInPeriod: boolean;
 }
@@ -312,18 +313,20 @@ export function summarizeLearningPeriod(
   timeEntries.forEach(entry => timeEntriesByDate.set(entry.date, [...(timeEntriesByDate.get(entry.date) ?? []), entry]));
   const days = period.dates.map(date => {
     const record = byDate.get(date);
-    const subjectTime = summarizeSubjectTime(timeEntriesByDate.get(date) ?? []);
+    const dayEntries = timeEntriesByDate.get(date) ?? [];
+    const subjectTime = summarizeSubjectTime(dayEntries);
+    const makeupMinutes = summarizeSubjectTime(dayEntries.filter(entry => (entry.scheduledDate ?? entry.date) < entry.date)).totalMinutes;
     if (!record) {
       return {
         date, dayNumber: parseDate(date).getDate(), weekday: ['日', '一', '二', '三', '四', '五', '六'][parseDate(date).getDay()],
-        hasRecord: subjectTime.totalMinutes > 0, mood: '', totalMinutes: subjectTime.totalMinutes, completionPercent: 0,
+        hasRecord: subjectTime.totalMinutes > 0, mood: '', totalMinutes: subjectTime.totalMinutes, makeupMinutes, completionPercent: 0,
         completionIncludedInPeriod: false,
       };
     }
     const completion = summarizeCompletionUnits(summaryCompletionUnitsForRecord(record));
     return {
       date, dayNumber: parseDate(date).getDate(), weekday: ['日', '一', '二', '三', '四', '五', '六'][parseDate(date).getDay()],
-      hasRecord: true, mood: String(record.mood ?? '').trim(), totalMinutes: subjectTime.totalMinutes,
+      hasRecord: true, mood: String(record.mood ?? '').trim(), totalMinutes: subjectTime.totalMinutes, makeupMinutes,
       completionPercent: completion.settlementPercent,
       completionIncludedInPeriod: includeRecordInCompletion(record),
     };

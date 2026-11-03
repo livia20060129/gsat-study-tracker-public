@@ -19,7 +19,7 @@ export interface StudyRecordMergeResult {
 const SYNC_META_KEYS = new Set([
   'updatedAt', 'serverRevision', 'serverUpdatedAt', 'localDirty', 'syncConflict',
   'syncBase', 'syncConflictDetails', 'syncConflictLocal', 'syncConflictCloud',
-  'storageIssue',
+  'storageIssue', '__localSyncBase',
 ]);
 
 const ABSENT = Symbol('absent');

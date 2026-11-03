@@ -1,3 +1,4 @@
+import { expandTodoCard } from './helpers/todoCard.ts';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
@@ -47,6 +48,15 @@ test('period slider combines with subjects, keeps URL state, supports keyboard n
   await seedPeriods(page);
   await page.reload();
   const original = await recordsSnapshot(page);
+  await expect(page.locator('.todo-page-header #recordSource')).toHaveText('訪客本機資料｜已讀取 7 天紀錄');
+  await expect(page.getByRole('heading', { name: '逾期未完成', exact: true })).toHaveCount(0);
+  await expect(page.locator('#todoTitle')).toHaveCount(0);
+  await expect(page.getByText('直接查看並完成舊日期的排程，不必回原日期尋找紀錄卡。', { exact: true })).toHaveCount(0);
+  const refresh = page.locator('.todo-source-line').getByRole('link', { name: '重新讀取', exact: true });
+  await expect(refresh).toHaveCSS('color', 'rgb(82, 111, 148)');
+  await expect(refresh).toHaveCSS('border-top-width', '0px');
+  await expect(refresh).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(refresh).toHaveCSS('box-shadow', 'none');
   const periods = page.getByRole('group', { name: '依期間篩選待辦事項' });
   const indicator = await periods.locator('.period-switch-indicator').elementHandle();
   await expect(periods.getByRole('button', { name: '全部', exact: true })).toHaveAttribute('aria-pressed', 'true');
@@ -63,6 +73,11 @@ test('period slider combines with subjects, keeps URL state, supports keyboard n
   await expect(page.locator('.todo-history-item')).toHaveCount(1);
   await expect(page.locator('#todoSummary')).toHaveText('本週目前科目 1 項｜本期 2 項｜全部 5 項');
   await expect(page).toHaveURL(/period=week#english$/);
+  const filteredUrl = page.url();
+  await refresh.focus();
+  await refresh.press('Enter');
+  await expect(page).toHaveURL(filteredUrl);
+  await expect(page.locator('.todo-card')).toHaveCount(1);
   expect(await indicator!.evaluate(node => node.isConnected)).toBe(true);
   await page.reload();
   await expect(periods.getByRole('button', { name: '本週' })).toHaveAttribute('aria-pressed', 'true');
@@ -98,6 +113,7 @@ test('hiding a running timer does not pause it and period switches preserve comp
   await page.clock.pauseAt(new Date('2026-10-25T12:01:00+08:00'));
   const periods = page.locator('#periodSwitch');
   const old = page.locator('.todo-card').filter({ has: page.locator('[data-item-id="old-english"]') });
+  await expandTodoCard(old);
   await old.locator('[data-todo-completion-date]').fill('2026-10-22');
   await old.getByRole('button', { name: '計時', exact: true }).click();
   await old.getByRole('button', { name: '開始', exact: true }).click();

@@ -163,7 +163,7 @@ test('meaningful false, zero, and null values remain explicit local edits', () =
   assert.equal(merged.items[0].minutes, '0');
   assert.equal(merged.items[0].f.corrected, false);
   assert.equal(merged.items[0].f.score, 0);
-  assert.equal((merged.items[0].f.timeTracking as Record<string, unknown>).startedAt, null);
+  assert.equal(merged.items[0].f.timeTracking?.startedAt, null);
 });
 
 test('three-way merge preserves deliberate blank fields when cloud is unchanged', () => {
@@ -375,7 +375,8 @@ test('the save queue merges tab snapshots and reloads cloud inside the date lock
   const runtime = readFileSync(new URL('../src/legacy-app.ts', import.meta.url), 'utf8');
 
   assert.match(runtime, /withCloudDateLock\(date,async function\(\)\{/);
-  assert.match(runtime, /mergeStudyRecordsForUpload\(readStoredRecord\(date\)\|\|record,record\)/);
+  assert.match(runtime, /mergeStudyRecordsForUpload\(stored\|\|job\.record,job\.record\)/);
+  assert.match(runtime, /job\.scope!==STORE_PREFIX\|\|job\.serial!==cloudActivationSerial/);
   assert.match(runtime, /mergeStudyRecordsForUpload\(stored\|\|rec,rec\)/);
   assert.match(runtime, /cloudRecordRepository\.loadDate\(rec\.date\)/);
   assert.match(runtime, /cloudRecordRepository\.save\(snapshot,baseRevision\)/);

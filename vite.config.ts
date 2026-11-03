@@ -6,9 +6,13 @@ function createViteConfig({ mode }: ConfigEnv): UserConfig {
   assertSafeViteEnvironment(loadEnv(mode, process.cwd(), ''));
   return {
     base: './',
+    plugins: [{ name: 'shared-site-shell', configureServer(server) {
+      server.middlewares.use((request, _response, next) => { if (request.url === '/site-shell.js') request.url = '/src/site-shell.ts'; next(); });
+    } }],
     build: {
       rollupOptions: {
         input: {
+          siteShell: './src/site-shell.ts',
           tracker: './index.html',
           todo: './todo.html',
           learningSummary: './summary.html',
@@ -16,6 +20,7 @@ function createViteConfig({ mode }: ConfigEnv): UserConfig {
           vocabularyReview: './vocabulary.review.html',
           materialCatalog: './material.catalog.html',
         },
+        output: { entryFileNames(chunk) { return chunk.name === 'siteShell' ? 'site-shell.js' : 'assets/[name]-[hash].js'; } },
       },
     },
   };

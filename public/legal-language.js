@@ -45,8 +45,9 @@ function saveLanguage(language) {
 function applyLanguage(language, persist) {
   const selected = normalizedLanguage(language);
   document.documentElement.lang = selected;
-  document.querySelectorAll('[data-legal-panel]').forEach(function (panel) {
-    panel.hidden = panel.getAttribute('data-legal-panel') !== selected;
+  document.querySelectorAll('[data-legal-panel], [data-legal-title]').forEach(function (panel) {
+    const panelLanguage = panel.getAttribute('data-legal-panel') || panel.getAttribute('data-legal-title');
+    panel.hidden = panelLanguage !== selected;
   });
   document.querySelectorAll('[data-legal-language]').forEach(function (button) {
     button.setAttribute('aria-pressed', String(button.getAttribute('data-legal-language') === selected));

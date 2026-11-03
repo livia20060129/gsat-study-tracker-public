@@ -1,5 +1,7 @@
+import { navigateSite } from './helpers/siteNavigation.ts';
 import { expect, test, type Page } from '@playwright/test';
 import { enableMaterialEditing } from './helpers/materialEditing.ts';
+import type { StudyRecord } from '../src/types.ts';
 
 const date = '2026-10-29';
 const userId = '00000000-0000-0000-0000-000000000091';
@@ -103,7 +105,7 @@ test('failed login keeps guest additions and never starts an account import', as
   expect(await page.evaluate(date => JSON.parse(localStorage.getItem('study-v11:guest:' + date)!).items.some((item: { id: string }) => item.id === 'guest'), date)).toBe(true);
 });
 
-test('mobile catalog creates a page map, feeds Tracker and groups its progress by large unit', async ({ page }, testInfo) => {
+test('mobile catalog creates a page map and retains saved Tracker cards and large-unit progress', async ({ page }, testInfo) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
   await page.setViewportSize({ width: 375, height: 812 }); await isolatedGuest(page); await addBook(page);
   await page.reload(); await page.locator('#catalogSearch').fill('My English Book');

@@ -69,7 +69,7 @@ test('local preview is edit-only, sends no dictionary requests and saves only af
   expect(saved.notes).toBe('不要清除筆記');
   await row.getByRole('button', { name: '完成「cell」', exact: true }).click();
   await page.reload();
-  await expect(page.locator('#vocabularyReferences')).toContainText('ECDICT（中文翻譯）');
+  await expect(page.locator('#vocabularyReferences')).toContainText('ECDICT（中文翻譯／詞性）');
   await page.getByRole('button', { name: '隱藏中文', exact: true }).click();
   await expect(row.locator('.vocabulary-meaning-answer').first()).toHaveCSS('visibility', 'hidden');
   await page.getByRole('button', { name: '組合', exact: true }).click();
@@ -106,7 +106,7 @@ for (const authenticated of [false, true]) test(authenticated ? 'signed-in users
   expect(saved.items[0].f.words[0].showGsatLevel).toBe(false);
   await context.setOffline(false);
   await page.reload();
-  await expect(page.locator('#vocabularyReferences')).toContainText('ECDICT（中文翻譯）');
+  await expect(page.locator('#vocabularyReferences')).toContainText('ECDICT（中文翻譯／詞性）');
   expect(remote).toEqual([]);
 });
 

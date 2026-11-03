@@ -11,21 +11,27 @@
  */
 
 import { calculateMathProgress, MathProgressIndex } from './study/mathProgress';
+import { renderStudyReference } from './ui/studyReference.ts';
+import { requestedStudyDate } from './ui/siteNavigation.ts';
+import { studyCardDescription } from './ui/studyDescription.ts';
+import { deduplicateStudyIdentityFields } from './ui/studyIdentityFields.ts';
 import { decideRevisionSync, markRecordLocallyEdited, mergeStudyRecordsForUpload, mergeStudyRecordsThreeWay, recordSyncConflicts, sameStudyContent, stripRecordSyncMeta } from './storage/recordSync';
 import { studyRecordConflictDetailsText, studyRecordConflictSummary } from './storage/conflictPresentation';
-import { ACTIVE_RECORD_PREFIX_KEY, LEGACY_UNSCOPED_PREFIX, storagePrefixForUser } from './storage/local';
+import { ACTIVE_RECORD_PREFIX_KEY, LEGACY_UNSCOPED_PREFIX, initialRecordPrefix, storagePrefixForUser } from './storage/local';
+import { browserAuthPersistence, createPersistentAuthStorage } from './infrastructure/storage/browserAuthStorage.ts';
+import { createSessionRestorationGate } from './application/cloud/sessionRestoration.ts';
 import { incrementalSyncStart, latestServerWatermark, recordSyncWatermarkKey } from './storage/syncWatermark';
 import { calendarFixedTemplate } from './calendar/calendarBridge';
 import { prioritizeCalendarPageRanges } from './calendar/pagePriority';
 import { resolveMathCalendarPlan } from './calendar/mathPlan.ts';
 import { combineNaturalCalendarPlans, resolveNaturalCalendarPlan } from './calendar/naturalPlan';
-import { grammarScheduleSummary } from './calendar/scheduleSummary';
 import { normalizedGrammarUnitTitle, selectGrammarPlan } from './calendar/grammarPlan';
 import { googleCalendarConnectionController } from './application/googleCalendarConnectionController.ts';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from './config/supabase.ts';
 import { formatPercentagePointDelta, groupedMakeupCompletionUnits, groupedOriginalCompletionUnits, makeupCompletionUnit, originalCompletionUnit, summarizeCompletionUnits } from './study/completionMetrics';
 import { applyDailyWorkRangeOverrides, groupDailyWorkItems, propagateDailyWorkCompletionDates, propagateDailyWorkDeferred, propagateDailyWorkDone, propagateDailyWorkField, propagateDailyWorkMinutes, propagateDailyWorkRangeField, relinkDailyWorkSourceItems, ungroupDailyWorkItems } from './study/dailyWorkGroup';
 import { cloneOriginalItemForMakeup, effectiveTemplatePresetKey, mergeDeferredCarryRanges, mergeMakeupProgress, specialItemTemplate } from './study/makeup';
+import { restoreMathScheduleFields } from './study/mathScheduleFields.ts';
 import { dedupePresetDefinitions, presetDefinitionSemanticKey } from './study/presetDedup';
 import { mergeAzarSectionProgress } from './study/azarChapterCards';
 import { countDeferredToDay, deferredCapacityCandidates, DEFERRED_TARGET_LIMIT, futureDeferredDays, isConfirmedDeferred, isDeferrableStudyItem, requiresDeferredLimitConfirmation } from './study/deferDays';
@@ -35,6 +41,8 @@ import { completedTimeEntriesForOverviewDate } from './application/overview/over
 import { completionIncludedInPeriod } from './study/learningSummary.ts';
 import { isInteractiveStudyItem } from './study/interactiveTasks.ts';
 import { withOperationTimeout } from './application/cloud/operationTimeout.ts';
+import { PendingCloudSync } from './application/cloud/pendingCloudSync.ts';
+import { initializePendingSyncDialog } from './ui/pendingSyncDialog.ts';
 import { reconcileLocalRecordEdit } from './application/records/localRecordEdits.ts';
 import { changeStudyTimer, resolveStudyTimerTarget, sameStudyTimerPointer, sameStudyTimerTarget, setStudyTimerTargetMinutes, setStudyTimerTargetState, studyTimerTargetState, studyTimerToggleLabel, switchStudyTimerMode } from './application/timer/studyTimerController.ts';
 import { groupedSourceDateText, hasDeferredStudySource, shouldShowSourceDate } from './study/sourceDate';
@@ -50,7 +58,10 @@ import {
 import { formatStudyTimer, normalizeStudyTimerState, pauseStudyTimer } from './study/studyTimer';
 import { markCalendarNaturalCompletionByUser, markCalendarNaturalProgressByUser, reconcileCalendarNaturalPriorCoverage } from './study/calendarNaturalCompletion';
 import { ensureEnglishReviewWordEntryIds } from './study/englishReview';
-import { applyVocabularyAutoFill, vocabularyAutoFillStatus } from './study/vocabularyAutoFill.ts';
+import { applyVocabularyAutoFill, markVocabularyManualFields, vocabularyAutoFillStatus } from './study/vocabularyAutoFill.ts';
+import { loadEcdictTranslations } from './study/ecdictLookup.ts';
+import { updateVocabularyWordEntries, vocabularyEntryKey } from './study/vocabularyReview.ts';
+import { saveLocalRecordEdit } from './application/records/localRecordEdits.ts';
 import { VOCABULARY_PARTS_OF_SPEECH } from './study/vocabularyTranslationCounts.ts';
 import { initializeMagazineMonth, magazineMonthForDate } from './study/magazineDefaults';
 import { setupConnectionSettingsMotion } from './ui/connectionSettingsMotion';
@@ -97,6 +108,7 @@ import { LocalStudyRecordRepository } from './infrastructure/storage/localStudyR
 import { SupabaseStudyRecordRepository } from './infrastructure/storage/supabaseStudyRecordRepository';
 import { loadAllCalendarTaskRows } from './infrastructure/storage/supabaseCalendarTaskReader';
 import { buildCalendarStudyTaskPlan } from './application/calendar/calendarStudyTaskService';
+import { CalendarScheduleContinuity } from './application/calendar/calendarScheduleContinuity.ts';
 import { createClient } from '@supabase/supabase-js';
 import { parseProgressImportText, progressImportBackupPayload, progressImportResultText } from './application/progressImport';
 import { bedtimeRecordForStudyDate } from './study/sleep';
@@ -331,7 +343,7 @@ var storagePersistent=true;
 var store=(function(){
  try{
   var testKey='study-v11:storage-test';
-  window.localStorage.setItem(testKey,'1');window.localStorage.removeItem(testKey);
+  try{window.localStorage.setItem(testKey,'1');window.localStorage.removeItem(testKey)}catch(error){if(!error||error.name!=='QuotaExceededError')throw error}
   return window.localStorage;
  }catch(e){
   storagePersistent=false;
@@ -345,9 +357,8 @@ var store=(function(){
   };
  }
 })();
-var STORE_PREFIX=storagePrefixForUser(null);
+var STORE_PREFIX=initialRecordPrefix(store);
 var localRecordRepository=new LocalStudyRecordRepository(store,STORE_PREFIX);
-try{store.setItem(ACTIVE_RECORD_PREFIX_KEY,STORE_PREFIX)}catch(e){}
 var weekdays=['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
 var labels={mathStudy:'數學講義：進度',mathLecture:'數學講義',mathPractice:'數學講義題目：理解檢查＋錯題標記＋訂正',mathOral:'數 A 互動題：觀念題',magazine:'英文雜誌',englishPractice:'英文互動題：英聽及學測練習',englishMixedWriting:'英文：混合題與作文練習',chineseReading:'國文',aceReading:'英文：ACE Reading',scienceReview:'自然',socialStudy:'社會',mock:'歷屆／模考',general:'一般學習／整理',extra:'英文',interactive:'互動題',interactiveDaily:'互動題',biologyInteractive:'生物互動題',englishVocabInteractive:'英文單字／片語互動題',calendarStudy:'Google Calendar 排程'};
 var TRAUMALAND_TOPICS=[{"chapter":1,"title":"MY OVERWHELMING EMPTINESS"},{"chapter":2,"title":"GHOST VAMPIRE"},{"chapter":3,"title":"DING-DONG"},{"chapter":4,"title":"FEEL ALIVE"},{"chapter":5,"title":"THUNDERCLAP"},{"chapter":6,"title":"6 (66)"},{"chapter":7,"title":"BIRD IN FLIGHT"},{"chapter":8,"title":"THE INCIDENT"},{"chapter":9,"title":"PART OF"},{"chapter":10,"title":"GUESS WHO?"},{"chapter":11,"title":"PISTACHIO ICE CREAM"},{"chapter":12,"title":"NDA"},{"chapter":13,"title":"TO FEEL IS TO LIVE"},{"chapter":14,"title":"NO AIR"},{"chapter":15,"title":"THE SOLAR SYSTEM"},{"chapter":16,"title":"WONKY"},{"chapter":17,"title":"POLLY’S"},{"chapter":18,"title":"LIKE CRY, OR LIKE RIP"},{"chapter":19,"title":"USABLE"},{"chapter":20,"title":"SYCAMORE"},{"chapter":21,"title":"CLASSIFIED"},{"chapter":22,"title":"A BRIGHT FUTURE"},{"chapter":23,"title":"MARKED *ANONYMOUS*"},{"chapter":24,"title":"IN CASE OF EMERGENCY"},{"chapter":25,"title":"A STORY"},{"chapter":26,"title":"TURNING TIDES"},{"chapter":27,"title":"DECEPTIVE AND UNRELIABLE"},{"chapter":28,"title":"HELL"},{"chapter":29,"title":"FIND YOURSELF"},{"chapter":30,"title":"PRAYING TO THE STARS"},{"chapter":31,"title":"OK. OK. OK."},{"chapter":32,"title":"PSYCHO"},{"chapter":33,"title":"THE GREATER GOOD"},{"chapter":34,"title":"THE OMEN"},{"chapter":35,"title":"CLINIC ROOM 2"},{"chapter":36,"title":"FAITH IN GOODNESS"}];
@@ -603,11 +614,20 @@ var cloudRecordRepository=null;
 var cloudUser=null;
 var cloudLoading=false;
 var cloudBootstrapPending=false;
-var cloudSaveQueue=new LatestTaskQueue(450,async function(date,record){
+var pendingCloudSync=new PendingCloudSync(store);
+var pendingSyncDialog=null;
+var pendingSyncPreview=null;
+var pendingSyncRefreshTimer=null;
+var cloudSaveQueue=new LatestTaskQueue(450,async function(date,job){
+ if(job.scope!==STORE_PREFIX||job.serial!==cloudActivationSerial||!currentStorageIsUserScoped())return false;
+ if(pendingCloudSync.state(job.scope,date).phase==='paused')return false;
  await withCloudDateLock(date,async function(){
+  if(job.scope!==STORE_PREFIX||job.serial!==cloudActivationSerial)return false;
   // localStorage is shared by tabs. Merge the enqueue-time copy with the copy
   // written by another tab so neither tab's recorded items can disappear.
-  var latest=mergeStudyRecordsForUpload(readStoredRecord(date)||record,record);
+  var stored=readStoredRecord(date);
+  if(stored&&!stored.localDirty&&!stored.syncConflict&&Number(stored.serverRevision)>0){pendingCloudSync.saved(job.scope,date);updateCloudStatusBadge();return true}
+  var latest=mergeStudyRecordsForUpload(stored||job.record,job.record);
   return cloudSaveRecord(latest);
  });
 });
@@ -619,6 +639,9 @@ var periodicCloudSaveBusy=false;
 var PERIODIC_CLOUD_SAVE_MS=10*60*1000;
 var cloudHasError=false;
 var cloudAuthPending=false;
+var cloudSessionRestoring=true;
+var cloudSessionRestoreError=false;
+var guestScopeConfirmationPending=false;
 var cloudVisibleRefreshPending=false;
 var cloudVisibleRefreshOptions=null;
 var deleteUndoState=null;
@@ -629,6 +652,8 @@ var CLOUD_RECORD_BOOTSTRAP_TIMEOUT_MS=20000;
 var CLOUD_CALENDAR_BOOTSTRAP_TIMEOUT_MS=15000;
 
 var calendarConnected=false;
+var calendarContinuity=new CalendarScheduleContinuity(store);
+var calendarUsingLastSnapshot=false;
 var calendarCacheLoaded=false;
 var calendarHasError=false;
 var calendarParsedByDate={};
@@ -665,14 +690,31 @@ function dirtyCloudDates(){
  return localStudyDates().filter(function(date){var rec=readStoredRecord(date);return !!rec&&!!rec.localDirty&&!rec.syncConflict});
 }
 function updateCloudStatusBadge(){
+ var pendingDetails=refreshPendingSyncDetails();
  if(cloudAuthPending){setConnectionBadge('cloudStatusBadge','登入中','busy');return}
+ if(!cloudUser&&cloudSessionRestoring){setConnectionBadge('cloudStatusBadge',cloudSessionRestoreError?'登入確認暫停':'恢復登入中',cloudSessionRestoreError?'error':'busy');return}
  if(!cloudUser){setConnectionBadge('cloudStatusBadge','本機模式','offline');return}
  if(cloudLoading||cloudBootstrapPending||cloudManualSyncPending){setConnectionBadge('cloudStatusBadge','同步中','busy');return}
  var pending=dirtyCloudDates().length;
+ var conflicts=pendingDetails.filter(function(entry){return entry.phase==='conflict'}).length;
+ if(conflicts){setConnectionBadge('cloudStatusBadge','需處理 '+conflicts+' 天'+(pending?'・待同步 '+pending+' 天':''),'error');return}
  if(cloudHasError){setConnectionBadge('cloudStatusBadge',pending?'同步失敗・待 '+pending+' 天':'同步異常','error');return}
  if(pending){setConnectionBadge('cloudStatusBadge','待同步 '+pending+' 天','warning');return}
  setConnectionBadge('cloudStatusBadge','已同步','ok');
 }
+function refreshPendingSyncDetails(){
+ var records=cloudUser&&currentStorageIsUserScoped()?localStudyDates().map(readStoredRecord).filter(Boolean):[];
+ var entries=pendingCloudSync.entries(STORE_PREFIX,records),button=id('cloudPendingDetailsBtn');
+ if(button)button.hidden=!entries.length;
+ if(pendingSyncDialog)pendingSyncDialog.render(entries);
+ return entries;
+}
+function schedulePendingCloudSync(){
+ if(pendingSyncRefreshTimer)return;
+ pendingSyncRefreshTimer=setTimeout(function(){pendingSyncRefreshTimer=null;refreshPendingSyncDetails();if(!cloudLoading&&!cloudBootstrapPending&&document.visibilityState!=='hidden'&&navigator.onLine!==false)queueDirtyCloudRecords()},600);
+}
+function cloudSaveContextCurrent(scope,serial){return scope===STORE_PREFIX&&serial===cloudActivationSerial&&currentStorageIsUserScoped()}
+function cloudLocalWriteError(message){var error=new Error(message+' '+(localRecordRepository.saveError()||'本機儲存失敗，原紀錄仍保留。'));error.name='LocalCloudWriteError';return error}
 function cloudSetMessage(msg,ok){
  var el=id('cloudMessage');if(el)el.textContent=msg||'';
  if(ok===false)cloudHasError=true;else if(ok===true)cloudHasError=false;
@@ -681,7 +723,7 @@ function cloudSetMessage(msg,ok){
 function cloudUpdateUI(){
  var out=id('cloudLoggedOut'),inn=id('cloudLoggedIn');
  if(!out||!inn)return;
- out.hidden=!!cloudUser;inn.hidden=!cloudUser;
+ out.hidden=!!cloudUser||(cloudSessionRestoring&&!cloudSessionRestoreError);inn.hidden=!cloudUser;
  id('cloudUserEmail').textContent=cloudUser?(cloudUser.email||'已登入'):'';
  updateCloudStatusBadge();
  updateCloudActionButtons();
@@ -799,14 +841,20 @@ function updateCurrentRecordSyncMeta(date,serverRec){
 }
 async function cloudSaveRecord(rec,forcedBaseRevision){
  if(!cloudRecordRepository||!cloudUser||!rec||!currentStorageIsUserScoped())return false;
+ var scope=STORE_PREFIX,serial=cloudActivationSerial;
+ if(pendingCloudSync.state(scope,rec.date).phase==='paused')return false;
+ pendingCloudSync.started(scope,rec.date);refreshPendingSyncDetails();
  if(rec.storageIssue||localStorageDecodeIssue(rec.date)){
+  pendingCloudSync.failed(scope,rec.date,'本機資料無法解碼，請先備份並修復。',true);
   cloudSetMessage(rec.date+' 的本機資料無法解碼；已停止上傳，請先下載備份並使用雲端版本修復。',false);return false;
  }
  try{
   var snapshot=null,result=null;
   for(var attempt=0;attempt<2;attempt++){
    var stored=readStoredRecord(rec.date),pending=mergeStudyRecordsForUpload(stored||rec,rec);
-   var cloudSnapshot=await cloudRecordRepository.loadDate(rec.date),cloudRecord=cloudSnapshot?cloudSnapshot.record:null;
+   var cloudSnapshot=await withOperationTimeout(cloudRecordRepository.loadDate(rec.date),{timeoutMs:20000,message:rec.date+' 雲端讀取逾時；保留本機紀錄，稍後重試。'}),cloudRecord=cloudSnapshot?cloudSnapshot.record:null;
+   if(!cloudSaveContextCurrent(scope,serial))return false;
+   var afterRead=readStoredRecord(rec.date);if(afterRead)pending=mergeStudyRecordsForUpload(afterRead,pending);
    var pendingConflicts=recordSyncConflicts(pending);
    if(pendingConflicts.length){
     var pendingConflictRecord=setCloudConflictRecord(pending.syncConflictLocal||pending,cloudRecord,pendingConflicts);
@@ -818,11 +866,17 @@ async function cloudSaveRecord(rec,forcedBaseRevision){
     var mergeConflictRecord=setCloudConflictRecord(snapshot.syncConflictLocal||pending,cloudRecord,mergeConflicts);
     cloudSetMessage(studyRecordConflictSummary(rec.date,mergeConflicts,mergeConflictRecord&&mergeConflictRecord.syncConflictLocal||pending,cloudRecord),false);return false;
    }
+   if(cloudRecord&&sameStudyContent(snapshot,cloudRecord)){
+    if(!writeStoredRecord(cloudRecord))throw cloudLocalWriteError('雲端內容已一致，但本機無法確認同步狀態。');
+    updateCurrentRecordSyncMeta(rec.date,cloudRecord);pendingCloudSync.saved(scope,rec.date);
+    cloudSetMessage('已確認 '+rec.date+' 與雲端一致。',true);return true;
+   }
    var baseRevision=cloudSnapshot?Number(cloudSnapshot.revision||0):0;
    snapshot.serverRevision=baseRevision;snapshot.serverUpdatedAt=cloudSnapshot?cloudSnapshot.updatedAt:'';
    snapshot.localDirty=true;snapshot.syncConflict=false;
-   writeStoredRecord(snapshot);
-   result=await cloudRecordRepository.save(snapshot,baseRevision);
+   if(!writeStoredRecord(snapshot))throw cloudLocalWriteError('無法保存上傳前的合併紀錄，尚未上傳。');
+   result=await withOperationTimeout(cloudRecordRepository.save(snapshot,baseRevision),{timeoutMs:20000,message:rec.date+' 雲端儲存逾時；尚未確認完成，稍後重新比對。'});
+   if(!cloudSaveContextCurrent(scope,serial))return false;
    if(result.applied)break;
   }
   if(!snapshot||!result)throw new Error('雲端儲存流程未完成。');
@@ -852,27 +906,32 @@ async function cloudSaveRecord(rec,forcedBaseRevision){
    current.syncBase=cloneRecord(saved.syncBase||stripRecordSyncMeta(saved));
    current.localDirty=true;
    current.syncConflict=false;
-   writeStoredRecord(current);
+   if(!writeStoredRecord(current))throw cloudLocalWriteError('雲端已接收前一版，但本機無法保存後續變更的同步狀態。');
    if(data&&data.date===current.date&&sameStudyContent(data,current)){
     data.serverRevision=current.serverRevision;data.serverUpdatedAt=current.serverUpdatedAt;data.localDirty=true;data.syncConflict=false;
     data.syncBase=cloneRecord(current.syncBase);
    }
    queueCloudSave(current);
   }else{
-   writeStoredRecord(saved);
+   if(!writeStoredRecord(saved))throw cloudLocalWriteError('雲端已接收，但本機無法寫回同步狀態。');
    updateCurrentRecordSyncMeta(saved.date,saved);
+   pendingCloudSync.saved(scope,saved.date);
   }
   if(cloudConflictDate===saved.date)updateCloudConflictUI('');
   cloudSetMessage('已交叉比對並同步 '+snapshot.date+' 到雲端（revision '+saved.serverRevision+'）。',true);
   return true;
  }catch(e){
-  cloudSetMessage('雲端同步失敗：'+(e&&e.message?e.message:String(e)),false);return false
+  if(!cloudSaveContextCurrent(scope,serial))return false;
+  var reason=e&&e.message?e.message:String(e);pendingCloudSync.failed(scope,rec.date,reason,e&&e.name==='LocalCloudWriteError');
+  cloudSetMessage('雲端同步失敗：'+reason,false);return false
  }
 }
 function queueCloudSave(rec,allowDuringBootstrap){
  if(!cloudClient||!cloudUser||!rec||cloudLoading||(!allowDuringBootstrap&&cloudBootstrapPending)||rec.syncConflict||!currentStorageIsUserScoped())return;
  var snap=cloneRecord(rec),date=String(rec.date||'');if(!date)return;
- cloudSaveQueue.enqueue(date,snap);
+ if(pendingCloudSync.state(STORE_PREFIX,date).phase==='paused')return;
+ pendingCloudSync.queued(STORE_PREFIX,date);
+ cloudSaveQueue.enqueue(date,{record:snap,scope:STORE_PREFIX,serial:cloudActivationSerial});
  updateCloudStatusBadge();
 }
 function queueDirtyCloudRecords(){
@@ -880,10 +939,79 @@ function queueDirtyCloudRecords(){
  var queued=0;
  localStudyDates().forEach(function(date){
   var rec=readStoredRecord(date);
-  if(!rec||!rec.localDirty||rec.syncConflict)return;
+  if(!rec||!pendingCloudSync.ready(STORE_PREFIX,rec))return;
   queueCloudSave(rec,true);queued++;
  });
  return queued;
+}
+async function pendingSyncAction(action,date){
+ if(!cloudUser||!currentStorageIsUserScoped()||!pendingSyncDialog)return;
+ if(action==='open'){
+  if(switchStudyDate(date))pendingSyncDialog.close();
+  else pendingSyncDialog.message('目前日期尚未成功儲存，已保留畫面；請先修正欄位或處理儲存問題。');
+  return;
+ }
+ if(action==='pause'){pendingCloudSync.pause(STORE_PREFIX,date);updateCloudStatusBadge();return}
+ if(action==='retry'){
+  pendingCloudSync.resume(STORE_PREFIX,date);
+  var rec=readStoredRecord(date);if(!rec)return;
+  pendingSyncDialog.message('正在重新比較 '+date+'，不會直接覆蓋不同版本。');
+  queueCloudSave(rec,true);await cloudSaveQueue.flush(date);updateCloudStatusBadge();return;
+ }
+ if(action!=='compare')return;
+ var scope=STORE_PREFIX,serial=cloudActivationSerial,local=readStoredRecord(date);
+ if(!local)return;
+ pendingSyncPreview=null;pendingSyncDialog.comparison('','');pendingSyncDialog.message('正在讀取 '+date+' 的兩端版本…');
+ try{
+  var cloud=await withOperationTimeout(cloudRecordRepository.loadDate(date),{timeoutMs:20000,message:'比較版本逾時，兩端資料保持原樣。'});
+  if(!cloudSaveContextCurrent(scope,serial))return;
+  var details=cloud?studyRecordConflictDetailsText(mergeStudyRecordsThreeWay(local,cloud.record).conflicts,local,cloud.record):'';
+  var localSummary='本機：'+local.items.length+' 個項目；完成 '+local.items.filter(function(item){return item.done}).length+' 項。';
+  var cloudSummary=cloud?'雲端：'+cloud.record.items.length+' 個項目；完成 '+cloud.record.items.filter(function(item){return item.done}).length+' 項。':'雲端尚無這一天的紀錄。';
+  var status=cloud&&sameStudyContent(local,cloud.record)?'兩端內容一致，可按「重試同步」確認本機狀態。':'兩端內容不同，可先重試安全合併；或確認後明確選擇整日版本。';
+  pendingSyncPreview={date:date,scope:scope,serial:serial,local:cloneRecord(local),cloud:cloud};
+  pendingSyncDialog.comparison(date,[localSummary,cloudSummary,status,details].filter(Boolean).join('\n'));
+  pendingSyncDialog.message('選擇整日版本前會再次確認日期與方向，並保留處理前備份。');
+ }catch(error){pendingSyncDialog.message(error&&error.message?error.message:String(error))}
+}
+async function resolvePendingSync(choice){
+ var preview=pendingSyncPreview;
+ if(!preview||!cloudSaveContextCurrent(preview.scope,preview.serial)){pendingSyncDialog.message('請先重新比較這一天的兩端版本。');return}
+ if(choice==='cloud'&&!preview.cloud){pendingSyncDialog.message('雲端尚無這一天的紀錄，未取代本機資料。');return}
+ var direction=choice==='local'?'以本機整日紀錄覆蓋雲端':'以雲端整日紀錄取代本機';
+ if(!window.confirm('確認 '+preview.date+'：'+direction+'？會先保留處理前備份；其他日期不受影響。'))return;
+ return runCloudManualSync('處理待同步紀錄',async function(){
+  try{
+   await cloudSaveQueue.flush(preview.date);
+   await withCloudDateLock(preview.date,async function(){
+    if(!cloudSaveContextCurrent(preview.scope,preview.serial))throw new Error('登入帳號已改變，請重新比較版本。');
+    var cloud=await withOperationTimeout(cloudRecordRepository.loadDate(preview.date),{timeoutMs:20000,message:'讀取比較版本逾時，未取代資料。'});
+    if(!cloudSaveContextCurrent(preview.scope,preview.serial))throw new Error('登入帳號已改變，已停止處理。');
+    var current=readStoredRecord(preview.date);
+    if(!current||!sameStudyContent(current,preview.local)||Number(cloud&&cloud.revision||0)!==Number(preview.cloud&&preview.cloud.revision||0))throw new Error('比較後資料又有更新，已停止取代；請重新比較。');
+    if(!saveCloudConflictBackup(preview.date,current,cloud&&cloud.record))throw new Error('無法保留處理前備份，未取代任何版本。');
+    var saved=cloud&&cloud.record;
+    if(choice==='local'){
+     var result=await withOperationTimeout(cloudRecordRepository.save(stripRecordSyncMeta(current.syncConflictLocal||current),cloud?cloud.revision:0),{timeoutMs:20000,message:'雲端處理逾時，尚未確認結果；請重新比較兩端版本。'});
+     if(!cloudSaveContextCurrent(preview.scope,preview.serial))throw new Error('登入帳號已改變，未套用舊帳號回應。');
+     if(!result.applied||!result.record)throw new Error('雲端版本已更新，未覆蓋；請重新比較。');
+     saved=result.record;
+     var latest=readStoredRecord(preview.date);
+     if(!latest||!sameStudyContent(latest,current))throw new Error('雲端已接收選定版本，但本機在處理期間又有更新；已保留新的本機內容，請重新比較。');
+    }
+    if(!saved||!writeStoredRecord(saved))throw cloudLocalWriteError('無法保存選擇後的本機同步狀態。');
+    pendingCloudSync.saved(preview.scope,preview.date);updateCurrentRecordSyncMeta(preview.date,saved);finishCloudConflictBackup(saved.serverRevision);
+   });
+   if(cloudConflictDate===preview.date)updateCloudConflictUI('');
+   if(data&&data.date===preview.date)load({skipCloudRead:true});
+   pendingSyncPreview=null;pendingSyncDialog.comparison('','');pendingSyncDialog.message(preview.date+' 已完成處理，其他日期未變更。');
+   cloudSetMessage(preview.date+' 已依選擇完成同步。',true);
+  }catch(error){
+   pendingSyncPreview=null;pendingSyncDialog.message(error&&error.message?error.message:String(error));
+   if(cloudSaveContextCurrent(preview.scope,preview.serial))pendingCloudSync.failed(preview.scope,preview.date,error.message,true);
+   updateCloudStatusBadge();
+  }
+ });
 }
 function prepareConflictFreePullMerge(local,cloud,compared){
  if(!cloud||!compared)return compared;
@@ -1201,7 +1329,9 @@ async function cloudUpdateRecoveredPassword(event){
  finally{button.disabled=false}
 }
 async function cloudSignOut(){
- if(!cloudClient)return;await cloudClient.auth.signOut();
+ if(!cloudClient)return;
+ try{var result=await cloudClient.auth.signOut();if(result.error)throw result.error}
+ catch(error){cloudSetMessage('登出失敗：'+(error&&error.message?error.message:String(error)),false)}
 }
 
 function calendarSetMessage(msg,ok){
@@ -1211,7 +1341,6 @@ function calendarSetMessage(msg,ok){
  if(!cloudUser)setConnectionBadge('calendarStatusBadge','需先登入','offline');
  else if(!calendarConnected&&!googleCalendarConnectionController.isConfigured)setConnectionBadge('calendarStatusBadge','設定未完成','warning');
  else if(busy)setConnectionBadge('calendarStatusBadge','同步中','busy');
- else if(ok===false)setConnectionBadge('calendarStatusBadge','同步異常','error');
  else if(calendarConnected)setConnectionBadge('calendarStatusBadge','已連接','ok');
  else setConnectionBadge('calendarStatusBadge','未連接','offline');
 }
@@ -1221,9 +1350,10 @@ function calendarUpdateUI(){
   connect.disabled=!cloudUser||calendarConnected||!googleCalendarConnectionController.isConfigured;
   connect.title=!googleCalendarConnectionController.isConfigured?(googleCalendarConnectionController.configurationMessage||'Google Calendar 設定未完成。'):'';
  }
- if(sync)sync.disabled=!cloudUser||!calendarConnected;
- if(disconnect)disconnect.disabled=!cloudUser||!calendarConnected;
+ if(sync)sync.disabled=!cloudUser||(!calendarConnected&&!calendarUsingLastSnapshot);
+ if(disconnect)disconnect.disabled=!cloudUser||(!calendarConnected&&!calendarUsingLastSnapshot);
  if(!cloudUser)setConnectionBadge('calendarStatusBadge','需先登入','offline');
+ else if(calendarHasError)setConnectionBadge('calendarStatusBadge',calendarUsingLastSnapshot?'同步異常・沿用上次':'同步異常','error');
  else if(calendarConnected)setConnectionBadge('calendarStatusBadge','已連接','ok');
  else if(!googleCalendarConnectionController.isConfigured)setConnectionBadge('calendarStatusBadge','設定未完成','warning');
  else if(calendarHasError)setConnectionBadge('calendarStatusBadge','同步異常','error');
@@ -1265,8 +1395,33 @@ async function calendarInvoke(action,payload){
  return r.data||{};
 }
 function clearCalendarRuntime(){
+ calendarUsingLastSnapshot=false;
  calendarConnected=false;calendarCacheLoaded=false;calendarHasError=false;calendarParsedByDate={};cloudMathPlanByDate={};cloudMathPlansByDate={};cloudNaturalIntegrationItemsByDate={};cloudNaturalIntegrationDetailsByDate={};
  calendarUpdateUI();
+}
+function calendarRequestCurrent(token){
+ return !!token&&!!cloudUser&&token.userId===cloudUser.id&&currentStorageIsUserScoped()&&calendarContinuity.isCurrent(token);
+}
+function restoreCalendarSnapshot(){
+ return false;
+}
+function calendarFallbackText(){
+ return '目前保留此帳號已儲存的項目、進度與時間，等待 Calendar 完整載入後再比對排程。';
+}
+function calendarHandleUnavailable(token,error){
+ if(!calendarRequestCurrent(token)||!calendarContinuity.fail(token))return false;
+ calendarCacheLoaded=false;
+ restoreCalendarSnapshot();
+ calendarSetMessage('Calendar 連線／同步失敗：'+(error&&error.message?error.message:String(error))+'。'+calendarFallbackText(),false);
+ calendarUpdateUI();return true;
+}
+function hasStoredCalendarSchedule(){
+ function contains(items){return(Array.isArray(items)?items:[]).some(function(item){
+  if(!item)return false;var f=item.f||{};
+  return /^cal_/.test(item.presetKey||'')||!!f.calendarEventKey||!!f.calendarEventId||!!(f.calendarEventKeys&&f.calendarEventKeys.length)
+   ||['groupedWorkEntries','calendarIntegrationEntries','interactiveEntries','makeupEntries','reviewEntries'].some(function(key){return contains(f[key])});
+ })}
+ return localStudyDates().some(function(date){var record=readStoredRecord(date);return record&&contains(record.items)});
 }
 function naturalRecommendationByTopic(topic){
  var keys=Object.keys(CALENDAR_NATURAL_RECOMMENDED_PAGES||{});
@@ -1311,13 +1466,16 @@ function buildCalendarRuntime(rows){
  });
  Object.keys(cloudMathPlansByDate).forEach(function(date){cloudMathPlanByDate[date]=selectPrimaryCloudMathPlan(date,cloudMathPlansByDate[date])});
 }
-async function refreshCalendarTaskCache(){
- if(!cloudClient||!cloudUser){clearCalendarRuntime();return 0}
- var rows=await loadAllCalendarTaskRows(cloudClient,cloudUser.id);
- buildCalendarRuntime(rows);calendarCacheLoaded=true;return rows.length;
+async function refreshCalendarTaskCache(token){
+ if(!calendarRequestCurrent(token))return null;
+ var rows=await loadAllCalendarTaskRows(cloudClient,token.userId);
+ if(!calendarRequestCurrent(token))return null;
+ buildCalendarRuntime(rows);
+ if(!calendarContinuity.accept(token,rows))return null;
+ calendarCacheLoaded=true;calendarUsingLastSnapshot=false;return rows.length;
 }
 function reconcileStoredCalendarPresets(){
- if(!calendarCacheLoaded)return 0;
+ if(!calendarCacheLoaded||calendarContinuity.preservesRecords)return 0;
  var changedDates=0;
  localStudyDates().sort().forEach(function(ds){
   var rec=loadData(ds);
@@ -1331,18 +1489,27 @@ function reconcileStoredCalendarPresets(){
 }
 async function calendarRefreshStatus(showMessage){
  if(!cloudUser){clearCalendarRuntime();calendarSetMessage('先登入 Study Tracker 帳號，再連接 Google Calendar。',true);return false}
+ var token=calendarContinuity.begin();
  try{
-  var s=await calendarInvoke('status');calendarConnected=!!s.connected;
-  if(calendarConnected){var n=await refreshCalendarTaskCache(),cleaned=cloudBootstrapPending?0:reconcileStoredCalendarPresets();calendarSetMessage('Google Calendar 已連接；已載入 '+n+' 筆同步排程'+(cleaned?'，已更新 '+cleaned+' 天本機項目':'')+'。',true)}
-  else{
-   calendarCacheLoaded=false;calendarParsedByDate={};
-   if(!googleCalendarConnectionController.isConfigured)calendarSetMessage(googleCalendarConnectionController.configurationMessage,false);
-   else calendarSetMessage('尚未連接 Google Calendar；目前沒有匯入排程。',true);
+  var s=await calendarInvoke('status');if(!calendarRequestCurrent(token))return false;
+  calendarConnected=!!s.connected;
+  if(calendarConnected){
+   var n=await refreshCalendarTaskCache(token);if(n===null)return false;
+   var cleaned=cloudBootstrapPending?0:reconcileStoredCalendarPresets();
+   calendarSetMessage('Google Calendar 已連接；已載入 '+n+' 筆同步排程'+(cleaned?'，已更新 '+cleaned+' 天本機項目':'')+'。',true);
+  }else{
+   calendarContinuity.disconnected(token,hasStoredCalendarSchedule());
+   restoreCalendarSnapshot();
+   if(calendarContinuity.preservesRecords)calendarSetMessage('Google Calendar 尚未連接；'+calendarFallbackText(),false);
+    else if(!googleCalendarConnectionController.isConfigured)calendarSetMessage(googleCalendarConnectionController.configurationMessage,false);
+    else calendarSetMessage('尚未連接 Google Calendar；目前沒有匯入排程。',true);
   }
   calendarUpdateUI();return calendarConnected;
- }catch(e){calendarCacheLoaded=false;calendarSetMessage('Calendar 連線失敗：'+(e&&e.message?e.message:String(e)),false);calendarUpdateUI();return false}
+ }catch(e){calendarHandleUnavailable(token,e);return false}
 }
 async function calendarConnect(){
+ if(!cloudUser){calendarSetMessage('請先登入 Study Tracker。',false);return}
+ var token=calendarContinuity.begin();
  try{
   await googleCalendarConnectionController.connect({
    requestAuthorizationUrl:function(payload){return calendarInvoke('auth-url',payload)},
@@ -1352,13 +1519,27 @@ async function calendarConnect(){
  }catch(e){calendarSetMessage('Calendar 連線失敗：'+(e&&e.message?e.message:String(e)),false)}
 }
 async function calendarSyncNow(){
+ if(!cloudUser){calendarSetMessage('請先登入 Study Tracker。',false);return}
+ var token=calendarContinuity.begin();
  try{
-  calendarSetMessage('正在從 Google Calendar 讀取最新排程（包含刪除）…',true);var r=await calendarInvoke('sync');calendarConnected=!!r.connected;var n=await refreshCalendarTaskCache(),cleaned=reconcileStoredCalendarPresets();calendarSetMessage('同步完成：Google API 更新 '+Number(r.synced||0)+' 筆、移除 '+Number(r.removed||0)+' 筆；Tracker 載入 '+n+' 筆'+(cleaned?'，已更新 '+cleaned+' 天本機項目':'')+'。',true);load({skipCloudRead:true});
- }catch(e){calendarSetMessage('Calendar 同步失敗：'+(e&&e.message?e.message:String(e)),false)}
+  calendarSetMessage('正在從 Google Calendar 讀取最新排程（包含刪除）…',true);
+  var r=await calendarInvoke('sync');if(!calendarRequestCurrent(token))return;
+  if(!r.connected)throw new Error('Google Calendar 尚未連接，請重新授權。');
+  calendarConnected=true;var n=await refreshCalendarTaskCache(token);if(n===null)return;
+  var cleaned=reconcileStoredCalendarPresets();
+  calendarSetMessage('同步完成：Google API 更新 '+Number(r.synced||0)+' 筆、移除 '+Number(r.removed||0)+' 筆；Tracker 載入 '+n+' 筆'+(cleaned?'，已更新 '+cleaned+' 天本機項目':'')+'。',true);
+  calendarUpdateUI();refreshVisibleDataAfterBackgroundSync();
+ }catch(e){calendarHandleUnavailable(token,e)}
 }
 async function calendarDisconnect(){
  if(!window.confirm('確定要解除 Google Calendar 連線嗎？解除後會停止同步，之後需重新授權才能連接。'))return false;
- try{await calendarInvoke('disconnect');clearCalendarRuntime();calendarSetMessage('已解除 Google Calendar 連線；已停止匯入排程。',true);load({skipCloudRead:true})}catch(e){calendarSetMessage('解除連線失敗：'+(e&&e.message?e.message:String(e)),false)}
+ if(!cloudUser)return false;
+ var token=calendarContinuity.begin();
+ try{
+  await calendarInvoke('disconnect');if(!calendarRequestCurrent(token))return false;
+  calendarContinuity.forget(token);clearCalendarRuntime();
+   calendarSetMessage('已解除 Google Calendar 連線；已停止匯入排程。',true);load({skipCloudRead:true});return true;
+ }catch(e){calendarHandleUnavailable(token,e);return false}
 }
 
 function isEditingRecordControl(){
@@ -1393,8 +1574,12 @@ async function retryDirtyCloudRecordsOnReconnect(){
  cloudSetMessage('網路已恢復；待同步紀錄已全部上傳。',true);return true;
 }
 async function activateCloudUser(user){
- if(user&&!cloudUser&&data&&!persist(false)){cloudSetMessage('登入前的訪客草稿尚未成功保存，請先確認輸入與本機儲存空間。',false);return}
- var serial=++cloudActivationSerial;cloudUser=user||null;setStorageScope(cloudUser?cloudUser.id:null);cloudBootstrapPending=!!cloudUser;cloudUpdateUI();clearCalendarRuntime();
+ var restoringSameAccount=user&&STORE_PREFIX===storagePrefixForUser(user.id);
+ var retainedData=restoringSameAccount&&data;
+ if(user&&!cloudUser&&data&&!restoringSameAccount&&!persist(false)){cloudSetMessage('登入前的訪客草稿尚未成功保存，請先確認輸入與本機儲存空間。',false);return}
+ if(data&&STORE_PREFIX!==storagePrefixForUser(user&&user.id))persist(false);
+ var serial=++cloudActivationSerial;cloudUser=user||null;if(!retainedData)setStorageScope(cloudUser?cloudUser.id:null);pendingCloudSync.resetActivity(STORE_PREFIX);pendingSyncPreview=null;if(pendingSyncDialog)pendingSyncDialog.comparison('','');cloudBootstrapPending=!!cloudUser;cloudUpdateUI();clearCalendarRuntime();
+ calendarContinuity.activate(cloudUser?cloudUser.id:null);restoreCalendarSnapshot();
  if(!cloudUser){
   cloudBootstrapPending=false;cloudSetMessage('已登出；目前使用獨立 guest 本機資料。',true);rebuildMathProgressIndex();load({skipCloudRead:true});return;
  }
@@ -1403,7 +1588,7 @@ async function activateCloudUser(user){
  // cached day from being generated and mistaken for a newer server record.
  try{
   rebuildMathProgressIndex();
-  load({skipCloudRead:true,cacheOnly:true,skipPresetReconcile:true});
+  if(!retainedData)load({skipCloudRead:true,cacheOnly:true,skipPresetReconcile:true});
  }catch(e){
   if(serial===cloudActivationSerial){
    cloudBootstrapPending=false;cloudLoading=false;updateCloudActionButtons();
@@ -1445,6 +1630,7 @@ async function activateCloudUser(user){
 }
 async function refreshCalendarAfterCloudActivation(serial){
  if(serial!==cloudActivationSerial||!cloudUser)return;
+ var calendarSequence=calendarContinuity.sequence;
  calendarSetMessage('正在讀取 Google Calendar 連線狀態…',true);
  try{
   await withOperationTimeout(calendarRefreshStatus(false),{
@@ -1453,28 +1639,55 @@ async function refreshCalendarAfterCloudActivation(serial){
   });
   if(serial===cloudActivationSerial)refreshVisibleDataAfterBackgroundSync();
  }catch(e){
-  if(serial===cloudActivationSerial)calendarSetMessage(e&&e.message?e.message:String(e),false);
+  if(serial===cloudActivationSerial&&calendarContinuity.sequence===calendarSequence+1)calendarHandleUnavailable(calendarContinuity.token,e);
  }
 }
 async function initCloud(){
- cloudClient=createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
- cloudRecordRepository=new SupabaseStudyRecordRepository(cloudClient);
- cloudClient.auth.onAuthStateChange(function(event,session){
-  var next=session?session.user:null;
-  if(event==='PASSWORD_RECOVERY')setTimeout(openPasswordRecoveryDialog,0);
-  if((cloudUser&&next&&cloudUser.id===next.id)||(!cloudUser&&!next))return;
-  setTimeout(function(){activateCloudUser(next)},0);
+ cloudSessionRestoring=true;cloudSessionRestoreError=false;cloudUpdateUI();cloudSetMessage('正在恢復登入狀態…',true);
+ var guestScope=STORE_PREFIX===storagePrefixForUser(null);
+ rebuildMathProgressIndex();load({skipCloudRead:true,cacheOnly:!guestScope,skipPresetReconcile:!guestScope});
+ var authStorage=createPersistentAuthStorage(browserAuthPersistence(window.indexedDB),{
+  getItem:function(key){return window.localStorage.getItem(key)},
+  setItem:function(key,value){window.localStorage.setItem(key,value)},
+  removeItem:function(key){window.localStorage.removeItem(key)}
  });
- var s=null;
- try{s=await withOperationTimeout(cloudClient.auth.getSession(),{timeoutMs:CLOUD_AUTH_TIMEOUT_MS,message:'讀取登入狀態逾時；已先以本機模式開啟。'})}
- catch(e){cloudSetMessage(e&&e.message?e.message:String(e),false)}
- var initialUser=s&&s.data&&s.data.session?s.data.session.user:null;
- if(!data||!((cloudUser&&initialUser&&cloudUser.id===initialUser.id)||(!cloudUser&&!initialUser)))await activateCloudUser(initialUser);
- else cloudUpdateUI();
- var params=new URLSearchParams(window.location.search);if(params.get('calendar')==='connected'){
-  params.delete('calendar');var qs=params.toString(),nextUrl=window.location.pathname+(qs?'?'+qs:'')+window.location.hash;window.history.replaceState({},'',nextUrl);
-  if(cloudUser)setTimeout(function(){calendarRefreshStatus(true).then(function(){load({skipCloudRead:true})})},0);
+ cloudClient=createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{auth:{storage:authStorage,persistSession:true,autoRefreshToken:true}});
+ cloudRecordRepository=new SupabaseStudyRecordRepository(cloudClient);
+ var params=new URLSearchParams(window.location.search),calendarReturned=params.get('calendar')==='connected';
+ if(calendarReturned){params.delete('calendar');var qs=params.toString();window.history.replaceState({},'',window.location.pathname+(qs?'?'+qs:'')+window.location.hash)}
+ var gate=createSessionRestorationGate(function applySession(next){
+  cloudSessionRestoring=false;cloudSessionRestoreError=false;
+  guestScopeConfirmationPending=false;
+  var same=(cloudUser&&next&&cloudUser.id===next.id)||(!cloudUser&&!next);
+  var activation;
+  var sameScope=STORE_PREFIX===storagePrefixForUser(next&&next.id);
+  if(same&&data&&sameScope){
+   if(next)cloudUser=next;
+   else{guestScopeConfirmationPending=true;cloudSetMessage('目前未登入；使用獨立訪客本機資料。',true)}
+   cloudUpdateUI();activation=Promise.resolve();
+  }
+  else activation=activateCloudUser(next);
+  activation.then(function(){
+   if(calendarReturned&&cloudUser){calendarReturned=false;calendarRefreshStatus(true).then(function(){load({skipCloudRead:true})}).catch(function(error){cloudSetMessage(error.message,false)})}
+  }).catch(function(error){cloudSetMessage('登入狀態已恢復，但載入紀錄失敗：'+(error&&error.message?error.message:String(error)),false)});
+ },function defer(callback){setTimeout(callback,0)});
+ cloudClient.auth.onAuthStateChange(function(event,session){
+  if(event==='PASSWORD_RECOVERY')setTimeout(openPasswordRecoveryDialog,0);
+  gate.event(event,session&&session.user?session.user:null);
+ });
+ var initialVersion=gate.version();
+ function restoreFailed(error){
+  if(!gate.isCurrent(initialVersion))return;
+  cloudSessionRestoreError=true;cloudUpdateUI();
+  cloudSetMessage('登入狀態尚未確認：'+(error&&error.message?error.message:String(error))+' 已保留原帳號的本機資料；這不代表已登出。',false);
+  if(!data){rebuildMathProgressIndex();load({skipCloudRead:true,cacheOnly:true,skipPresetReconcile:true})}
  }
+ var restore=cloudClient.auth.getSession().then(function(result){
+  if(!gate.isCurrent(initialVersion))return;
+  if(result.error){restoreFailed(result.error);return}
+  gate.initial(initialVersion,result.data&&result.data.session?result.data.session.user:null);
+ }).catch(restoreFailed);
+ try{await withOperationTimeout(restore,{timeoutMs:CLOUD_AUTH_TIMEOUT_MS,message:'登入確認逾時，可稍後重試。'})}catch(error){restoreFailed(error)}
 }
 function id(x){return document.getElementById(x)}
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
@@ -1864,6 +2077,10 @@ function applyCalendarMathPlan(rec,date){
  var changed=false,blank=!x.f.material&&!x.f.book&&!x.f.start&&!x.f.end;
  if(blank){x.f.material=p.material||'教學講義';x.f.book=p.book;x.f.start=String(p.start);x.f.end=String(p.end);changed=true}
  var userFields=x.f.dailyWorkUserFields&&typeof x.f.dailyWorkUserFields==='object'?x.f.dailyWorkUserFields:{};
+ var compatible=(!x.f.material||x.f.material===(p.material||'教學講義'))&&(!x.f.book||x.f.book===p.book);
+ if(compatible&&!x.f.start&&!x.f.end){
+  ['start','end'].forEach(function(field){if(!Object.prototype.hasOwnProperty.call(userFields,field)){x.f[field]=String(p[field]);changed=true}});
+ }
  if(p.calendarRangeSource==='calendar'){
  if(!Object.prototype.hasOwnProperty.call(userFields,'start')&&x.f.start!==String(p.start)){x.f.start=String(p.start);changed=true}
  if(!Object.prototype.hasOwnProperty.call(userFields,'end')&&x.f.end!==String(p.end)){x.f.end=String(p.end);changed=true}
@@ -2023,6 +2240,7 @@ function mergeGroupedEntry(template,existing){
  next.f=Object.assign({},cloneValue(template.f||{}),cloneValue(old.f||{}));
  ['title','book','topic','start','end','scopeKind','unitStart','unitEnd','round','roundEnd','azarChapterNumber','azarChapterTitle','azarChapterLabel','azarSectionCode','azarSectionTitle','calendarTopic','calendarBookRangeLocked','calendarMathMaterialLocked','calendarScopeParseError','calendarEventId','calendarEventIds','calendarEventKey','calendarEventKeys','calendarSourceDate','calendarSourceDates'].forEach(function(k){if(template.f&&template.f[k]!==undefined&&!(numberedStudyScope(next)&&old.f?.dailyWorkUserFields&&Object.prototype.hasOwnProperty.call(old.f.dailyWorkUserFields,k)))next.f[k]=cloneValue(template.f[k])});
  if(/^cal_azar_/.test(String(template.presetKey||'')))applyDailyWorkRangeOverrides(next);
+ restoreMathScheduleFields(next,template,old);
  return next;
 }
 function reconcileGroupedWorkEntries(templateEntries,existingEntries,legacyParent){
@@ -2083,6 +2301,8 @@ function rebuildDeferredForWeek(originDate){
 }
 function ensureDailyPresets(rec,date){
  if(!rec||date<DAILY_PRESET_START)return false;
+ if(typeof calendarContinuity!=='undefined'&&calendarContinuity.preservesRecords&&currentStorageIsUserScoped()
+  &&(!calendarContinuity.snapshot||(rec.items&&rec.items.length)||readStoredRecordResult(date).status!=='missing'))return false;
  if(!Array.isArray(rec.items))rec.items=[];
  var groupedSnapshot=JSON.stringify(rec.items);
  rec.items=ungroupDailyWorkItems(rec.items);
@@ -2163,6 +2383,10 @@ function ensureDailyPresets(rec,date){
      }else if(x.f[dk]!==df[dk]){x.f[dk]=df[dk];changed=true}
     }
    }else{
+     if(/^cal_math_/.test(d.key||'')){
+      var mathDefinition={type:d.type,f:Object.assign({},df)};
+      restoreMathScheduleFields(mathDefinition,{type:d.type,f:df},x);df=mathDefinition.f;
+     }
      for(var dk2 in df)if(Object.prototype.hasOwnProperty.call(df,dk2)){
       if(/^cal_math_/.test(d.key||'')&&['material','book','start','end'].includes(dk2)&&x.f.dailyWorkUserFields&&Object.prototype.hasOwnProperty.call(x.f.dailyWorkUserFields,dk2))continue;
       if(['scopeKind','unitStart','unitEnd','round','roundEnd'].includes(dk2)&&numberedStudyScope(x)&&x.f.dailyWorkUserFields&&Object.prototype.hasOwnProperty.call(x.f.dailyWorkUserFields,dk2))continue;
@@ -2207,6 +2431,11 @@ function ensureDailyPresets(rec,date){
    for(var lk in legacyFields)if(Object.prototype.hasOwnProperty.call(legacyFields,lk)&&!/^calendar/.test(lk)){
     var currentValue=x.f[lk],legacyValue=legacyFields[lk],currentBlank=currentValue===undefined||currentValue===null||currentValue===''||(Array.isArray(currentValue)&&currentValue.length===0);
     if(currentBlank&&legacyValue!==undefined&&legacyValue!==null&&legacyValue!==''){x.f[lk]=cloneValue(legacyValue);changed=true}
+   }
+   if(/^cal_math_/.test(d.key||'')){
+    var previousMathFields=JSON.stringify(x.f);
+    restoreMathScheduleFields(x,{type:d.type,f:d.f||{}},legacyItem);
+    if(JSON.stringify(x.f)!==previousMathFields)changed=true;
    }
    delete legacyCalendarByTemplate[mergedTemplate];
    delete legacyCalendarByPresetKey[d.key];
@@ -2325,17 +2554,16 @@ function renderCalendarNaturalIntegrationEntry(c){
  var h='<div class="item subject-card subject-natural'+(c.done?' done':'')+'" data-item="'+esc(c.id)+'" style="margin-top:10px"><div class="item-top">';
  h+='<input type="checkbox" data-done'+checked(c.done)+'>';
  h+='<div class="completion-title-block"><div class="item-title">'+esc(c.subject)+'</div>'+completionDateMarkup(c)+'</div>'+renderTimeControl(c)+'</div>';
- h+='<div class="inner"><div class="science-main-row">';
- h+='<div class="field"><label>科目</label><div class="fixed-book-value">'+esc(c.subject)+'</div></div>';
+ h+='<div class="inner"><div class="science-main-row science-integration-row">';
  h+='<div class="field"><label>講義版本</label><div class="fixed-book-value">123日的淬鍊</div></div>';
  if(single){
   h+='<div class="field compact-number"><label>起始頁</label><div class="fixed-book-value">'+esc(ranges[0][0])+'</div></div>';
   h+='<div class="field compact-number"><label>結束頁</label><div class="fixed-book-value">'+esc(ranges[0][1])+'</div></div>';
  }else{
-  h+='<div class="field" style="flex:1"><label>指定頁碼</label><div class="fixed-book-value">'+esc(c.pageText||'—')+'</div></div>';
+  h+='<div class="field science-page-text"><label>指定頁碼</label><div class="fixed-book-value">'+esc(c.pageText||'—')+'</div></div>';
  }
  h+='</div>';
- h+='<div class="field" style="margin-top:10px"><label>123日的淬鍊｜頁碼對應章節</label><div class="small">'+esc(c.chapterText||'—')+'</div></div>';
+ h+=renderStudyReference('<div class="field"><label>123日的淬鍊｜頁碼對應章節</label><div class="small">'+esc(c.chapterText||'—')+'</div></div>');
  h+='</div></div>';
  return h;
 }
@@ -2540,11 +2768,15 @@ function manualOptionGroup(label,values,current,labelFor){
 function manualOptions(values,current,labelFor){
  return values.map(function(value){return'<option value="'+esc(value)+'"'+selected(value,current)+'>'+esc(labelFor?labelFor(value):value)+'</option>'}).join('');
 }
+var manualMaterialChoicesCache=null;
 function activeManualMaterialChoices(subject){
  try{
+  if(manualMaterialChoicesCache&&manualMaterialChoicesCache.prefix===STORE_PREFIX)return manualMaterialChoicesCache.choices.filter(function(choice){return choice.subject===subject});
   var progressSource=readMaterialProgressRecords(store),rows=materialProgressRows(progressSource.records),selectionPrefix=progressSource.prefix||STORE_PREFIX;
   var selectedIds=readMaterialSelection(store,selectionPrefix,rows.map(function(row){return row.id}));
-  return selectedManualMaterialChoices(rows,selectedIds).filter(function(choice){return choice.subject===subject});
+  var choices=selectedManualMaterialChoices(rows,selectedIds);
+  manualMaterialChoicesCache={prefix:STORE_PREFIX,choices:choices};
+  return choices.filter(function(choice){return choice.subject===subject});
  }catch(e){return[]}
 }
 function applySelectedCatalogMaterial(item,subject,value,book){
@@ -2611,11 +2843,9 @@ function renderMathFields(x,reviewMode){
  h+='<div class="field compact-number"><label>起始頁</label><input type="number" min="1" data-field="start" value="'+esc(f.start||'')+'" placeholder="起始"></div><div class="field compact-number"><label>結束頁</label><input type="number" min="1" data-field="end" value="'+esc(f.end||'')+'" placeholder="結束"></div></div>';
  applyMathAuto(f);
  var mathAutoField='<div class="field"><label>'+(f.material==='複習週記'?'對應章節':'對應單元／章節')+'</label><div class="small" data-math-auto>'+esc(mathAutoText(f))+'</div></div>';
- if(hasDeferredStudySource(x))h+='<div class="math-auto-source-row">'+mathAutoField+'<div class="field"><label>來源日期</label><div class="fixed-book-value">'+esc(groupedSourceDateText(x,(data&&data.date)||''))+'</div></div></div>';
- else h+='<div style="margin-top:10px">'+mathAutoField+'</div>';
- if(x.type==='mathStudy'&&f.calendarPlanTitle){
-  h+='<div class="field" style="margin-top:10px"><label>Google Calendar 數學排程</label><div class="small"><strong>'+esc(f.calendarPlanTitle)+'</strong><br>本單元共 '+esc(f.calendarUnitPages)+' 頁｜建議總量 '+esc(f.calendarUnitTargetPages||f.calendarUnitPages)+' 頁｜本週需要寫約 '+esc(f.calendarWeekTarget)+' 頁｜今日約 '+esc(f.calendarDailyPages)+' 頁<br>建議頁碼：'+esc(f.calendarSuggestedBook)+' 冊 p.'+esc(f.calendarSuggestedStart)+'–'+esc(f.calendarSuggestedEnd)+'</div></div>';
- }
+ var reference=mathAutoField;
+ if(hasDeferredStudySource(x))reference='<div class="math-auto-source-row">'+mathAutoField+'<div class="field"><label>來源日期</label><div class="fixed-book-value">'+esc(groupedSourceDateText(x,(data&&data.date)||''))+'</div></div></div>';
+ h+=renderStudyReference(reference);
  if(x.type==='mathLecture'){
   if(!reviewMode)h+='<div class="checkline" style="margin-top:10px"><label><input type="checkbox" data-check="progress"'+checked(f.progress)+'> 進度</label><label><input type="checkbox" data-check="graded"'+checked(f.graded)+'> 批改</label><label><input type="checkbox" data-check="corrected"'+checked(f.corrected)+'> 訂正</label></div>';
   if(reviewMode||f.corrected)h+=reasonField(f);
@@ -2747,16 +2977,17 @@ function calendarSourceDateLabel(value){
  var raw=String(value||'').trim(),m=raw.match(/^(?:\d{4}-)?(\d{1,2})[-\/](\d{1,2})$/);
  return m?Number(m[1])+'/'+Number(m[2]):(raw||'—');
 }
-function calendarTopicSourceRow(x){
+function calendarSourceRow(x){
  var f=x.f||{},showSource=shouldShowSourceDate(x,(data&&data.date)||'');
- return'<div class="calendar-topic-source-row'+(showSource?'':' source-hidden')+'"><div class="field"><label>Google Calendar 當日主題</label><div class="fixed-book-value">'+esc(f.calendarTopic||'—')+'</div></div>'+(showSource?'<div class="field"><label>來源日期</label><div class="fixed-book-value">'+esc(calendarSourceDateLabel(f.calendarSourceDate))+'</div></div>':'')+'</div>';
+ if(!showSource)return'';
+ return'<div class="field" style="margin-top:10px"><label>來源日期</label><div class="fixed-book-value">'+esc(calendarSourceDateLabel(f.calendarSourceDate))+'</div></div>';
 }
 function renderScienceFields(x,reviewMode){
  var f=x.f;
  if(isCalendarNaturalIntegration(x)){
   var entries=ensureCalendarNaturalIntegrationEntries(x,(data&&data.date)||'');
   var ih='';
-  if(f.calendarTopic)ih+=calendarTopicSourceRow(x);
+  ih+=calendarSourceRow(x);
   for(var ii=0;ii<entries.length;ii++)ih+=renderCalendarNaturalIntegrationEntry(entries[ii]);
   return ih;
  }
@@ -2766,12 +2997,14 @@ function renderScienceFields(x,reviewMode){
   :'<div class="field"><label>科目</label><select data-field="subject"><option value="">請選擇</option>'+['混合','物理','化學','生物','地科'].map(function(s){return'<option'+selected(s,f.subject)+'>'+s+'</option>'}).join('')+'</select></div>';
  var h='<div class="science-main-row">'+subjectField;
  h+='<div class="field"><label>講義版本</label><select data-field="material">'+scienceMaterialOptions(f.subject,f.material)+'</select></div><div class="field compact-number"><label>起始頁</label><input type="number" min="1" data-field="start" value="'+esc(f.start||'')+'" placeholder="起始"></div><div class="field compact-number"><label>結束頁</label><input type="number" min="1" data-field="end" value="'+esc(f.end||'')+'" placeholder="結束"></div></div>';
- if(isCalendarNatural(x)&&f.calendarTopic)h+=calendarTopicSourceRow(x);
- if(f.material==='好考點'&&(f.subject==='物理'||f.subject==='化學'))h+='<div class="field" style="margin-top:10px"><label>對應單元／章節</label><div class="small" data-science-auto>'+esc(goodPointCombinedText(f.subject,f.start,f.end))+'</div></div>';
- if(f.material==='123日的淬鍊'&&f.subject!=='混合')h+='<div class="field" style="margin-top:10px"><label>123日的淬鍊｜頁碼對應章節</label><div class="small" data-science-auto>'+esc(day123Text(f.subject,f.start,f.end))+'</div></div>';
- if(['生物','化學','物理','地科'].includes(f.subject)&&f.material==='新關鍵')h+='<div class="field" style="margin-top:10px"><label>新關鍵｜頁碼對應單元／主題</label><div class="small" data-science-auto>'+esc(naturalNewKeyPageText(f.subject,f.start,f.end))+'</div></div>';
- if(f.material==='領航'||f.material==='優勢'||f.material==='逆轉勝')h+='<div class="field" style="margin-top:10px"><label>'+esc(f.material)+'｜頁碼對應單元／章節</label><div class="small" data-science-auto>'+esc(lectureNaturalText(f.subject,f.material,f.start,f.end))+'</div></div>';
- if(f.subject==='混合'&&f.material==='複習週記')h+='<div class="field" style="margin-top:10px"><label>對應章節</label><div class="small" data-science-auto>'+esc(naturalReviewText(x))+'</div></div>';
+ if(isCalendarNatural(x))h+=calendarSourceRow(x);
+ var reference='';
+ if(f.material==='好考點'&&(f.subject==='物理'||f.subject==='化學'))reference='<div class="field"><label>對應單元／章節</label><div class="small" data-science-auto>'+esc(goodPointCombinedText(f.subject,f.start,f.end))+'</div></div>';
+ if(f.material==='123日的淬鍊'&&f.subject!=='混合')reference='<div class="field"><label>123日的淬鍊｜頁碼對應章節</label><div class="small" data-science-auto>'+esc(day123Text(f.subject,f.start,f.end))+'</div></div>';
+ if(['生物','化學','物理','地科'].includes(f.subject)&&f.material==='新關鍵')reference='<div class="field"><label>新關鍵｜頁碼對應單元／主題</label><div class="small" data-science-auto>'+esc(naturalNewKeyPageText(f.subject,f.start,f.end))+'</div></div>';
+ if(f.material==='領航'||f.material==='優勢'||f.material==='逆轉勝')reference='<div class="field"><label>'+esc(f.material)+'｜頁碼對應單元／章節</label><div class="small" data-science-auto>'+esc(lectureNaturalText(f.subject,f.material,f.start,f.end))+'</div></div>';
+ if(f.subject==='混合'&&f.material==='複習週記')reference='<div class="field"><label>對應章節</label><div class="small" data-science-auto>'+esc(naturalReviewText(x))+'</div></div>';
+ if(reference)h+=renderStudyReference(reference);
  if(!reviewMode)h+='<div class="checkline" style="margin-top:10px"><label><input type="checkbox" data-check="progress"'+checked(f.progress)+'> 進度</label><label><input type="checkbox" data-check="graded"'+checked(f.graded)+'> 批改</label><label><input type="checkbox" data-check="corrected"'+checked(f.corrected)+'> 訂正</label></div>';
  if(reviewMode||f.corrected)h+=reasonField(f);
  return h;
@@ -2911,7 +3144,7 @@ function applyEnglishPageBookSelection(item,field,value){
  return true;
 }
 function bookPageAutoField(book,start,end){
- return'<div class="chinese-book-map-row"><div class="field"><label>對應主題</label><div class="small" data-book-topic-auto>'+esc(bookPageTopicText(book,start,end))+'</div></div><div class="field"><label>對應章節</label><div class="small" data-book-detail-auto>'+esc(bookPageDetailText(book,start,end))+'</div></div></div>'
+ return renderStudyReference('<div class="chinese-book-map-row"><div class="field"><label>對應主題</label><div class="small" data-book-topic-auto>'+esc(bookPageTopicText(book,start,end))+'</div></div><div class="field"><label>對應章節</label><div class="small" data-book-detail-auto>'+esc(bookPageDetailText(book,start,end))+'</div></div></div>');
 }
 function applyChineseItemSelection(item,value){
  var book=canonicalPageMappedBook(value),visited=[];
@@ -2943,7 +3176,7 @@ function renderNumberedScopeFields(x,bookOptions){
  var bookControl=knownOption&&!x.f.calendarEventId&&!isCalendarPageMappedBook(x)?'<select data-field="title">'+bookOptions+'</select>':'<div class="fixed-book-value">'+esc(bookTitle)+'</div>';
  var total=scope.maximum?'<div class="small">全書共 '+scope.maximum+' Unit</div>':'';
  var unit=isUnit?'Unit':'回次',startKey=isUnit?'unitStart':'round',endKey=isUnit?'unitEnd':'roundEnd';
- return'<div class="english-book-page-row"><div class="field"><label>書名</label>'+bookControl+total+'</div><div class="field compact-number"><label>起始 '+unit+'</label><input type="number" min="1"'+max+' step="1" inputmode="numeric" data-field="'+startKey+'" value="'+esc(range.start)+'"></div><div class="field compact-number"><label>結束 '+unit+'</label><input type="number" min="'+esc(range.start||'1')+'"'+max+' step="1" inputmode="numeric" data-field="'+endKey+'" value="'+esc(range.end)+'"></div></div><div class="field" style="margin-top:10px"><label>'+unit+' 對應範圍</label><div class="small" data-unit-auto>'+esc(isUnit?bookUnitText(x):numberedScopeText(x))+'</div></div>';
+ return'<div class="english-book-page-row"><div class="field"><label>書名</label>'+bookControl+total+'</div><div class="field compact-number"><label>起始 '+unit+'</label><input type="number" min="1"'+max+' step="1" inputmode="numeric" data-field="'+startKey+'" value="'+esc(range.start)+'"></div><div class="field compact-number"><label>結束 '+unit+'</label><input type="number" min="'+esc(range.start||'1')+'"'+max+' step="1" inputmode="numeric" data-field="'+endKey+'" value="'+esc(range.end)+'"></div></div>'+renderStudyReference('<div class="field"><label>'+unit+' 對應範圍</label><div class="small" data-unit-auto>'+esc(isUnit?bookUnitText(x):numberedScopeText(x))+'</div></div>');
 }
 function captureNumberedScopeInputs(card,x){
  var spec=numberedStudyScope(x),isUnit=spec&&spec.kind==='unit',start=card.querySelector('[data-field="'+(isUnit?'unitStart':'round')+'"]'),end=card.querySelector('[data-field="'+(isUnit?'unitEnd':'roundEnd')+'"]');
@@ -3018,12 +3251,12 @@ function renderExtraFields(x,reviewMode){
  }else if(isAzarGrammar(t)){
   if(isCalendarAzarGrammar(x)){
    h+='<div class="english-book-page-row"><div class="field"><label>書名</label><div class="fixed-book-value">'+esc(AZAR_GRAMMAR_BOOK_TITLE)+'</div></div><div class="field compact-number"><label>起始頁</label><input type="number" min="1" max="428" data-field="start" value="'+esc(f.start||'')+'" placeholder="起始"></div><div class="field compact-number"><label>結束頁</label><input type="number" min="1" max="428" data-field="end" value="'+esc(f.end||'')+'" placeholder="結束"></div></div>';
-   h+=calendarTopicSourceRow(x);
-   h+='<div class="field" style="margin-top:10px"><label>頁碼對應章節</label><div class="small" data-azar-auto>'+esc(azarGrammarChapterSummary(f.start,f.end))+'</div></div>';
+   h+=calendarSourceRow(x);
+   h+=renderStudyReference('<div class="field"><label>頁碼對應章節</label><div class="small" data-azar-auto>'+esc(azarGrammarChapterSummary(f.start,f.end))+'</div></div>');
    if(f.calendarAzarParseError&&!f.start)h+='<div class="small calendar-scope-error" role="alert">'+esc(f.calendarAzarParseError)+'</div>';
   }else{
    h+='<div class="english-book-page-row"><div class="field"><label>書名</label><select data-field="title">'+bookOptions+'</select></div><div class="field compact-number"><label>起始頁</label><input type="number" min="1" max="428" data-field="start" value="'+esc(f.start||'')+'"></div><div class="field compact-number"><label>結束頁</label><input type="number" min="1" max="428" data-field="end" value="'+esc(f.end||'')+'"></div></div>';
-   h+='<div class="field" style="margin-top:10px"><label>對應章節與分項</label><div class="small" data-azar-auto>'+esc(azarGrammarPageSummary(f.start,f.end))+'</div></div>';
+   h+=renderStudyReference('<div class="field"><label>對應章節與分項</label><div class="small" data-azar-auto>'+esc(azarGrammarPageSummary(f.start,f.end))+'</div></div>');
    if(!reviewMode)h+='<div class="checkline" style="margin-top:10px"><label><input type="checkbox" data-check="progress"'+checked(f.progress)+'> 進度</label><label><input type="checkbox" data-check="graded"'+checked(f.graded)+'> 批改</label><label><input type="checkbox" data-check="corrected"'+checked(f.corrected)+'> 訂正</label></div>';
    if(reviewMode||f.corrected)h+=reasonField(f);
   }
@@ -3050,10 +3283,9 @@ function renderExtraFields(x,reviewMode){
   }else{
    h+='<div class="english-book-page-row"><div class="field"><label>書名</label><select data-field="title">'+bookOptions+'</select></div><div class="field compact-number"><label>起始頁</label><input type="number" min="1" data-field="start" value="'+esc(f.start||'')+'"></div><div class="field compact-number"><label>結束頁</label><input type="number" min="1" data-field="end" value="'+esc(f.end||'')+'"></div></div>';
   }
-  h+='<div class="field" style="margin-top:10px"><label>對應章節</label><div class="small" data-grammar-auto>'+esc(grammarReviewAutoText(f))+'</div></div>';
-  if(isCalendarGrammarReview(x)&&f.calendarGrammarTitle){
-   var calendarGrammar=grammarScheduleSummary(f.calendarFocus,f.calendarRangeText);
-   h+='<div class="field" style="margin-top:10px"><label>Google Calendar 英文文法排程</label><div class="small">'+calendarGrammar.details.map(function(line){return esc(line)}).join('<br>')+'</div></div>';
+  h+=renderStudyReference('<div class="field"><label>對應章節</label><div class="small" data-grammar-auto>'+esc(grammarReviewAutoText(f))+'</div></div>');
+  if(isCalendarGrammarReview(x)&&f.calendarFocus){
+   h+='<div class="field" style="margin-top:10px"><label>重點</label><div class="small">'+esc(f.calendarFocus)+'</div></div>';
   }
   if(!reviewMode)h+='<div class="checkline" style="margin-top:10px"><label><input type="checkbox" data-check="progress"'+checked(f.progress)+'> 進度</label><label><input type="checkbox" data-check="graded"'+checked(f.graded)+'> 批改</label><label><input type="checkbox" data-check="corrected"'+checked(f.corrected)+'> 訂正</label></div>';
   if(reviewMode||f.corrected)h+=reasonField(f);
@@ -3189,7 +3421,6 @@ function renderGroupedWorkEntry(entry,index){
  var h='<div class="item grouped-work-entry '+studyItemSubjectClass(entry)+(entry.done?' done':'')+(confirmedDeferred(entry)?' deferred':'')+'" data-item="'+esc(entry.id)+'"><div class="item-top">';
  h+='<input type="checkbox" data-done'+checked(entry.done)+'>';
  h+='<div class="completion-title-block">';
- if(entry.f&&entry.f.calendarMakeup===true)h+='<div class="small">今日補做｜Google Calendar</div>';
  h+=completionDateMarkup(entry);
  h+='</div>';
  h+=renderTimeControl(entry)+'</div>';
@@ -3222,15 +3453,11 @@ function renderManagedMaterialFields(item,entry,reviewMode){
  var start=f[startKey]||'',end=f[endKey]||'',label=entry.subject+'｜'+entry.title;
  var max=entry.total<10001?' max="'+entry.total+'"':'';
  var h='<div class="english-book-page-row"><div class="field"><label>書名／教材</label><div class="fixed-book-value">'+esc(label)+'</div></div><div class="field compact-number"><label>起始'+noun+'</label><input type="number" data-catalog-range="start" min="1"'+max+' step="1" inputmode="numeric" data-field="'+startKey+'" value="'+esc(start)+'"></div><div class="field compact-number"><label>結束'+noun+'</label><input type="number" data-catalog-range="end" min="'+esc(start||1)+'"'+max+' step="1" inputmode="numeric" data-field="'+endKey+'" value="'+esc(end)+'"></div></div>';
- h+='<div class="field" style="margin-top:10px"><label>範圍對應章節</label><div class="small" data-catalog-auto>'+esc(catalogRangeText(entry,item))+'</div></div>';
+ h+=renderStudyReference('<div class="field"><label>範圍對應章節</label><div class="small" data-catalog-auto>'+esc(catalogRangeText(entry,item))+'</div></div>');
  if(entry.deleted)h+='<div class="small">此教材目錄已停用，已填寫的紀錄仍保留。</div>';
  var checks=studyItemProgress(item);if(!checks.length)checks=[{key:'progress',label:'進度',checked:!!f.progress}];
  if(!reviewMode)h+='<div class="checkline" style="margin-top:10px">'+checks.map(function(p){return'<label><input type="checkbox" data-check="'+p.key+'"'+checked(p.checked)+'> '+p.label+'</label>'}).join('')+'</div>';
  if(reviewMode||f.corrected)h+=reasonField(f);return h;
-}
-function renderCatalogMaterialSelect(){
- var select=id('catalogMaterialSelect');if(!select)return;var current=select.value;
- select.innerHTML='<option value="">請選擇教材</option>'+catalogRuntime().entries.filter(function(entry){return!entry.deleted}).map(function(entry){return'<option value="'+esc(entry.id)+'"'+selected(entry.id,current)+(entry.total>10000?' disabled':'')+'>'+esc(entry.subject+'｜'+entry.title+(entry.total>10000?'（請先設定總數）':''))+'</option>'}).join('');
 }
 function filterDisabledCatalogOptions(){
  var disabled=catalogRuntime().overrides.filter(function(entry){return entry.deleted});if(!disabled.length)return;
@@ -3344,9 +3571,10 @@ function renderGeneralFields(x){
 
 
 function renderDailyInteractiveEntry(c){
+ var description=studyCardDescription(c.description);
  var h='<div class="item '+studyItemSubjectClass(c)+(c.done?' done':'')+'" data-item="'+esc(c.id)+'" style="margin-top:10px"><div class="item-top">';
  h+='<input type="checkbox" data-done'+checked(c.done)+'>';
- if(c.locked)h+='<div class="field" style="flex:1;min-width:240px"><label>互動題種類</label><div class="fixed-book-value">'+esc(itemTitle(c))+'</div>'+(c.description?'<div class="small" style="margin-top:5px">'+esc(c.description)+'</div>':'')+completionDateMarkup(c)+'</div>';
+ if(c.locked)h+='<div class="field" style="flex:1;min-width:240px"><label>互動題種類</label><div class="fixed-book-value">'+esc(itemTitle(c))+'</div>'+(description?'<div class="small" style="margin-top:5px">'+esc(description)+'</div>':'')+completionDateMarkup(c)+'</div>';
  else h+='<div class="field" style="flex:1;min-width:240px"><label>互動題種類</label><select data-interactive-type>'+interactiveDailyTypeOptions(c.type)+'</select>'+completionDateMarkup(c)+'</div>';
  h+=renderTimeControl(c)+'</div>';
  if(c.type){
@@ -3367,7 +3595,7 @@ function renderInteractiveDailyFields(x){
 function renderCard(x,canDelete){
  var isDeferred=confirmedDeferred(x);
  var calendarMeta=x.f&&x.f.dailyWorkGroup?(x.f.dailyWorkIncludesDeferred?'已合併當日排程與延期項目':'已合併同項目範圍'):(x.f&&x.f.calendarMerged?(x.f.calendarIncludesMakeup?'已合併 Google Calendar 同模板項目｜含補做':'已合併 Google Calendar 同模板項目'):'');
- var meta=x.deferredCarry?('補做｜沿用 '+(x.deferredOriginDate||'原日期')+' 的完整項目模板'):(isCalendarMakeup(x)?'今日補做｜Google Calendar':(calendarMeta||(isInteractiveDaily(x)?'':(x.source==='preset'?(x.required?(isDeferred?'已延期至'+deferredTargetLabel(x):''):'每日選做'):(x.required?'列入原定完成度':'')))));
+ var meta=x.deferredCarry?('補做｜沿用 '+(x.deferredOriginDate||'原日期')+' 的完整項目模板'):(isCalendarMakeup(x)?'':(calendarMeta||(isInteractiveDaily(x)?'':(x.source==='preset'?(x.required?(isDeferred?'已延期至'+deferredTargetLabel(x):''):'每日選做'):(x.required?'列入原定完成度':'')))));
  if(isInteractiveStudyItem(x)){
   var optionalContext=x.deferredCarry||isCalendarMakeup(x)||calendarMeta?meta:'';
   meta='每日選做'+(optionalContext?'｜'+optionalContext:'');
@@ -3376,7 +3604,8 @@ function renderCard(x,canDelete){
  if(isCalendarNaturalIntegration(x))ensureCalendarNaturalIntegrationEntries(x,data.date);
  var noTopDone=isInteractiveDaily(x)||isCalendarNaturalIntegration(x)||isGroupedWork(x);
  var h='<div class="item '+studyItemSubjectClass(x)+(x.done?' done':'')+(isDeferred?' deferred':'')+'" data-item="'+esc(x.id)+'"><div class="item-top">'+(noTopDone?'':'<input type="checkbox" data-done'+checked(x.done)+'>')+'<div><div class="item-title">'+esc(itemTitle(x))+'</div>';
- if(x.description)h+='<div class="item-desc">'+esc(x.description)+'</div>';if(meta)h+='<div class="small">'+meta+'</div>';if(!noTopDone)h+=completionDateMarkup(x);h+='</div>';
+ var description=studyCardDescription(x.description);
+ if(description)h+='<div class="item-desc">'+esc(description)+'</div>';if(meta)h+='<div class="small">'+meta+'</div>';if(!noTopDone)h+=completionDateMarkup(x);h+='</div>';
  if(!hidesTopMinutes(x)&&!isGroupedWork(x))h+=renderTimeControl(x);
  h+='</div>';
  var fields=renderItemFields(x,false);
@@ -3437,7 +3666,7 @@ function updateStudyItemsView(focusSelected){
  id('dailyPresetBadge').hidden=!today;id('weeklyItemBadge').hidden=today;
 }
 function render(){
- renderCatalogMaterialSelect();
+ manualMaterialChoicesCache=null;
  updateManualMaterialGuidance();
  deferredCapacityCache=null;
  var choicePanel=id('englishTaskChoice'),hasChoice=hasEnglishTaskCollision(data.items),selectedChoice=resolvedEnglishTaskChoice(data);
@@ -3454,6 +3683,7 @@ function render(){
  id('dailyItemList').innerHTML=dc?daily:'<div class="small">今日沒有項目。</div>';
  id('englishReviewList').innerHTML=erc?englishReview:'<div class="small">今日尚未新增英文訂正與搭配詞整理。</div>';
  id('itemList').innerHTML=oc?other:'<div class="small">尚未新增其他項目。</div>';
+ deduplicateStudyIdentityFields(document);
  id('dailyPresetBadge').textContent=dc+' 項';
  id('englishReviewBadge').textContent=erc+' 項';
  id('itemCountBadge').textContent=oc+' 項';
@@ -3500,8 +3730,8 @@ function removeNested(target,arrayName){
  var p=parentSpecial(target,arrayName);if(!p)return false;p.f[arrayName]=p.f[arrayName].filter(function(x){return x.id!==target});return true;
 }
 function refreshAuto(card,x){
- var managed=managedMaterialForItem(x),catalogAuto=card.querySelector('[data-catalog-auto]');if(managed&&catalogAuto){catalogAuto.textContent=catalogRangeText(managed,x);return}
  if(!card||!x)return;
+ var managed=managedMaterialForItem(x),catalogAuto=card.querySelector('[data-catalog-auto]');if(managed&&catalogAuto){catalogAuto.textContent=catalogRangeText(managed,x);deduplicateStudyIdentityFields(card);return}
  var unitAuto=card.querySelector('[data-unit-auto]');if(unitAuto)unitAuto.textContent=numberedStudyScope(x)?.kind==='unit'?bookUnitText(x):numberedScopeText(x);
  if(x.type==='mathStudy'||x.type==='mathLecture'||x.type==='mathPractice'){applyMathAuto(x.f);var m=card.querySelector('[data-math-auto]');if(m)m.textContent=mathAutoText(x.f)}
  if(x.type==='extra'&&isGrammarReview(x.f&&x.f.title)){var g=card.querySelector('[data-grammar-auto]');if(g)g.textContent=grammarReviewAutoText(x.f)}
@@ -3520,6 +3750,7 @@ function refreshAuto(card,x){
   var topicMap=card.querySelector('[data-book-topic-auto]');if(topicMap)topicMap.textContent=bookPageTopicText(mappedBook,x.f.start,x.f.end);
   var detailMap=card.querySelector('[data-book-detail-auto]');if(detailMap)detailMap.textContent=bookPageDetailText(mappedBook,x.f.start,x.f.end);
  }
+ deduplicateStudyIdentityFields(card);
 }
 
 function cardPageRangeInputs(card){
@@ -3585,17 +3816,49 @@ function runTimerAction(item,control,action){
  render();
 }
 
+function refreshEnglishWordControls(target,word,itemId,index){
+ if(!target.isConnected&&itemId){
+  var current=Array.from(document.querySelectorAll('[data-word-text]')).find(function(control){
+   var card=control.closest('[data-item]');return card&&card.getAttribute('data-item')===itemId&&Number(control.getAttribute('data-index'))===index;
+  });
+  if(current)target=current;
+ }
+ if(target.value!==word.text)return;
+ var row=target.isConnected&&target.closest('.field');if(!row)return;
+ row.querySelectorAll('[data-word-pos]').forEach(function(control){control.checked=word[control.getAttribute('data-word-pos')]===true});
+ var note=row.querySelector('[data-word-reference]');if(note)note.textContent=vocabularyAutoFillStatus(word);
+}
+function loadEnglishWordDefaults(target,item,index){
+ var record=data,prefix=STORE_PREFIX,text=target.value,key=vocabularyEntryKey(text),word=item.f.words[index],wordId=word&&word.id;
+ if(!key||word.fixedCombination||word.beautifulSentences)return;
+ loadEcdictTranslations(text).then(function(translations){
+  if(!translations||STORE_PREFIX!==prefix||localStorage.getItem(ACTIVE_RECORD_PREFIX_KEY)!==prefix)return;
+  if(data&&data.date===record.date){
+   var current=findItem(item.id),entries=current&&current.f.words;
+   var entry=entries&&entries.find(function(candidate){return candidate&&candidate.id===wordId});
+   if(!entry||vocabularyEntryKey(entry.text)!==key)return;
+   if(applyVocabularyAutoFill(entry,translations)){propagateDailyWorkField(current,'words',current.f.words);persist(false)}
+   refreshEnglishWordControls(target,entry,current.id,entries.indexOf(entry));return;
+  }
+  var stored=readStoredRecord(record.date);if(!stored)return;
+  try{
+   var saved=saveLocalRecordEdit(localStorage,prefix,stored,function(latest){
+    var draft=cloneRecord(latest);return updateVocabularyWordEntries(draft,key,{autoFill:true,autoFillTranslations:translations})?draft:null;
+   });
+   if(saved&&!saved.syncConflict)queueCloudSave(saved,true);
+  }catch(error){id('status').textContent='單字已保存，ECDICT 資料尚未寫入：'+error.message}
+ }).catch(function(){
+  if(target.isConnected&&target.value===text){var note=target.closest('.field').querySelector('[data-word-reference]');if(note)note.textContent='ECDICT 暫時無法載入；單字已保存，可稍後重試或手動編輯。'}
+ });
+}
 function updateEnglishReviewWordText(target,item,completeWord){
  var words=item.f.words||(item.f.words=[]),index=Number(target.getAttribute('data-index'));
  if(!words[index]||typeof words[index]!=='object')words[index]={};
  words[index].text=target.value;
  if(completeWord){
   applyVocabularyAutoFill(words[index]);
-  var row=target.closest('.field');
-  if(row){
-   row.querySelectorAll('[data-word-pos]').forEach(function(control){control.checked=words[index][control.getAttribute('data-word-pos')]===true});
-   var note=row.querySelector('[data-word-reference]');if(note)note.textContent=vocabularyAutoFillStatus(words[index]);
-  }
+  refreshEnglishWordControls(target,words[index]);
+  loadEnglishWordDefaults(target,item,index);
  }
  propagateDailyWorkField(item,'words',words);
 }
@@ -3773,7 +4036,7 @@ function handleChange(e){
   render();persist(false);return
  }
  if(t.matches('[data-nested-type]')&&x){var nestedPointer=readTimerPointer();if(nestedPointer&&nestedPointer.itemId===x.id)pauseActiveTimer();x.type=t.value;x.done=false;x.minutes='';x.f={};x.source=t.getAttribute('data-nested-type');render();persist(false);return}
- if(t.matches('[data-word-pos]')&&x){var a=x.f.words||(x.f.words=[]),i=Number(t.getAttribute('data-index'));if(!a[i]||typeof a[i]!=='object')a[i]={};a[i][t.getAttribute('data-word-pos')]=t.checked;propagateDailyWorkField(x,'words',a);persist(false);return}
+ if(t.matches('[data-word-pos]')&&x){var a=x.f.words||(x.f.words=[]),i=Number(t.getAttribute('data-index'));if(!a[i]||typeof a[i]!=='object')a[i]={};markVocabularyManualFields(a[i],VOCABULARY_PARTS_OF_SPEECH.map(function(tag){return tag[0]}));a[i][t.getAttribute('data-word-pos')]=t.checked;propagateDailyWorkField(x,'words',a);persist(false);return}
 }
 function hideDeleteUndo(){
  if(deleteUndoTimer){clearTimeout(deleteUndoTimer);deleteUndoTimer=null}
@@ -3962,9 +4225,9 @@ function renderSubjectTimeDonut(summary){
  var aria=summary.slices.map(function(slice){return slice.subject+' '+slice.minutes+' 分鐘，占 '+slice.percent+'%'}).join('；');
  var arcs=subjectTimeDonutSlices(summary),circles='',labels='';
  arcs.forEach(function(slice,index){
-  var fontSize=(slice.endPercent-slice.startPercent)<6?10.5:13;
+  var fontSize=16;
   circles+='<path class="subject-time-slice" data-subject-time-index="'+index+'" d="'+subjectTimeArcPath(slice)+'" fill="none" stroke="'+slice.color+'" stroke-width="30" tabindex="0" role="button" aria-label="'+esc(slice.subject)+' '+slice.minutes+' 分鐘，占 '+slice.percent+'%"></path>';
-  labels+='<text class="subject-time-ring-label" x="'+slice.labelX+'" y="'+slice.labelY+'" font-size="'+fontSize+'">'+SUBJECT_TIME_SHORT_LABELS[slice.subject]+'</text>';
+  if(slice.endPercent-slice.startPercent>=6)labels+='<text class="subject-time-ring-label" x="'+slice.labelX+'" y="'+slice.labelY+'" font-size="'+fontSize+'">'+SUBJECT_TIME_SHORT_LABELS[slice.subject]+'</text>';
  });
  var svg='<svg class="subject-time-ring" viewBox="0 0 160 160"><circle class="subject-time-track" cx="80" cy="80" r="56" fill="none" stroke-width="30"></circle>'+circles+labels+'</svg>';
  chart.innerHTML='<div class="subject-time-chart" role="group" aria-label="今日各科完成時間佔比：'+esc(aria)+'">'+svg+center+'</div>';
@@ -4055,6 +4318,9 @@ function validate(options){
 }
 function persist(show,options){
  if(!data)return false;
+ if(guestScopeConfirmationPending&&!cloudUser&&STORE_PREFIX===storagePrefixForUser(null)){
+  try{store.setItem(ACTIVE_RECORD_PREFIX_KEY,STORE_PREFIX);guestScopeConfirmationPending=false}catch(error){}
+ }
  if(data.storageIssue){updateStorageRecoveryUI();if(show)id('status').textContent=data.date+' 的原始紀錄無法讀取；為避免覆蓋，修復前不會儲存。';return false}
  ensureEnglishReviewWordEntryIds(data);readHeader();
  var previous=readStoredRecord(data.date);
@@ -4077,14 +4343,14 @@ function persist(show,options){
   relinkDailyWorkSourceItems(data.items);
  var ok=false;
  try{ok=writeStoredRecord(data)&&sameStudyContent(readStoredRecord(data.date),data)}catch(e){}
- if(ok)dataLoadBase=cloneRecord(data);
+ if(ok){dataLoadBase=cloneRecord(readStoredRecord(data.date)||data);window.dispatchEvent(new Event('study-records-changed'))}
  if(ok&&(changed||data.localDirty)&&!data.syncConflict)queueCloudSave(data);
  if(ok)updateCloudStatusBadge();
  if(show)id('status').textContent=ok?(cloudUser?(data.syncConflict?'已儲存本機，但此日期有同步衝突；未覆蓋雲端。':(changed?'已儲存 '+data.date+'；正在同步雲端。':'紀錄未變更，不需重新同步。')):(storagePersistent?'已儲存 '+data.date+' 的本機紀錄。':'已暫存；目前環境可能無法永久保存。')):'儲存失敗，請先不要關閉頁面。';return ok;
 }
 function load(options){
  localVisibleRefreshPending=false;
- var opts=options||{},d=id('studyDate').value;pendingDeferredTargets={};deferredLimitPrompt=null;data=loadData(d);dataLoadBase=cloneRecord(data);updateCloudConflictUI(data.syncConflict?d:'');updateStorageRecoveryUI();id('weekdayText').textContent=weekdays[parseDate(d).getDay()];
+ var opts=options||{},d=id('studyDate').value;pendingDeferredTargets={};deferredLimitPrompt=null;data=loadData(d);dataLoadBase=cloneRecord(readStoredRecord(d)||data);updateCloudConflictUI(data.syncConflict?d:'');updateStorageRecoveryUI();id('weekdayText').textContent=weekdays[parseDate(d).getDay()];
  if(data.storageIssue){writeHeader();render();id('status').textContent=d+' 的本機紀錄無法讀取；原始內容已保留，修復前不會覆蓋。';return}
  var changed=false;if(!opts.skipPresetReconcile)changed=ensureDailyPresets(data,d);if(ensureEnglishReviewWordEntryIds(data))changed=true;writeHeader();render();if(changed&&!opts.cacheOnly)persist(false);
  if(cloudUser&&!cloudBootstrapPending&&!opts.skipCloudRead)cloudPullDate(d,false);
@@ -4491,10 +4757,16 @@ document.addEventListener('focusout',function(event){
  setTimeout(function(){if(preserveVocabularyNode)return;applyPendingVisibleCloudRefresh();refreshVisibleRecordFromLocalChange()},0)
 });
 window.addEventListener('storage',function(event){if(event.key&&event.key.indexOf(STORE_PREFIX)===0)catalogRuntimeCache=null;if(event.storageArea===localStorage&&event.key===materialSelectionKey(STORE_PREFIX)){updateManualMaterialGuidance();render()}if(data&&event.storageArea===localStorage&&event.key===STORE_PREFIX+data.date)refreshVisibleRecordFromLocalChange()});
+window.addEventListener('storage',schedulePendingCloudSync);
+window.addEventListener('study-records-changed',schedulePendingCloudSync);
+window.addEventListener('focus',schedulePendingCloudSync);
 window.addEventListener('pageshow',function(event){if(event.persisted){localVisibleRefreshPending=true;refreshVisibleRecordFromLocalChange()}});
 window.addEventListener('online',function(){retryDirtyCloudRecordsOnReconnect().catch(function(e){cloudSetMessage('網路恢復後重試失敗：'+(e&&e.message?e.message:String(e)),false)})});
 window.addEventListener('offline',function(){cloudSetMessage('目前離線；新紀錄已保存在本機，恢復連線後會立即重試。',false)});
 window.addEventListener('pagehide',function(){if(data)persist(false)});
-document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'&&data)persist(false);else if(document.visibilityState==='visible')refreshVisibleRecordFromLocalChange()});
-id('studyDate').value=dateString(new Date());updateImportBackupButton();initCloud();
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'&&data)persist(false);else if(document.visibilityState==='visible'){refreshVisibleRecordFromLocalChange();schedulePendingCloudSync()}});
+pendingSyncDialog=initializePendingSyncDialog(id('cloudPendingDialog'),pendingSyncAction,resolvePendingSync);
+id('cloudPendingDetailsBtn').addEventListener('click',function(event){event.preventDefault();event.stopPropagation();refreshPendingSyncDetails();pendingSyncDialog.open()});
+id('studyDate').value=requestedStudyDate(window.location.search)||dateString(new Date());updateImportBackupButton();initCloud();
 setInterval(periodicCloudSave,PERIODIC_CLOUD_SAVE_MS);
+setInterval(schedulePendingCloudSync,5000);

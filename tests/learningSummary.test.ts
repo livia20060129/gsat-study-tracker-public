@@ -302,7 +302,7 @@ test('summary page has one global week/month switch and no separate total-hours 
   const html = readFileSync(new URL('../summary.html', import.meta.url), 'utf8');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const config = readFileSync(new URL('../vite.config.ts', import.meta.url), 'utf8');
-  const sharedHeaderActions = readFileSync(new URL('../src/header-action-link.css', import.meta.url), 'utf8');
+  const sharedHeaderActions = readFileSync(new URL('../public/navigation.css', import.meta.url), 'utf8');
   assert.equal((html.match(/id="summaryModeSwitch"/g) || []).length, 1);
   assert.equal((html.match(/data-summary-mode=/g) || []).length, 2);
   assert.match(html, /id="summaryTotalCompletion"/);

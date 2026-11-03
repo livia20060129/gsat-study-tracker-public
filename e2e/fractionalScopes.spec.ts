@@ -1,3 +1,5 @@
+import { expandTodoCard } from './helpers/todoCard.ts';
+import { navigateSite, selectStudyDate } from './helpers/siteNavigation.ts';
 import { expect, test } from '@playwright/test';
 
 const prefix = 'study-v11:guest:';
@@ -24,8 +26,7 @@ test('split Unit and round cards use pages across books and subjects while unspl
     )) }));
   }, { prefix, date });
   await page.reload();
-  await page.locator('#studyDate').fill(date);
-  await page.locator('#studyDate').dispatchEvent('change');
+  await selectStudyDate(page, date);
   for (const [id, field] of [['unlock', 'unitStart'], ['ace', 'round'], ['physics', 'round'], ['math', 'unitStart']]) {
     const whole = page.locator(`[data-item="${id}-false"]`);
     const split = page.locator(`[data-item="${id}-true"]`);
@@ -40,8 +41,7 @@ test('split Unit and round cards use pages across books and subjects while unspl
     expect(await split.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true);
   }
   await page.reload();
-  await page.locator('#studyDate').fill(date);
-  await page.locator('#studyDate').dispatchEvent('change');
+  await selectStudyDate(page, date);
   for (const id of ['unlock', 'ace', 'physics', 'math']) {
     const split = page.locator(`[data-item="${id}-true"]`);
     await expect(split.locator('[data-field="start"]')).toHaveValue('15');
@@ -67,6 +67,7 @@ test('split todo pages round-trip with original cards, preserve Unit metadata, a
   }, { prefix, date });
   await page.reload();
   const todo = page.locator('.todo-card').filter({ has: page.locator('[data-item-id="split-todo"]') });
+  await expandTodoCard(todo);
   await expect(todo.locator('[data-todo-range="start"]')).toHaveValue('14');
   await expect(todo).toContainText('起始頁');
   await expect(todo).not.toContainText('起始 Unit');
@@ -75,19 +76,18 @@ test('split todo pages round-trip with original cards, preserve Unit metadata, a
   await todo.locator('[data-todo-range="end"]').fill('25');
   await todo.locator('[data-todo-range="end"]').blur();
   await page.goto('/');
-  await page.locator('#studyDate').fill(date);
-  await page.locator('#studyDate').dispatchEvent('change');
+  await selectStudyDate(page, date);
   const card = page.locator('[data-item="split-todo"]');
   await expect(card.locator('[data-field="start"]')).toHaveValue('15');
   await expect(card.locator('[data-field="end"]')).toHaveValue('25');
   await card.locator('[data-field="end"]').fill('24');
   await card.locator('[data-field="end"]').blur();
-  await page.getByRole('link', { name: '待辦事項', exact: true }).click();
+  await navigateSite(page, 'todo.html');
+  await expandTodoCard(todo);
   await expect(todo.locator('[data-todo-range="end"]')).toHaveValue('24');
   await todo.locator('.todo-complete').click();
   await page.goto('/');
-  await page.locator('#studyDate').fill(date);
-  await page.locator('#studyDate').dispatchEvent('change');
+  await selectStudyDate(page, date);
   await expect(card.locator('[data-done]')).toBeChecked();
   await expect(card.locator('[data-field="start"]')).toHaveValue('15');
   await expect(card.locator('[data-field="end"]')).toHaveValue('24');

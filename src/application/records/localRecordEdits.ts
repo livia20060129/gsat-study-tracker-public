@@ -29,6 +29,6 @@ export function saveLocalRecordEdit(
     throw new Error(`同一欄位已在其他頁籤更新：${fields}。請重新讀取確認後再儲存，輸入草稿仍保留。`);
   }
   const edited = markRecordLocallyEdited(merged.record, loaded.record);
-  if (!repository.save(edited)) throw new Error('無法儲存本機紀錄。請確認瀏覽器儲存空間及權限，輸入仍保留。');
+  if (!repository.save(edited)) throw new Error(`無法儲存本機紀錄：${repository.saveError() || '寫入失敗。'} 輸入仍保留，這次修改尚未儲存。`);
   return edited;
 }

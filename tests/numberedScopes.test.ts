@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { renderStudyReference } from '../src/ui/studyReference.ts';
 import { createContext, runInContext } from 'node:vm';
 import { parseCalendarTask } from '../src/calendar/calendarBridge.ts';
 import { numberedScopesInText, numberedStudyScope, usesSharedNumberedTemplate, usesSharedPageTemplate } from '../src/data/numberedScopes.ts';
@@ -87,7 +88,7 @@ test('repeating a scope in the title and structured note creates only one number
 
 test('the real shared renderer uses Unit or round controls, never page fields', () => {
   const runtime = readFileSync(new URL('../src/legacy-app.ts', import.meta.url), 'utf8');
-  const context = createContext({ numberedStudyScope, usesSharedNumberedTemplate, usesSharedPageTemplate, bookUnitRange, bookUnitText, managedMaterialForItem: () => null,
+  const context = createContext({ renderStudyReference, numberedStudyScope, usesSharedNumberedTemplate, usesSharedPageTemplate, bookUnitRange, bookUnitText, managedMaterialForItem: () => null,
     numberedScopeText, studyItemProgress, isProgressOnlyStudyItem, isGroupedWork: () => false, isCalendarPageMappedBook: () => false,
     esc: (value: unknown) => String(value ?? ''), checked: (value: unknown) => value ? ' checked' : '',
     reasonField: () => '', readingOptions: () => '',

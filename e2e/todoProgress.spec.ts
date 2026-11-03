@@ -1,3 +1,5 @@
+import { expandTodoCard } from './helpers/todoCard.ts';
+import { selectStudyDate } from './helpers/siteNavigation.ts';
 import { expect, test } from '@playwright/test';
 
 const prefix = 'study-v11:guest:';
@@ -39,6 +41,7 @@ test('todo shows the same progress checkboxes as sparse original templates on mo
       await expect(todo).toHaveCount(0);
       continue;
     }
+    await expandTodoCard(todo);
     const actual = await todo.locator('[data-todo-progress]').evaluateAll(inputs => inputs.map(input => (input as HTMLElement).dataset.todoProgress));
     expect(actual).toEqual(expectedProgressKeys(template.id));
     for (const input of await todo.locator('[data-todo-progress]').all()) await expect(input).not.toBeChecked();
@@ -48,8 +51,7 @@ test('todo shows the same progress checkboxes as sparse original templates on mo
   ), { prefix, date })).toBe(true);
 
   await page.goto('/');
-  await page.locator('#studyDate').fill(date);
-  await page.locator('#studyDate').dispatchEvent('change');
+  await selectStudyDate(page, date);
   for (const template of templates) {
     const original = page.locator(`#dailyItemList [data-item="${template.id}"]`);
     const keys = await original.locator('[data-check]').evaluateAll(inputs => inputs.map(input => (input as HTMLElement).dataset.check));
@@ -79,8 +81,7 @@ test('progress grading and correction sync both ways for a merged source without
   await page.reload();
   const originalPage = await context.newPage();
   await originalPage.goto('/');
-  await originalPage.locator('#studyDate').fill(date);
-  await originalPage.locator('#studyDate').dispatchEvent('change');
+  await selectStudyDate(originalPage, date);
   const original = originalPage.locator('#dailyItemList [data-item]').filter({
     has: originalPage.locator('input[data-field="start"][value="10"]'),
   }).last();
@@ -88,6 +89,7 @@ test('progress grading and correction sync both ways for a merged source without
     has: originalPage.locator('input[data-field="start"][value="20"]'),
   }).last();
   const todo = page.locator('.todo-card').filter({ has: page.locator('[data-item-id="progress-source-10"]') });
+  await expandTodoCard(todo);
   for (const key of ['progress', 'graded', 'corrected']) {
     await todo.locator(`[data-todo-progress="${key}"]`).check();
     await expect(original.locator(`[data-check="${key}"]`)).toBeChecked();
@@ -99,6 +101,7 @@ test('progress grading and correction sync both ways for a merged source without
   await original.locator('[data-check="graded"]').uncheck();
   await expect(todo.locator('[data-todo-progress="graded"]')).not.toBeChecked();
   await page.reload();
+  await expandTodoCard(todo);
   await expect(todo.locator('[data-todo-progress="progress"]')).toBeChecked();
   await expect(todo.locator('[data-todo-progress="graded"]')).not.toBeChecked();
   await expect(todo.locator('[data-todo-progress="corrected"]')).toBeChecked();

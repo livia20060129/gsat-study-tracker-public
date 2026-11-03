@@ -12,6 +12,7 @@ import {
 export interface CompletedStudyTimeEntry {
   key: string;
   date: string;
+  scheduledDate?: string;
   subject: SubjectTimeSubject;
   itemLabel: string;
   minutes: number;
@@ -151,6 +152,13 @@ function completedTimeDate(item: StudyItem, fallbackDate: string): string {
   return fallbackDate;
 }
 
+function scheduledTimeDate(item: StudyItem, fallbackDate: string): string {
+  const originDates = Array.isArray(item.deferredOriginDates) ? item.deferredOriginDates : [];
+  const origins = [item.deferredOriginDate, ...originDates]
+    .map(text).filter(value => /^\d{4}-\d{2}-\d{2}$/.test(value)).sort();
+  return origins[0] ?? fallbackDate;
+}
+
 function addCompletedTime(
   output: CompletedStudyTimeEntry[],
   recordDate: string,
@@ -160,6 +168,7 @@ function addCompletedTime(
   fallbackSubject?: SubjectTimeSubject,
   fallbackLabel = '',
   childKey = '',
+  scheduledDate = recordDate,
 ): void {
   if (minutes <= 0) return;
   const subject = normalizedTimeSubject(item, fallbackSubject);
@@ -167,6 +176,7 @@ function addCompletedTime(
   output.push({
     key: stableTimeKey(recordDate, item, itemLabel, childKey),
     date: completionDate,
+    scheduledDate,
     subject,
     itemLabel,
     minutes,
@@ -180,42 +190,44 @@ function collectCompletedTime(
   fallbackSubject?: SubjectTimeSubject,
   fallbackLabel = '',
   inheritedCompletionDate?: string,
+  inheritedScheduledDate?: string,
 ): void {
   if (isConfirmedDeferred(item)) return;
   const itemSubject = normalizedTimeSubject(item, fallbackSubject);
   const itemLabel = studyItemTimeLabel(item, fallbackLabel);
   const completionDate = completedTimeDate(item, inheritedCompletionDate ?? recordDate);
+  const scheduledDate = scheduledTimeDate(item, inheritedScheduledDate ?? recordDate);
   const grouped = groupedChildren(item);
   if (grouped.length) {
     grouped.forEach(function collectGrouped(child): void {
-      collectCompletedTime(child, recordDate, output, itemSubject, itemLabel, completionDate);
+      collectCompletedTime(child, recordDate, output, itemSubject, itemLabel, completionDate, scheduledDate);
     });
     return;
   }
   const interactive = childItems(item, 'interactiveEntries');
   if (interactive.length) {
     interactive.forEach(function collectInteractive(child): void {
-      collectCompletedTime(child, recordDate, output, itemSubject, itemLabel, completionDate);
+      collectCompletedTime(child, recordDate, output, itemSubject, itemLabel, completionDate, scheduledDate);
     });
     return;
   }
   const integration = childItems(item, 'calendarIntegrationEntries');
   if (integration.length) {
     integration.forEach(function collectIntegration(child): void {
-      collectCompletedTime(child, recordDate, output, itemSubject, itemLabel, completionDate);
+      collectCompletedTime(child, recordDate, output, itemSubject, itemLabel, completionDate, scheduledDate);
     });
     return;
   }
   if (isSaturdayMakeup(item)) {
     childItems(item, 'makeupEntries').forEach(function collectMakeup(child): void {
-      collectCompletedTime(child, recordDate, output, itemSubject, itemLabel, completionDate);
+      collectCompletedTime(child, recordDate, output, itemSubject, itemLabel, completionDate, scheduledDate);
     });
     return;
   }
   const reviewEntries = childItems(item, 'reviewEntries');
   if (reviewEntries.length) {
     reviewEntries.forEach(function collectReview(child): void {
-      collectCompletedTime(child, recordDate, output, itemSubject, itemLabel, completionDate);
+      collectCompletedTime(child, recordDate, output, itemSubject, itemLabel, completionDate, scheduledDate);
     });
     return;
   }
@@ -235,6 +247,7 @@ function collectCompletedTime(
         itemSubject,
         label,
         `magazine:${text(entry?.id) || `${label}:${index}`}`,
+        scheduledDate,
       );
     });
     return;
@@ -247,6 +260,8 @@ function collectCompletedTime(
     numericMinutes(item.minutes),
     fallbackSubject,
     fallbackLabel,
+    '',
+    scheduledDate,
   );
 }
 
@@ -268,7 +283,10 @@ export function completedStudyTimeEntries(records: StudyRecord[]): CompletedStud
       const isNewerEquivalent = existing
         && candidate.minutes === existing.minutes
         && candidate.date > existing.date;
-      if (hasMoreMinutes || isNewerEquivalent) unique.set(candidate.key, candidate);
+      const winner = hasMoreMinutes || isNewerEquivalent ? candidate : existing!;
+      const scheduledDate = [existing?.scheduledDate, candidate.scheduledDate]
+        .filter((date): date is string => Boolean(date)).sort()[0];
+      unique.set(candidate.key, { ...winner, scheduledDate });
     }
   }
   return [...unique.values()].sort(function sortByDateAndKey(left, right): number {

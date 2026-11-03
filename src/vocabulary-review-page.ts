@@ -1,5 +1,7 @@
 import './vocabulary-review.css';
+import { animateDisclosureReplacement, captureDisclosure } from './ui/disclosureMotion.ts';
 import { saveLocalRecordEdit } from './application/records/localRecordEdits.ts';
+import { ACTIVE_RECORD_PREFIX_KEY } from './storage/local.ts';
 import { DictionaryPreview } from './ui/dictionaryPreview.ts';
 import { VocabularySpeech, type VocabularyAccent } from './ui/vocabularySpeech.ts';
 import { readMaterialProgressRecords } from './study/materialProgress.ts';
@@ -19,8 +21,9 @@ import {
 } from './study/vocabularyReview.ts';
 import { vocabularyTranslationGroups } from './study/vocabularyTranslationCounts.ts';
 import { vocabularyMeaningGroups } from './study/vocabularyMeaningGroups.ts';
-import { vocabularyPrintDocument } from './study/vocabularyPrint.ts';
 import { vocabularyReference } from './study/vocabularyAutoFill.ts';
+import { loadEcdictTranslations } from './study/ecdictLookup.ts';
+import { vocabularyMeaningStarKeys, vocabularyWordTokens } from './study/vocabularyStars.ts';
 import type { StudyRecord, VocabularyTranslations } from './types.ts';
 
 const GROUPING_MODES = ['alphabetical', 'partOfSpeech', 'gsatLevel'] as const;
@@ -35,8 +38,13 @@ let groupingMode: VocabularyGroupingMode = 'alphabetical';
 let searchText = '';
 let translationsVisible = true;
 const editingEntryKeys = new Set<string>();
+const annotatingEntryKeys = new Set<string>();
 const dictionaryPreviews = new Set<DictionaryPreview>();
 const speech = new VocabularySpeech(document.getElementById('vocabularySpeechStatus')!);
+let vocabularyPointerActive = false;
+let vocabularyRefreshPending = false;
+let vocabularyEnrichmentPending = false;
+let vocabularyRefreshTimer: ReturnType<typeof setTimeout> | undefined;
 window.addEventListener('pagehide', function stopSpeech(): void { speech.cancel(); });
 
 function element<T extends HTMLElement>(id: string): T {
@@ -74,11 +82,50 @@ function filteredEntries(): VocabularyReviewEntry[] {
   ));
 }
 
+function createStarButton(entry: VocabularyReviewEntry, key: string, label: string): HTMLButtonElement {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'vocabulary-star';
+  button.dataset.starKey = key;
+  button.setAttribute('aria-label', label);
+  button.setAttribute('aria-pressed', String(entry.vocabularyStars?.[key] === true));
+  button.title = label;
+  button.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9Z"/></svg>';
+  return button;
+}
+
+function appendWordText(container: HTMLElement, entry: VocabularyReviewEntry, interactive: boolean): void {
+  let end = 0;
+  for (const token of vocabularyWordTokens(entry.text)) {
+    container.append(document.createTextNode(entry.text.slice(end, token.start)));
+    const marked = entry.vocabularyStars?.[token.key] === true;
+    if (interactive) {
+      const button = createStarButton(entry, token.key, `標註英文單字「${token.text}」`);
+      button.classList.add('vocabulary-token');
+      button.prepend(document.createTextNode(token.text));
+      container.append(button);
+    } else {
+      const span = document.createElement('span');
+      span.textContent = token.text;
+      span.classList.toggle('is-word-starred', marked);
+      container.append(span);
+    }
+    end = token.end;
+  }
+  container.append(document.createTextNode(entry.text.slice(end)));
+}
+
 function createWordLink(entry: VocabularyReviewEntry): HTMLElement {
+  if (annotatingEntryKeys.has(entry.key)) {
+    const tokens = document.createElement('span');
+    tokens.className = 'vocabulary-word-text vocabulary-token-list';
+    appendWordText(tokens, entry, true);
+    return tokens;
+  }
   if (!entry.lookupUrl) {
     const text = document.createElement('span');
     text.className = 'vocabulary-word-text';
-    text.textContent = entry.text;
+    appendWordText(text, entry, false);
     return text;
   }
   const link = document.createElement('a');
@@ -86,7 +133,7 @@ function createWordLink(entry: VocabularyReviewEntry): HTMLElement {
   link.href = entry.lookupUrl;
   link.target = '_blank';
   link.rel = 'noopener noreferrer';
-  link.textContent = entry.text;
+  appendWordText(link, entry, false);
   link.title = `在 Oxford Learner's Dictionaries 查詢「${entry.lookupQuery}」`;
   link.setAttribute('aria-label', `${entry.text}；在 Oxford Learner's Dictionaries 開啟查詢結果`);
   return link;
@@ -96,9 +143,10 @@ function saveEntryEditsResult(entry: VocabularyReviewEntry, edits: VocabularyWor
   let changed = false;
   try {
     for (const [index, base] of loadedRecords.entries()) {
-      const edited = saveLocalRecordEdit(localStorage, activeRecordPrefix, base, function applyWordEdit(record): StudyRecord | null {
-        const draft = cloneRecord(record);
-        return updateVocabularyWordEntries(draft, entry.key, edits) ? draft : null;
+      const draft = cloneRecord(base);
+      if (!updateVocabularyWordEntries(draft, entry.key, edits)) continue;
+      const edited = saveLocalRecordEdit(localStorage, activeRecordPrefix, base, function applyWordEdit(): StudyRecord {
+        return draft;
       });
       if (!edited) continue;
       changed = true;
@@ -121,6 +169,33 @@ function saveEntryEditsResult(entry: VocabularyReviewEntry, edits: VocabularyWor
 
 function saveEntryEdits(entry: VocabularyReviewEntry, edits: VocabularyWordEdits): boolean {
   return saveEntryEditsResult(entry, edits) === 'saved';
+}
+
+function renderEnrichedEntries(): void {
+  if (vocabularyPointerActive) { vocabularyEnrichmentPending = true; return; }
+  const focused = document.activeElement as HTMLInputElement | null;
+  const rowKey = focused?.closest<HTMLElement>('[data-entry-key]')?.dataset.entryKey;
+  const attribute = focused && [...focused.attributes].find(value => value.name.startsWith('data-vocabulary-'));
+  const ariaLabel = focused?.getAttribute('aria-label');
+  const selection = focused?.type === 'text' ? [focused.selectionStart, focused.selectionEnd] : null;
+  renderEntries();
+  if (!rowKey || !attribute) return;
+  const selector = ariaLabel ? `[aria-label="${CSS.escape(ariaLabel)}"]` : `[${attribute.name}="${CSS.escape(attribute.value)}"]`;
+  const replacement = element('vocabularyList').querySelector<HTMLInputElement>(`[data-entry-key="${CSS.escape(rowKey)}"] ${selector}`);
+  replacement?.focus({ preventScroll: true });
+  if (replacement?.type === 'text' && selection) replacement.setSelectionRange(selection[0], selection[1]);
+}
+
+async function fillEcdictEntry(key: string): Promise<void> {
+  const prefix = activeRecordPrefix;
+  try {
+    const translations = await loadEcdictTranslations(key);
+    if (!translations || prefix !== activeRecordPrefix) return;
+    const entry = allEntries.find(candidate => candidate.key === key);
+    if (entry && saveEntryEdits(entry, { autoFill: true, autoFillTranslations: translations })) renderEnrichedEntries();
+  } catch {
+    if (prefix === activeRecordPrefix) element('vocabularySaveStatus').textContent = '英文已儲存；ECDICT 暫時無法載入，可稍後重試或手動編輯。';
+  }
 }
 
 function selectedPartsOfSpeech(container: HTMLElement): Set<VocabularyPartOfSpeechField> {
@@ -292,7 +367,8 @@ function createReadonlyTranslations(entry: VocabularyReviewEntry): HTMLElement {
       heading.textContent = partOfSpeech;
       group.append(heading);
     }
-    for (const meaning of meanings) {
+    const starKeys = vocabularyMeaningStarKeys(partOfSpeech, meanings);
+    for (const [index, meaning] of meanings.entries()) {
       const translation = document.createElement('p');
       translation.className = 'vocabulary-meaning';
       const answer = document.createElement('span');
@@ -302,6 +378,7 @@ function createReadonlyTranslations(entry: VocabularyReviewEntry): HTMLElement {
       mask.className = 'vocabulary-meaning-mask';
       mask.textContent = '－';
       translation.append(answer, mask);
+      if (meaning) translation.append(createStarButton(entry, starKeys[index], `標註 ${partOfSpeech || '中文'} 第 ${index + 1} 筆翻譯`));
       group.append(translation);
     }
     container.append(group);
@@ -335,6 +412,7 @@ function createVocabularyRow(entry: VocabularyReviewEntry): HTMLElement {
   const article = document.createElement('article');
   article.className = 'vocabulary-row';
   article.dataset.entryKey = entry.key;
+  article.classList.toggle('is-card-starred', entry.vocabularyStars?.card === true);
 
   const identity = document.createElement('div');
   identity.className = 'vocabulary-identity';
@@ -363,7 +441,22 @@ function createVocabularyRow(entry: VocabularyReviewEntry): HTMLElement {
   editButton.textContent = editingEntryKeys.has(entry.key) ? '完成' : '編輯';
   editButton.setAttribute('aria-expanded', String(editingEntryKeys.has(entry.key)));
   editButton.setAttribute('aria-label', `${editButton.textContent}「${entry.text}」`);
-  identityHead.append(editButton);
+  const actions = document.createElement('div');
+  actions.className = 'vocabulary-card-actions';
+  const cardStar = createStarButton(entry, 'card', `標註整張卡片「${entry.text}」`);
+  cardStar.classList.add('vocabulary-card-star');
+  actions.append(cardStar);
+  if (vocabularyWordTokens(entry.text).length) {
+    const annotate = document.createElement('button');
+    annotate.type = 'button';
+    annotate.className = 'vocabulary-edit-button vocabulary-annotate-button';
+    annotate.dataset.annotateEntry = entry.key;
+    annotate.textContent = annotatingEntryKeys.has(entry.key) ? '結束標註' : '個別標註';
+    annotate.setAttribute('aria-pressed', String(annotatingEntryKeys.has(entry.key)));
+    actions.append(annotate);
+  }
+  actions.append(editButton);
+  identityHead.append(actions);
   identity.append(identityHead);
   const kinds = document.createElement('div');
   kinds.className = 'vocabulary-kinds';
@@ -521,7 +614,18 @@ function renderEntries(): void {
   for (const button of document.querySelectorAll<HTMLButtonElement>('[data-export-vocabulary]')) button.disabled = entries.length === 0;
 }
 
-function exportVocabulary(withTranslations: boolean): void {
+let pdfFontLoad: Promise<ArrayBuffer> | undefined;
+function vocabularyPdfFont(): Promise<ArrayBuffer> {
+  if (!pdfFontLoad) {
+    pdfFontLoad = fetch(new URL('./fonts/NotoSansTC-Regular.ttf', document.baseURI)).then(function readFont(response): Promise<ArrayBuffer> {
+      if (!response.ok) throw new Error('PDF font unavailable');
+      return response.arrayBuffer();
+    }).catch(function retryFont(error): never { pdfFontLoad = undefined; throw error; });
+  }
+  return pdfFontLoad;
+}
+
+async function exportVocabulary(withTranslations: boolean): Promise<void> {
   let entries = filteredEntries();
   if (!entries.length) return;
   if (groupingMode === 'gsatLevel') entries = vocabularyLevelGroups(entries).flatMap(group => group.entries);
@@ -530,14 +634,27 @@ function exportVocabulary(withTranslations: boolean): void {
     ordered.push(...entries.filter(entry => entry.tags.length === 0));
     entries = [...new Map(ordered.map(entry => [entry.key, entry])).values()];
   }
-  const html = vocabularyPrintDocument(entries, activeContentKind, withTranslations);
-  const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
-  const link = document.createElement('a');
-  link.href = url;
-  link.target = '_blank';
-  link.rel = 'noopener noreferrer';
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  const format = element<HTMLSelectElement>('vocabularyExportFormat').value;
+  const buttons = [...document.querySelectorAll<HTMLButtonElement>('[data-export-vocabulary]')];
+  buttons.forEach(button => { button.disabled = true; });
+  try {
+    let blob: Blob;
+    if (format === 'docx') {
+      const { vocabularyDocxDocument } = await import('./study/vocabularyDocx.ts');
+      blob = await vocabularyDocxDocument(entries, activeContentKind, withTranslations);
+    } else {
+      const { vocabularyPdfDocument } = await import('./study/vocabularyPdf.ts');
+      const bytes = await vocabularyPdfDocument(entries, activeContentKind, withTranslations, await vocabularyPdfFont());
+      blob = new Blob([Uint8Array.from(bytes)], { type: 'application/pdf' });
+    }
+    const url = URL.createObjectURL(blob), link = document.createElement('a');
+    link.href = url; link.download = `英文${activeContentKind}表_${withTranslations ? '有' : '無'}翻譯.${format === 'docx' ? 'docx' : 'pdf'}`;
+    document.body.append(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  } catch {
+    element('vocabularyError').textContent = `${format === 'docx' ? 'DOCX' : 'PDF'} 匯出失敗，請稍後重試；原本的單字資料仍保留。`;
+    element('vocabularyError').hidden = false;
+  } finally { buttons.forEach(button => { button.disabled = filteredEntries().length === 0; }); }
 }
 
 function render(): void {
@@ -548,15 +665,25 @@ function render(): void {
   element<HTMLElement>('totalVocabularyCount').textContent = `${allEntries.length} 個不重複單字／片語`;
 }
 
-function load(): void {
+function load(options: { background?: boolean } = {}): void {
   try {
     const result = readMaterialProgressRecords(localStorage);
+    const nextEntries = vocabularyReviewEntries(result.records);
+    const scopeChanged = activeRecordPrefix !== result.prefix;
+    const changed = scopeChanged || JSON.stringify(nextEntries) !== JSON.stringify(allEntries);
+    if (options.background && changed && !scopeChanged && (vocabularyPointerActive || editingEntryKeys.size > 0)) {
+      vocabularyRefreshPending = true;
+      return;
+    }
     loadedRecords = result.records;
     activeRecordPrefix = result.prefix;
-    allEntries = vocabularyReviewEntries(loadedRecords);
+    allEntries = nextEntries;
+    if (scopeChanged) { editingEntryKeys.clear(); annotatingEntryKeys.clear(); speech.cancel(); }
+    vocabularyRefreshPending = false;
     const source = result.prefix.startsWith('study-v11:user:') ? '目前登入帳號的本機同步資料' : '訪客本機資料';
     element<HTMLParagraphElement>('vocabularySource').textContent = `${source}｜共讀取 ${result.records.length} 天紀錄`;
-    element<HTMLParagraphElement>('vocabularyError').hidden = true;
+    if (!options.background || scopeChanged) element<HTMLParagraphElement>('vocabularyError').hidden = true;
+    if (options.background && !changed) return;
   } catch {
     loadedRecords = [];
     activeRecordPrefix = '';
@@ -568,6 +695,28 @@ function load(): void {
   }
   render();
 }
+
+function scheduleVocabularyRefresh(): void {
+  if (vocabularyRefreshTimer) clearTimeout(vocabularyRefreshTimer);
+  vocabularyRefreshTimer = setTimeout(function applyBackgroundVocabulary(): void {
+    vocabularyRefreshTimer = undefined;
+    load({ background: true });
+  }, 180);
+}
+
+element('vocabularyList').addEventListener('pointerdown', function beginVocabularyInteraction(): void { vocabularyPointerActive = true; });
+for (const event of ['pointerup', 'pointercancel']) document.addEventListener(event, function finishVocabularyInteraction(): void {
+  setTimeout(function afterVocabularyClick(): void {
+    vocabularyPointerActive = false;
+    if (vocabularyEnrichmentPending) { vocabularyEnrichmentPending = false; renderEnrichedEntries(); }
+    if (vocabularyRefreshPending) scheduleVocabularyRefresh();
+  }, 0);
+});
+window.addEventListener('blur', function releaseVocabularyPointer(): void {
+  vocabularyPointerActive = false;
+  if (vocabularyRefreshPending) scheduleVocabularyRefresh();
+  if (vocabularyEnrichmentPending) { vocabularyEnrichmentPending = false; renderEnrichedEntries(); }
+});
 
 element<HTMLInputElement>('vocabularySearch').addEventListener('input', event => {
   searchText = (event.target as HTMLInputElement).value.trim();
@@ -654,7 +803,7 @@ element<HTMLDivElement>('vocabularyList').addEventListener('change', event => {
       error.hidden = false;
       return;
     }
-    if (nextText === entry.text) return;
+    if (nextText === entry.text) { void fillEcdictEntry(entry.key); return; }
     if (!saveEntryEdits(entry, { text: nextText })) {
       target.value = entry.text;
       return;
@@ -663,6 +812,7 @@ element<HTMLDivElement>('vocabularyList').addEventListener('change', event => {
     editingEntryKeys.delete(entry.key);
     editingEntryKeys.add(vocabularyEntryKey(nextText));
     renderEntries();
+    void fillEcdictEntry(vocabularyEntryKey(nextText));
     return;
   }
   if (target.matches('[data-vocabulary-pos]')) {
@@ -680,7 +830,41 @@ element<HTMLDivElement>('vocabularyList').addEventListener('change', event => {
   }
 });
 element<HTMLDivElement>('vocabularyList').addEventListener('click', event => {
-  const action = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-add-translation], [data-delete-translation]');
+  const target = event.target instanceof Element ? event.target : (event.target as Node | null)?.parentElement;
+  if (!target) return;
+  const star = target.closest<HTMLButtonElement>('[data-star-key]');
+  if (star) {
+    const row = star.closest<HTMLElement>('.vocabulary-row');
+    const entry = allEntries.find(candidate => candidate.key === row?.dataset.entryKey);
+    const key = star.dataset.starKey;
+    if (!entry || !key) return;
+    const marked = entry.vocabularyStars?.[key] !== true;
+    const outcome = saveEntryEditsResult(entry, { star: { key, marked } });
+    if (outcome !== 'failed') {
+      row?.querySelector('[data-star-save-error]')?.remove();
+      updateEntryStarUI(entry.key);
+    } else if (row) {
+      let feedback = row.querySelector<HTMLParagraphElement>('[data-star-save-error]');
+      if (!feedback) {
+        feedback = document.createElement('p');
+        feedback.dataset.starSaveError = '';
+        feedback.className = 'vocabulary-star-save-error';
+        feedback.setAttribute('role', 'alert');
+        row.append(feedback);
+      }
+      feedback.textContent = `星號尚未完成儲存：${element('vocabularyError').textContent}`;
+    }
+    return;
+  }
+  const annotate = target.closest<HTMLButtonElement>('[data-annotate-entry]');
+  if (annotate) {
+    const key = annotate.dataset.annotateEntry!;
+    if (annotatingEntryKeys.has(key)) annotatingEntryKeys.delete(key);
+    else annotatingEntryKeys.add(key);
+    updateEntryStarUI(key, true);
+    return;
+  }
+  const action = target.closest<HTMLButtonElement>('[data-add-translation], [data-delete-translation]');
   if (action) {
     if (action.disabled) return;
     const row = action.closest<HTMLElement>('.vocabulary-row');
@@ -694,23 +878,52 @@ element<HTMLDivElement>('vocabularyList').addEventListener('click', event => {
     else return;
     const groups = vocabularyTranslationGroups(entry.translation, entry.tags, entry.translationsByPartOfSpeech);
     groups[field] = values;
-    if (saveEntryEdits(entry, { translationsByPartOfSpeech: groups })) renderEntries();
+    const translationRemoval = action.hasAttribute('data-delete-translation') ? { field, index: Number(action.dataset.deleteTranslation) } : undefined;
+    if (saveEntryEdits(entry, { translationsByPartOfSpeech: groups, translationRemoval })) renderEntries();
     return;
   }
   const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-edit-entry]');
   if (!button) return;
   const key = button.dataset.editEntry;
   if (!key) return;
+  const before = [...element('vocabularyList').querySelectorAll<HTMLElement>('.vocabulary-row')]
+    .filter(row => row.dataset.entryKey === key).map(row => captureDisclosure(row));
   if (editingEntryKeys.has(key)) editingEntryKeys.delete(key);
   else editingEntryKeys.add(key);
   renderEntries();
+  [...element('vocabularyList').querySelectorAll<HTMLElement>('.vocabulary-row')]
+    .filter(row => row.dataset.entryKey === key).forEach(function animateEditor(row, index): void {
+      if (before[index]) animateDisclosureReplacement(row, before[index]);
+    });
+  if (!editingEntryKeys.size && vocabularyRefreshPending) scheduleVocabularyRefresh();
   if (editingEntryKeys.has(key)) {
     element<HTMLDivElement>('vocabularyList')
       .querySelector<HTMLInputElement>(`[data-entry-key="${CSS.escape(key)}"] [data-vocabulary-content-kind]:checked`)
-      ?.focus();
+      ?.focus({ preventScroll: true });
   }
 });
-element<HTMLButtonElement>('refreshVocabulary').addEventListener('click', load);
+
+/** Update every POS copy in place, preserving editors, focus and pending dictionary previews. */
+function updateEntryStarUI(key: string, replaceWord = false): void {
+  const entry = allEntries.find(candidate => candidate.key === key);
+  if (!entry) return;
+  for (const row of element('vocabularyList').querySelectorAll<HTMLElement>('.vocabulary-row')) {
+    if (row.dataset.entryKey !== key) continue;
+    row.classList.toggle('is-card-starred', entry.vocabularyStars?.card === true);
+    for (const button of row.querySelectorAll<HTMLButtonElement>('[data-star-key]')) {
+      button.setAttribute('aria-pressed', String(entry.vocabularyStars?.[button.dataset.starKey!] === true));
+    }
+    const annotate = row.querySelector<HTMLButtonElement>('[data-annotate-entry]');
+    if (annotate) {
+      annotate.textContent = annotatingEntryKeys.has(key) ? '結束標註' : '個別標註';
+      annotate.setAttribute('aria-pressed', String(annotatingEntryKeys.has(key)));
+    }
+    if (replaceWord || !annotatingEntryKeys.has(key)) {
+      row.querySelector('.vocabulary-word-heading > :is(.vocabulary-word-link,.vocabulary-word-text)')?.replaceWith(createWordLink(entry));
+    }
+  }
+}
+element<HTMLButtonElement>('refreshVocabulary').addEventListener('click', function refreshVocabulary(): void { load(); });
 element<HTMLButtonElement>('toggleVocabularyTranslations').addEventListener('click', () => {
   translationsVisible = !translationsVisible;
   updateTranslationVisibility();
@@ -718,5 +931,16 @@ element<HTMLButtonElement>('toggleVocabularyTranslations').addEventListener('cli
 for (const button of document.querySelectorAll<HTMLButtonElement>('[data-export-vocabulary]')) {
   button.addEventListener('click', () => exportVocabulary(button.dataset.exportVocabulary === 'translated'));
 }
-window.addEventListener('storage', load);
+element<HTMLSelectElement>('vocabularyExportFormat').addEventListener('change', () => {
+  const format = element<HTMLSelectElement>('vocabularyExportFormat').value.toUpperCase();
+  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-export-vocabulary]')) {
+    button.textContent = `匯出 ${format}（${button.dataset.exportVocabulary === 'translated' ? '有' : '無'}翻譯）`;
+  }
+});
+window.addEventListener('storage', function vocabularyStorageChanged(event): void {
+  if (event.storageArea && event.storageArea !== localStorage) return;
+  if (event.key === ACTIVE_RECORD_PREFIX_KEY) { load({ background: true }); return; }
+  if (event.key && (!event.key.startsWith(activeRecordPrefix) || !/^\d{4}-\d{2}-\d{2}$/.test(event.key.slice(activeRecordPrefix.length)))) return;
+  scheduleVocabularyRefresh();
+});
 load();

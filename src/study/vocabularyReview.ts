@@ -1,11 +1,13 @@
-import type { EnglishReviewWordEntry, GsatVocabularyLevel, StudyItem, StudyRecord, VocabularyTranslations } from '../types.ts';
-import { applyVocabularyAutoFill, vocabularyAutoFillSources } from './vocabularyAutoFill.ts';
+import type { EnglishReviewWordEntry, GsatVocabularyLevel, StudyItem, StudyRecord, VocabularyStars, VocabularyTranslations } from '../types.ts';
+import { isVocabularyStarKey, normalizedVocabularyStars, remapVocabularyMeaningStars } from './vocabularyStars.ts';
+import { applyVocabularyAutoFill, markVocabularyManualFields, vocabularyAutoFillSources } from './vocabularyAutoFill.ts';
 import { applyDictionarySelection, dictionarySources } from './dictionarySelection.ts';
 import type { DictionaryLookupResult, DictionarySourceReference } from './dictionaryEntries.ts';
 import {
   normalizedVocabularyTranslations,
   VOCABULARY_PARTS_OF_SPEECH,
   vocabularyTranslationText,
+  vocabularyTranslationGroups,
   type VocabularyPartOfSpeechField,
 } from './vocabularyTranslationCounts.ts';
 
@@ -25,6 +27,10 @@ export const VOCABULARY_CONTENT_KINDS = ['單字', '組合', '句子'] as const;
 export type VocabularyContentKind = (typeof VOCABULARY_CONTENT_KINDS)[number];
 
 export interface VocabularyWordEdits {
+  star?: { key: string; marked: boolean };
+  translationRemoval?: { field: keyof VocabularyTranslations; index: number };
+  autoFill?: boolean;
+  autoFillTranslations?: VocabularyTranslations;
   dictionarySelection?: DictionaryLookupResult;
   contentKind?: VocabularyContentKind;
   partsOfSpeech?: ReadonlySet<VocabularyPartOfSpeechField>;
@@ -36,6 +42,7 @@ export interface VocabularyWordEdits {
 }
 
 export interface VocabularyReviewEntry {
+  vocabularyStars?: VocabularyStars;
   key: string;
   text: string;
   lookupQuery: string;
@@ -168,6 +175,7 @@ function collectItemWords(
         entries.set(key, entry);
       }
       entry.occurrenceCount += 1;
+      if (word.vocabularyStars) entry.vocabularyStars = { ...entry.vocabularyStars, ...normalizedVocabularyStars(word.vocabularyStars) };
       const sources = dictionarySources(word.dictionarySources);
       if (sources.length) entry.dictionarySources = dictionarySources([...(entry.dictionarySources ?? []), ...sources]);
       const referenceSources = vocabularyAutoFillSources(word);
@@ -235,6 +243,16 @@ export function vocabularyLevelGroups(entries: readonly VocabularyReviewEntry[])
   });
 }
 
+function starMeaningGroups(word: EnglishReviewWordEntry): Record<string, string[]> {
+  const tags = VOCABULARY_PARTS_OF_SPEECH.filter(([field]) => word[field] === true).map(([, label]) => label);
+  const groups = vocabularyTranslationGroups(word.translation, tags, word.translationsByPartOfSpeech);
+  if (word.fixedCombination === true || word.beautifulSentences === true) return { '': Object.values(groups).flat() };
+  return Object.fromEntries(Object.entries(groups).map(([field, values]) => {
+    const label = VOCABULARY_PARTS_OF_SPEECH.find(([key]) => key === field)?.[1] ?? '未分詞性';
+    return [label, values];
+  }));
+}
+
 function updateItemWords(
   item: StudyItem,
   key: string,
@@ -251,6 +269,8 @@ function updateItemWords(
       const text = typeof rawWord === 'string' ? rawWord : rawWord.text;
       if (vocabularyEntryKey(text) !== key) continue;
       const word = typeof rawWord === 'string' ? { text: rawWord } : rawWord;
+      const beforeWord = JSON.stringify(word);
+      const previousMeanings = starMeaningGroups(word);
       if (typeof rawWord === 'string') item.f.words[index] = word;
       if (edits.text !== undefined) {
         const nextText = normalizedWordText(edits.text);
@@ -271,8 +291,9 @@ function updateItemWords(
           changed = true;
         }
       }
-      if (edits.text !== undefined && applyVocabularyAutoFill(word)) changed = true;
+      if ((edits.text !== undefined || edits.autoFill) && applyVocabularyAutoFill(word, edits.autoFillTranslations)) changed = true;
       if (edits.partsOfSpeech) {
+        markVocabularyManualFields(word, VOCABULARY_PARTS_OF_SPEECH.map(([field]) => field));
         for (const [field] of VOCABULARY_PARTS_OF_SPEECH) {
           const enabled = edits.partsOfSpeech.has(field);
           if (word[field] !== enabled) {
@@ -282,6 +303,7 @@ function updateItemWords(
         }
       }
       if (edits.translation !== undefined) {
+        markVocabularyManualFields(word, ['translation', 'translationsByPartOfSpeech']);
         if (word.translation !== edits.translation) {
           word.translation = edits.translation;
           changed = true;
@@ -292,6 +314,7 @@ function updateItemWords(
         }
       }
       if (edits.translationsByPartOfSpeech !== undefined) {
+        markVocabularyManualFields(word, ['translation', 'translationsByPartOfSpeech']);
         const current = normalizedVocabularyTranslations(word.translationsByPartOfSpeech);
         const updates = normalizedVocabularyTranslations(edits.translationsByPartOfSpeech);
         const next = { ...current, ...updates };
@@ -302,6 +325,7 @@ function updateItemWords(
         }
       }
       if (edits.gsatLevel !== undefined) {
+        markVocabularyManualFields(word, ['gsatLevel']);
         const level = normalizedGsatVocabularyLevel(edits.gsatLevel);
         if (level !== null && word.gsatLevel !== level) {
           word.gsatLevel = level;
@@ -309,10 +333,21 @@ function updateItemWords(
         }
       }
       if (edits.showGsatLevel !== undefined && word.showGsatLevel !== edits.showGsatLevel) {
+        markVocabularyManualFields(word, ['showGsatLevel']);
         word.showGsatLevel = edits.showGsatLevel;
         changed = true;
       }
       if (edits.dictionarySelection && applyDictionarySelection(word, edits.dictionarySelection)) changed = true;
+      if (word.vocabularyStars && (edits.translation !== undefined || edits.translationsByPartOfSpeech !== undefined)) {
+        const removal = edits.translationRemoval;
+        const partOfSpeech = VOCABULARY_PARTS_OF_SPEECH.find(([field]) => field === removal?.field)?.[1] ?? '未分詞性';
+        word.vocabularyStars = remapVocabularyMeaningStars(normalizedVocabularyStars(word.vocabularyStars), previousMeanings,
+          starMeaningGroups(word), removal ? { partOfSpeech, index: removal.index } : undefined);
+      }
+      if (edits.star && isVocabularyStarKey(edits.star.key)) {
+        word.vocabularyStars = { ...normalizedVocabularyStars(word.vocabularyStars), [edits.star.key]: edits.star.marked };
+      }
+      if (JSON.stringify(word) !== beforeWord) changed = true;
     }
   }
 

@@ -1,5 +1,6 @@
 import { dictionaryQuery, type DictionaryLookupResult } from '../study/dictionaryEntries.ts';
 import { localDictionaryLookup } from '../study/localDictionaryLookup.ts';
+import { loadEcdictTranslations } from '../study/ecdictLookup.ts';
 import { VOCABULARY_PARTS_OF_SPEECH } from '../study/vocabularyTranslationCounts.ts';
 
 export interface DictionaryPreviewOptions {
@@ -13,6 +14,7 @@ export class DictionaryPreview {
   private readonly options: DictionaryPreviewOptions;
   private readonly output: HTMLDivElement;
   private readonly status: HTMLParagraphElement;
+  private disposed = false;
 
   constructor(options: DictionaryPreviewOptions) {
     this.options = options;
@@ -36,7 +38,7 @@ export class DictionaryPreview {
     this.status.setAttribute('aria-live', 'polite');
     this.status.textContent = query.disabled
       ? '請先將英文內容改為有效的英文單字或短語。'
-      : '使用本機 ECDICT，不需登入或連線。取得翻譯後，選擇意思再填入；既有內容會保留。';
+      : '使用 ECDICT，更多單字按需載入。可勾選意思追加填入，保留既有手動修改。';
     this.output = document.createElement('div');
     this.output.className = 'dictionary-preview-results';
     this.element.append(controls, this.status, this.output);
@@ -44,11 +46,18 @@ export class DictionaryPreview {
   }
 
   dispose(): void {
+    this.disposed = true;
     this.output.replaceChildren();
   }
 
-  private lookup(): void {
+  private async lookup(): Promise<void> {
     this.output.replaceChildren();
+    try { await loadEcdictTranslations(this.options.word); }
+    catch {
+      if (!this.disposed) this.status.textContent = 'ECDICT 暫時無法載入，可稍後重試或手動輸入中文。';
+      return;
+    }
+    if (this.disposed) return;
     const result = localDictionaryLookup(this.options.word);
     if (result) this.showResult(result);
     else this.status.textContent = '本機 ECDICT 未收錄此拼法的翻譯，可手動輸入中文。';

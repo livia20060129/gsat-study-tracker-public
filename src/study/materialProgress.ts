@@ -17,6 +17,7 @@ import {
 } from '../data/bookPageMaps.ts';
 import { LISTENING_TEST_BOOK_TITLE, SUPPLEMENT_ENGLISH_TITLES, isListeningTestBookTitle } from '../data/englishBooks.ts';
 import { numberedStudyScope, usesSharedPageTemplate } from '../data/numberedScopes.ts';
+import { decodeStudyRecord } from '../storage/studyRecordCodec.ts';
 import {
   AZAR_GRAMMAR_BOOK_TITLE,
   AZAR_GRAMMAR_CHAPTERS,
@@ -738,8 +739,8 @@ export function readMaterialProgressRecords(storage: Pick<Storage, 'length' | 'k
     if (!key.startsWith(prefix) || !/^\d{4}-\d{2}-\d{2}$/.test(key.slice(prefix.length))) continue;
     try {
       const value = storage.getItem(key);
-      const parsed = value ? JSON.parse(value) as StudyRecord : null;
-      if (parsed && Array.isArray(parsed.items)) records.push(parsed);
+      const decoded = value ? decodeStudyRecord(value, key.slice(prefix.length)) : null;
+      if (decoded?.ok) records.push(decoded.record);
     } catch {
       // One damaged day must not make the entire progress page unreadable.
     }

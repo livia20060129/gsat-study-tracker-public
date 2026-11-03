@@ -1,6 +1,7 @@
 import type { EnglishReviewWordEntry, GsatVocabularyLevel, VocabularyTranslations } from '../types.ts';
 import { CEEC_VOCABULARY } from '../data/ceecVocabulary.ts';
 import { CEEC_TRANSLATIONS } from '../data/ceecTranslations.ts';
+import { ecdictTranslations } from './ecdictLookup.ts';
 import { VOCABULARY_PARTS_OF_SPEECH, vocabularyTranslationText } from './vocabularyTranslationCounts.ts';
 
 const OWNED_FIELDS = [...VOCABULARY_PARTS_OF_SPEECH.map(([field]) => field),
@@ -54,17 +55,17 @@ function empty(value: unknown): boolean {
 }
 
 /** Own only the fields actually filled automatically; later manual changes always win. */
-export function applyVocabularyAutoFill(word: EnglishReviewWordEntry): boolean {
+export function applyVocabularyAutoFill(word: EnglishReviewWordEntry, dictionaryTranslations?: VocabularyTranslations): boolean {
   if (word.fixedCombination === true || word.beautifulSentences === true) return false;
   const before = JSON.stringify(word);
   const key = normalizedReferenceWord(word.text);
   const previous = snapshot(word.vocabularyAutoFill);
   const owned = new Set<string>();
-  const blocked = new Set<string>();
+  const blocked = new Set<string>(Object.keys(manualFields(word)));
   if (previous) {
     for (const field of OWNED_FIELDS) {
       if (!Object.hasOwn(previous.defaults, field)) continue;
-      if (equal(word[field], previous.defaults[field])) owned.add(field);
+      if (!blocked.has(field) && equal(word[field], previous.defaults[field])) owned.add(field);
       else blocked.add(field);
     }
     if (previous.word !== key) {
@@ -73,9 +74,12 @@ export function applyVocabularyAutoFill(word: EnglishReviewWordEntry): boolean {
     }
   }
   const reference = vocabularyReference(word.text);
+  const translations = dictionaryTranslations ?? ecdictTranslations(word.text);
   const defaults: Record<string, unknown> = {};
-  for (const field of blocked) defaults[field] = JSON.parse(JSON.stringify(previous!.defaults[field])) as unknown;
-  if (!reference) {
+  for (const field of blocked) {
+    if (previous && Object.hasOwn(previous.defaults, field)) defaults[field] = JSON.parse(JSON.stringify(previous.defaults[field])) as unknown;
+  }
+  if (!reference && !translations) {
     // Keep manual-field tombstones through an intermediate unlisted spelling.
     if (previous && blocked.size) word.vocabularyAutoFill = { version: 1, word: key, defaults,
       dictionary: previous.dictionary } satisfies AutoFillSnapshot;
@@ -91,16 +95,18 @@ export function applyVocabularyAutoFill(word: EnglishReviewWordEntry): boolean {
 
   const hasManualPart = VOCABULARY_PARTS_OF_SPEECH.some(([field]) => word[field] === true && !owned.has(field));
   if (!hasManualPart) {
-    for (const [field] of VOCABULARY_PARTS_OF_SPEECH) setDefault(field, reference.parts.includes(field), true);
+    if (translations) for (const [field] of VOCABULARY_PARTS_OF_SPEECH) setDefault(field, Object.hasOwn(translations, field), true);
   }
-  setDefault('gsatLevel', reference.level);
-  setDefault('showGsatLevel', true);
+  if (reference) {
+    setDefault('gsatLevel', reference.level);
+    setDefault('showGsatLevel', true);
+  }
   const canFillTranslations = ['translation', 'translationsByPartOfSpeech'].every(field => (
     !blocked.has(field) && (owned.has(field) || empty(word[field]))
   ));
-  if (canFillTranslations && Object.keys(reference.translations).length) {
-    setDefault('translationsByPartOfSpeech', reference.translations);
-    setDefault('translation', vocabularyTranslationText(reference.translations));
+  if (canFillTranslations && translations && Object.keys(translations).length) {
+    setDefault('translationsByPartOfSpeech', translations);
+    setDefault('translation', vocabularyTranslationText(translations));
     word.vocabularyTranslationSource = 'ECDICT';
   }
   word.vocabularyAutoFill = { version: 1, word: key, defaults,
@@ -111,10 +117,22 @@ export function applyVocabularyAutoFill(word: EnglishReviewWordEntry): boolean {
 export function vocabularyAutoFillStatus(word: EnglishReviewWordEntry): string {
   if (!snapshot(word.vocabularyAutoFill)) return '';
   const reference = vocabularyReference(word.text);
-  if (!reference || word.fixedCombination === true || word.beautifulSentences === true) return '';
+  if (word.fixedCombination === true || word.beautifulSentences === true) return '';
+  if (!reference) return 'ECDICT｜中文翻譯與詞性';
   const level = reference.levels.map(value => `Level ${value}`).join('／');
-  const missing = reference.parts.some(field => !reference.translations[field as keyof VocabularyTranslations]?.length);
-  return `大考中心 ${level}${reference.levels.length > 1 ? '（自動帶入較低級）' : ''}｜中文參考 ECDICT${missing ? '；部分詞性尚無對應翻譯' : ''}`;
+  return `大考中心 ${level}${reference.levels.length > 1 ? '（自動帶入較低級）' : ''}｜ECDICT 中文翻譯與詞性`;
+}
+
+function manualFields(word: EnglishReviewWordEntry): Record<string, boolean> {
+  const stored = word.vocabularyManualFields;
+  if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return {};
+  return Object.fromEntries(OWNED_FIELDS.filter(field => Object.hasOwn(stored, field) && stored[field] === true).map(field => [field, true]));
+}
+
+export function markVocabularyManualFields(word: EnglishReviewWordEntry, fields: readonly string[]): void {
+  const current = manualFields(word);
+  for (const field of fields) if (OWNED_FIELDS.includes(field)) current[field] = true;
+  word.vocabularyManualFields = current;
 }
 
 export function vocabularyAutoFillSources(word: EnglishReviewWordEntry): { ceec: boolean; ecdict: boolean } | undefined {

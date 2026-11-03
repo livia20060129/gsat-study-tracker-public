@@ -8,6 +8,24 @@ import {
 } from '../src/storage/studyRecordCodec.ts';
 import type { StudyRecord } from '../src/types.ts';
 
+test('string and object decoding agree while returned content and sync baselines remain independent', () => {
+  const source: StudyRecord = { schemaVersion: 2, date: '2026-11-03', items: [{
+    id: 'word', type: 'englishVocabInteractive', done: false, minutes: '15', required: false,
+    f: { words: [{ id: 'ability', text: 'ability', noun: true }] },
+  }] };
+  source.syncBase = { date: source.date, items: source.items };
+  const before = JSON.stringify(source);
+  const object = decodeStudyRecord(source), string = decodeStudyRecord(before);
+  assert.equal(object.ok, true); assert.equal(string.ok, true);
+  if (!object.ok || !string.ok) return;
+  assert.deepEqual(object.record, string.record);
+  object.record.items[0].minutes = '30';
+  string.record.items[0].f.words![0] = { id: 'new', text: 'apple' };
+  assert.equal(JSON.stringify(source), before);
+  assert.equal(object.record.syncBase!.items[0].minutes, '15');
+  assert.equal((string.record.syncBase!.items[0].f.words![0] as { text: string }).text, 'ability');
+});
+
 test('migrates an unversioned local record without discarding unknown fields', () => {
   const decoded = decodeStudyRecord(JSON.stringify({
     date: '2026-08-31',

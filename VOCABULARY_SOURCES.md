@@ -1,49 +1,50 @@
 # Vocabulary reference data
 
-自用版 v171.6.80，整理日期 2026-10-24。官方詞性／級數與中文翻譯是兩份不同來源，不能把字典中文標為大考中心提供。本次沒有擷取 Oxford、WikDict 或其他網站釋義。
+自用版 v171.6.117，更新日期 2026-11-02。中文翻譯與自動勾選詞性使用 ECDICT；大考中心資料只用來帶入學測 Level。保留手動修改，不將字典翻譯標為大考中心提供。
 
-## 1. 大考中心：詞性與 Level
+## 1. 大考中心：學測 Level
 
 - 著作：財團法人大學入學考試中心基金會《高中英文參考詞彙表》（111 學年度起適用），109 年 7 月。
-- [官方公布頁](https://www.ceec.edu.tw/xmdoc?xsmsid=0K213553204833715309)。實際使用的是使用者提供的同名 PDF，未用線上不同版本取代。
-- 原始 PDF SHA-256：`27b010f8230b2e8763653ddb35783fe9e0140c143b0040f13839046aebb2a126`。
-- 來源為印刷頁 53-103（PDF 第 65-115 頁）的字母排序表，共 6,012 筆，每級 1,002 筆；附錄未分級項目不推斷 Level。
-- 展開原表明列的斜線別名、衍生名詞、複數與代名詞形式，合併同拼法後共 6,191 個查詢鍵；不自行做 stemming 或添加未列變化形。同字跨級保留全部級數並預設較低級，UI 顯示提示。
-- 產物：`src/data/ceecVocabulary.ts`；保留原詞條及印刷頁碼，便於追查。
+- [官方公布頁](https://www.ceec.edu.tw/xmdoc?xsmsid=0K213553204833715309)。使用使用者提供的 PDF，SHA-256：`27b010f8230b2e8763653ddb35783fe9e0140c143b0040f13839046aebb2a126`。
+- 印刷頁 53–103（PDF 第 65–115 頁）共 6,012 筆詞條，每級 1,002 筆；展開原表明列的別名及變化形式後有 6,191 個查詢鍵。同字跨級保留全部級數，預設較低級並顯示提示；表外拼法不猜填 Level。
+- `src/data/ceecVocabulary.ts` 仍保留原表的詞性、詞條及印刷頁碼供追查，但不再以官方詞性限制 ECDICT 查詢結果。
+- 原檔聲明僅供非營利目的使用，轉載須註明出處，營利用途需事前書面同意；官方資料不適用 ECDICT 的 MIT 授權。PDF 本身沒有中文釋義。
 
-原檔聲明著作權屬財團法人大學入學考試中心基金會，僅供非營利目的使用，轉載須註明出處；營利用途需事前書面同意。本資料只依此條件用於本自用版，並非 MIT 或公共領域資料。要改作商業產品，須另行取得適當授權。原始 PDF 不含中文釋義。
+## 2. ECDICT：中文與詞性
 
-## 2. ECDICT：中文參考翻譯
+- [ECDICT 原始資料庫](https://github.com/skywind3000/ECDICT)，使用 [ecdict.csv](https://raw.githubusercontent.com/skywind3000/ECDICT/master/ecdict.csv)，非 mini 範例詞庫。
+- 本次 CSV SHA-256：`d1ecbdf9ee2b920afb6f430ca6b6bb9f559588cf0dff86e04bd255f9390843cc`。
+- [原版 MIT LICENSE](https://github.com/skywind3000/ECDICT/blob/master/LICENSE)，`Copyright (c) 2025 Linwei`；完整授權位於 `public/licenses/ECDICT-MIT.txt`，有翻譯 PDF 也附全文。
+- 依同拼法中文行中的詞性標記分組，n／v／vt／vi／a／adj／ad／adv／prep／conj／pron／art／aux 對應既有詞性選項，不跨詞性挪用中文。只有無法對應既有詞性的中文時保留未分詞性；已能分詞性的詞條不再重列額外領域附註。
+- 排除人名行及不安全文字，依括號外標點分列意思，再使用 OpenCC `s2twp` 轉為繁體。這些是規則轉換的參考資料，不是逐字人工審訂；使用者可自行修改。
+- 6,182 個官方表內拼法的 ECDICT 資料置於 `src/data/ceecTranslations.ts`，可直接使用。ECDICT 詞性與官方表可能不同，例如 abandon 的名詞／動詞及 may 的名詞／助動詞，均依字典實際列出的中文分組。
+- 擴充索引有 723,781 個含中文的查詢鍵，位於 `public/dictionaries/ecdict-v1/`，分成 256 份。靜態 JSON 共 47,680,711 bytes，單份最多 195,781 bytes。瀏覽器只按需下載對應一份，記憶體最多保留 8 份，不將全詞庫加入 JavaScript 或 LocalStorage。
+- 網站只向本站取得詞庫檔，在瀏覽器精確比對拼法，不傳送輸入內容至外部字典，不使用爬蟲或生成式翻譯。首次載入擴充詞庫需要連線，已保存的翻譯可離線查看及手動編輯。
 
-- [原作者資料庫](https://github.com/skywind3000/ECDICT)。使用 `ecdict.csv`，不是僅供示例的 `ecdict.mini.csv`。
-- [CSV 來源](https://raw.githubusercontent.com/skywind3000/ECDICT/master/ecdict.csv)。此次下載 SHA-256：`1a6947e04785db63613a92e14903cdae7954f7e84860b10e68e5c7cbb3f9c3cf`。
-- [原版 LICENSE](https://github.com/skywind3000/ECDICT/blob/master/LICENSE)：MIT，`Copyright (c) 2025 Linwei`。完整原文隨部署附於 `public/licenses/ECDICT-MIT.txt`，PDF 有翻譯版也附全文。MIT 允許使用、修改與散布，須保留著作權及授權聲明；本專案不宣稱來源保證釋義正確。
-- 僅選官方查詢鍵及官方列出的對應詞性，排除人名補充行，依括號外的逗號／頓號／分號拆分多意思，再以 OpenCC `s2twp` 轉為繁體。
-- 產物：`src/data/ceecTranslations.ts`。6,155 種拼法至少有一項中文；其餘 36 種沒有可對應的中文，已有中文者也可能缺少部分詞性。缺少資料留空，不跨詞性挪用、不自由生成釋義。例：alternate 有官方名詞詞性，但本次字典沒有對應名詞中文，保留空欄。
-- 這是經規則篩選的字典參考，並非逐字人工審訂，使用者可自行修改。來源標註不表示原作者認可使用者修改後的內容。
+## 3. 重建
 
-## 3. 重建與驗證
+需要 Python、pypdf 及 `opencc-python-reimplemented==0.1.7`（Apache-2.0）。工具只在建置時執行，不加入網站執行期依賴。原始 PDF、CSV 與暫存工具不放入部署包。
 
-建置腳本：`scripts/build_vocabulary_reference.py`。僅供開發者更新資料，不在使用者瀏覽器執行；開啟網站不會下載原始 PDF／CSV、呼叫外部字典或傳送輸入文字。原始來源不打包進覆蓋資料夾。
-
-建置工具為 Python、pypdf、[opencc-python-reimplemented 0.1.7](https://github.com/yichen0831/opencc-python)（Apache-2.0；`s2twp` 字形／用詞轉換），非新增網站執行期套件。先在自己的 Python 建置環境安裝 pypdf 及該版 OpenCC，再於專案根目錄執行：
+若更新官方表，先依原 PDF 重新建立官方索引：
 
 ```powershell
 python scripts/build_vocabulary_reference.py --pdf "完整路徑/高中英文參考詞彙表(111學年度起適用).pdf" --dictionary "完整路徑/ecdict.csv" --output src/data
 ```
 
-若 OpenCC 安裝在獨立建置目錄，可加 `--vendor "套件目錄"`。腳本只讀原始來源，輸出 UTF-8 TypeScript；有無法解析的官方文字或各級筆數不符會停止。更新來源時須核對新版本的完整授權、SHA-256、別名規則與翻譯對照，並同步更新 manifest、授權檔及測試期望值。不要把本機原始字典、暫存套件或使用者 PDF 放入發布包。
+接著必須執行新的 ECDICT 產生器，產生不受官方詞性限制的核心資料及擴充詞庫；只更新 ECDICT 時直接執行這一步：
 
-執行 `npm test`、`npm run build`、`npx playwright test --workers=2`，檢查多詞性、跨級、手動優先、未知詞、儲存／匯入／合併、來源頁、PDF 和手機排版。公開版本識別資訊見 `public/vocabulary-reference-manifest.json`；生成資料與來源授權保持分離，不將官方資料一併標成 MIT。
+```powershell
+python scripts/build_ecdict_lookup.py --dictionary "完整路徑/ecdict.csv" --project .
+```
 
-## 4. 保存與相容
+兩支腳本都可用 `--vendor "套件目錄"` 指定獨立建置套件。詞庫產生器不下載來源、不更動 PDF／CSV；輸出固定 hash 分桶、核心翻譯與 manifest。更新來源時一併核對 LICENSE、SHA-256、資料筆數、欄位、來源頁及測試，不只更新版本號。
 
-使用既有 word JSON 的詞性、`translation`、`translationsByPartOfSpeech`、`gsatLevel`、`showGsatLevel`，新增 `vocabularyAutoFill` 快照追蹤哪些值仍屬自動來源，並保留字典出處。手動修改與刻意清空不回填；英文改字時只更新尚未手動變更的自動欄位。未知欄位沿用既有 codec、匯出／匯入、合併及 Cloud JSON 往返，不新增資料庫欄位或後端 API。不在唯讀彙整時改寫舊資料。
+## 4. 輸入、修改及保存
 
-## 5. v171.6.95 本機 ECDICT 預覽與確認填入
+- Tracker 輸入完整單字並離開欄位，或於英文單字複習頁修改英文後，自動帶入 ECDICT 中文與詞性，不需先按「取得翻譯」或確認。組合／句子維持手動整理。
+- 先保存英文，再完成按需查詢。回應時重新比對資料空間、日期及單字；延遲回應不替換已改掉的英文，切換日期後只更新原紀錄。載入失敗不刪除輸入，仍可手動填寫與稍後重試。
+- `vocabularyAutoFill` 追蹤自動填值；`vocabularyManualFields` 的各欄位布林標記保護手動修改、取消及刻意清空，也避免兩台裝置修改不同欄位時只因標記產生衝突。
+- 使用既有詞性、`translation`、`translationsByPartOfSpeech`、`gsatLevel`、`showGsatLevel` 與 JSON 儲存格式，沿用匯出／匯入、合併及帳號同步。不新增資料庫欄位或字典 API，不在唯讀載入時批次重寫舊紀錄。
+- 編輯模式的字典預覽仍可勾選意思再追加，保留既有中文。來源集中於單字複習頁標題下方；舊紀錄中的歷史來源繼續保留，不將其他字典釋義改標為 ECDICT。
 
-自動帶入與預覽皆重用上述 ECDICT 子集，沒有加入完整 ECDICT 或其他字典資料集。不需網路、登入或 API 金鑰；未收錄的詞保留手動輸入。劍橋選項、連結與網路呼叫已移除，舊端點改為固定 410 停用回應，部署方式見 `supabase/functions/dictionary-lookup/README.md`。
-
-候選釋義只暫存在頁面，勾選後仍不寫入；確認才逐詞性追加所選意思、啟用所選詞性並去重。既有意思與手動學測級數不變。`dictionarySources` 記錄來源、查詢詞及來源網址，沿用既有 JSON 往返；不保存字典 HTML、API 金鑰、登入 token 或完整查詢快取。查詢不傳送任何內容至外部字典。
-
-來源連結集中於「英文單字複習」頁面標題下方，卡片不再重複列出。若既有資料包含 Cambridge Dictionary 來源，保留原中文、原來源與歷史提示，不改標為 ECDICT；其內容不適用 ECDICT 的 MIT 授權。有翻譯 PDF 保留實際來源與 ECDICT MIT 全文；未翻譯 PDF 不嵌入中文答案。這次沒有改動官方詞彙表、ECDICT 產物或 manifest。
+執行完整單元、型別、正式建置與 Chromium／WebKit 測試，涵蓋表外字、詞性差異、手動優先、延遲回應、載入失敗重試、範圍／日期跳轉、JSON round-trip、合併與 PDF 授權。資料版本見 `public/vocabulary-reference-manifest.json` 及詞庫目錄內的 manifest。

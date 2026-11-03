@@ -1,3 +1,4 @@
+import { navigateSite } from './helpers/siteNavigation.ts';
 import { expect, test, type Page } from '@playwright/test';
 import { enableMaterialEditing } from './helpers/materialEditing.ts';
 
@@ -194,7 +195,7 @@ test('old catalog bookmarks redirect to the shared page and Tracker has only one
   await expect(page.getByRole('heading', { name: '教材進度圖', exact: true })).toBeVisible();
   await page.locator('#materialsPanel summary').click();
   await expect(page.getByRole('tab', { name: '英文', exact: true })).toHaveAttribute('aria-selected', 'true');
-  await page.getByRole('link', { name: '回到 Tracker', exact: true }).click();
+  await navigateSite(page, 'index.html');
   await expect(page.locator('.header-actions a[href="./material.progress.html"]')).toHaveCount(1);
   await expect(page.locator('.header-actions a[href="./material.catalog.html"]')).toHaveCount(0);
 });
@@ -231,4 +232,34 @@ for (const mode of ['unit', 'round']) test(`offline ${mode} material saves local
   await enableMaterialEditing(page);
   await page.locator('.material-row').getByRole('button', { name: '編輯', exact: true }).click();
   await expect(page.getByLabel('範圍模板', { exact: true })).toHaveValue(mode);
+});
+
+test('natural material creation uses four science subjects and restores the stored subject when editing', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 375, height: 900 });
+  await openLibrary(page, 'natural');
+  for (const subject of ['生物', '物理', '化學', '地科']) {
+    await fillBook(page, '分類教材 ' + subject);
+    const family = page.getByLabel('科目', { exact: true });
+    await expect(family.locator('optgroup[label="自然"] option')).toHaveText(['生物', '物理', '化學', '地科']);
+    await family.selectOption(subject);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.getByRole('button', { name: '儲存教材', exact: true }).click();
+    await expect(page.locator('#catalogEditor')).toBeHidden();
+  }
+  await page.reload();
+  const saved = await page.evaluate(date => JSON.parse(localStorage.getItem('study-v11:guest:' + date)!).materialCatalog, date);
+  for (const subject of ['生物', '物理', '化學', '地科']) {
+    expect(saved.find((book: { title: string }) => book.title === '分類教材 ' + subject)).toMatchObject({ subject, group: subject });
+  }
+  await enableMaterialEditing(page);
+  const chemistry = page.locator('.material-row').filter({ hasText: '分類教材 化學' });
+  await chemistry.getByRole('button', { name: '編輯', exact: true }).click();
+  await expect(page.getByLabel('科目', { exact: true })).toHaveValue('化學');
+  await page.screenshot({ path: testInfo.outputPath('science-subject-editor-mobile.png') });
+  await page.getByRole('button', { name: '取消編輯', exact: true }).click();
+  await fillBook(page, '分類切換草稿');
+  await page.getByLabel('科目', { exact: true }).selectOption('英文');
+  await expect(page.getByLabel('分類', { exact: true }).locator('option')).toHaveText(['學測', '補充']);
+  await page.getByLabel('科目', { exact: true }).selectOption('數學');
+  await expect(page.getByLabel('分類', { exact: true }).locator('option')).toHaveText(['複習講義', '分冊講義']);
 });

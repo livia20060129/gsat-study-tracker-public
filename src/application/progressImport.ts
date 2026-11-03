@@ -1,5 +1,6 @@
 import type { StudyRecord } from '../types.ts';
 import { decodeStudyRecord } from '../storage/studyRecordCodec.ts';
+import { isVocabularyStarKey } from '../study/vocabularyStars.ts';
 
 export type ProgressImportRecord = Record<string, unknown> & { date: string };
 
@@ -121,6 +122,10 @@ function validateWords(value: unknown, label: string, errors: string[]): void {
     validateOptionalString(word.id, `${wordLabel}的 id`, errors);
     validateOptionalString(word.text, `${wordLabel}的 text`, errors);
     validateOptionalBoolean(word.showGsatLevel, `${wordLabel}的 showGsatLevel`, errors);
+    if (word.vocabularyStars !== undefined && (!isObject(word.vocabularyStars)
+      || Object.entries(word.vocabularyStars).some(([key, value]) => !isVocabularyStarKey(key) || typeof value !== 'boolean'))) {
+      errors.push(`${wordLabel}的 vocabularyStars 必須是有效的星號標註物件。`);
+    }
     if (word.gsatLevel !== undefined && (!Number.isInteger(word.gsatLevel) || Number(word.gsatLevel) < 1 || Number(word.gsatLevel) > 6)) {
       errors.push(`${wordLabel}的 gsatLevel 必須是 1～6 的整數。`);
     }

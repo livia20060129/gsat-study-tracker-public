@@ -1,5 +1,5 @@
 {
-  "generatedOn": "2026-10-24",
+  "generatedOn": "2026-11-02",
   "official": {
     "title": "高中英文參考詞彙表（111學年度起適用）",
     "author": "財團法人大學入學考試中心基金會",
@@ -14,13 +14,15 @@
   "translations": {
     "source": "https://github.com/skywind3000/ECDICT",
     "download": "https://raw.githubusercontent.com/skywind3000/ECDICT/master/ecdict.csv",
-    "sha256": "1a6947e04785db63613a92e14903cdae7954f7e84860b10e68e5c7cbb3f9c3cf",
+    "sha256": "d1ecbdf9ee2b920afb6f430ca6b6bb9f559588cf0dff86e04bd255f9390843cc",
     "license": "MIT",
     "copyright": "Copyright (c) 2025 Linwei",
-    "lookupSpellingsWithAtLeastOneTranslation": 6155,
-    "transformations": ["僅取官方表內拼法", "依詞性對應", "移除人名釋義", "分列意思", "OpenCC s2twp 簡轉繁"]
+    "lookupSpellingsWithAtLeastOneTranslation": 6182,
+    "extendedLookupSpellings": 723781,
+    "extendedManifest": "dictionaries/ecdict-v1/manifest.json",
+    "transformations": ["ECDICT 同拼法中文與詞性，不限官方表", "移除人名釋義", "分列意思", "OpenCC s2twp 簡轉繁", "256 份按需載入，單份最多 195781 bytes"]
   },
-  "buildTool": "scripts/build_vocabulary_reference.py",
+  "buildTool": "scripts/build_vocabulary_reference.py + scripts/build_ecdict_lookup.py",
   "converter": "opencc-python-reimplemented 0.1.7 (Apache-2.0)",
-  "note": "有翻譯的拼法不代表所有官方詞性都有翻譯；不猜填缺少欄位。"
+  "note": "中文與詞性取自 ECDICT，Level 取自大考中心；未收錄的字不猜填。既有手動內容優先。"
 }

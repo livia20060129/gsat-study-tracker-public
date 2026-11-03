@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { renderStudyReference } from '../src/ui/studyReference.ts';
 import { createContext, runInContext } from 'node:vm';
 import { unitBook } from '../src/data/unitBooks.ts';
 import { numberedStudyScope, usesSharedNumberedTemplate } from '../src/data/numberedScopes.ts';
+import { restoreMathScheduleFields } from '../src/study/mathScheduleFields.ts';
 
 import { parseCalendarTask, type CalendarTaskRow } from '../src/calendar/calendarBridge.ts';
 import {
@@ -225,7 +227,7 @@ test('old Azar subsection progress migrates to one chapter card only once', () =
   assert.deepEqual(editedRange.f.dailyWorkUserFields, { start: '19', end: '21' });
 });
 
-test('Calendar Azar card shows natural-style pages, topic, and page-to-chapter mapping', () => {
+test('Calendar Azar card keeps editable pages and chapter reference without repeating the Calendar topic', () => {
   const runtime = readFileSync(new URL('../src/legacy-app.ts', import.meta.url), 'utf8');
   const start = runtime.indexOf('function renderExtraFields(');
   const end = runtime.indexOf('\nfunction renderChineseFields(', start);
@@ -245,7 +247,8 @@ test('Calendar Azar card shows natural-style pages, topic, and page-to-chapter m
     isWritingTest: () => false,
     isGrammarReview: () => false,
     readingOptions: () => '',
-    calendarTopicSourceRow: (item: StudyItem) => `<label>Google Calendar 當日主題</label>${item.f.calendarTopic}`,
+    calendarSourceRow: () => '',
+    renderStudyReference,
     checked: () => '',
     reasonField: () => '',
     esc: (value: unknown) => String(value ?? ''),
@@ -257,12 +260,14 @@ test('Calendar Azar card shows natural-style pages, topic, and page-to-chapter m
     f: { title: AZAR_GRAMMAR_BOOK_TITLE, start: '18', end: '27', calendarTopic: 'Azar｜Ch.1 現在式' },
   } as StudyItem;
   const html = context.renderExtraFields(item, false) as string;
-  for (const label of ['書名', '起始頁', '結束頁', 'Google Calendar 當日主題', '頁碼對應章節']) {
+  for (const label of ['書名', '起始頁', '結束頁', '課程與章節對照', '頁碼對應章節']) {
     assert.match(html, new RegExp(label));
   }
   assert.match(html, /data-field="start" value="18"/);
   assert.match(html, /data-field="end" value="27"/);
   assert.match(html, /第一章：現在式/);
+  assert.doesNotMatch(html, /Google Calendar 當日主題|Azar｜Ch\.1 現在式/);
+  assert.equal(item.f.calendarTopic, 'Azar｜Ch.1 現在式');
   assert.doesNotMatch(html, /1-6通常不用於進行式的動詞/);
   assert.doesNotMatch(html, /講義版本|頁碼對照/);
 
@@ -281,6 +286,7 @@ test('regrouping a Calendar Azar section keeps its manually recorded page range'
     cloneValue: (value: unknown) => structuredClone(value),
     applyDailyWorkRangeOverrides,
     numberedStudyScope,
+    restoreMathScheduleFields,
   });
   runInContext(runtime.slice(start, end), context);
   const template = {

@@ -79,3 +79,23 @@ export function overdueEntriesForItem<T extends FilterableEntry>(entries: readon
   if (!key) return [...entries];
   return entries.filter(entry => overdueItemKey(entry) === key);
 }
+
+export interface OverduePreviewGroup {
+  key: string;
+  title: string;
+  subject: OverdueItemSubject;
+  subjectLabel: string;
+  count: number;
+}
+
+export function overduePreviewGroups(entries: readonly FilterableEntry[]): OverduePreviewGroup[] {
+  const groups = new Map<string, OverduePreviewGroup>();
+  for (const entry of entries) {
+    const key = overdueItemKey(entry);
+    const existing = groups.get(key);
+    if (existing) existing.count += 1;
+    else groups.set(key, { key, title: overdueItemTitle(entry.subject, entry.title),
+      subject: entry.subject, subjectLabel: entry.subjectLabel, count: 1 });
+  }
+  return overdueItemOptions(entries).map(option => groups.get(option.value)!);
+}

@@ -20,7 +20,7 @@ function record(entry: EnglishReviewWordEntry): StudyRecord {
 
 test('the compiled official list and licensed translations have complete, internally valid indices', () => {
   assert.equal(Object.keys(CEEC_VOCABULARY).length, 6191);
-  assert.equal(Object.keys(CEEC_TRANSLATIONS).length, 6155);
+  assert.equal(Object.keys(CEEC_TRANSLATIONS).length, 6182);
   const fields = new Set<string>(VOCABULARY_PARTS_OF_SPEECH.map(([field]) => field));
   for (const entry of Object.values(CEEC_VOCABULARY)) {
     assert.equal(entry.level, Math.min(...entry.levels));
@@ -30,7 +30,7 @@ test('the compiled official list and licensed translations have complete, intern
   for (const [key, groups] of Object.entries(CEEC_TRANSLATIONS)) {
     assert.ok(Object.hasOwn(CEEC_VOCABULARY, key));
     for (const [field, meanings] of Object.entries(groups)) {
-      assert.ok(CEEC_VOCABULARY[key].parts.includes(field));
+      assert.ok(fields.has(field) || field === 'unclassified');
       assert.ok(meanings!.length && meanings!.every(meaning => /[\u3400-\u9fff]/.test(meaning)));
     }
   }
@@ -51,7 +51,7 @@ test('officially listed aliases, derived nouns, plurals and multiple levels are 
   assert.equal(vocabularyReference('  ABILITY  ')!.level, 1);
 });
 
-test('new words receive separate traditional meanings, official POS and a visible Level without changing their ID', () => {
+test('new words receive separate ECDICT meanings and POS plus an official Level without changing their ID', () => {
   const entry = word();
   assert.equal(applyVocabularyAutoFill(entry), true);
   assert.equal(entry.id, 'stable');
@@ -64,12 +64,12 @@ test('new words receive separate traditional meanings, official POS and a visibl
   assert.equal(applyVocabularyAutoFill(entry), false);
 });
 
-test('article, pronoun and auxiliary classifications are not incorrectly treated as nouns or verbs', () => {
+test('ECDICT keeps article, pronoun and auxiliary classifications alongside other listed senses', () => {
   for (const [text, field] of [['the', 'article'], ['you', 'pronoun'], ['may', 'auxiliary']]) {
     const entry = word(text);
     applyVocabularyAutoFill(entry);
     assert.equal(entry[field], true);
-    assert.equal(entry.noun, false);
+    assert.equal(entry.noun, text === 'may');
   }
 });
 
@@ -105,7 +105,7 @@ test('changing English replaces only earlier automatic data and clears it when t
   entry.text = 'abandon';
   applyVocabularyAutoFill(entry);
   assert.equal(entry.verb, true);
-  assert.equal(entry.noun, false);
+  assert.equal(entry.noun, true);
   assert.equal(entry.gsatLevel, 4);
   assert.ok(entry.translationsByPartOfSpeech!.verb!.includes('放棄'));
   entry.text = 'not-an-official-word';
@@ -139,12 +139,12 @@ test('an intentionally cleared meaning stays cleared through an unlisted interme
   assert.equal(entry.showGsatLevel, false);
 });
 
-test('missing dictionary meanings remain blank and the source status identifies the gap', () => {
+test('ECDICT classifications are independent of the official list and status identifies both sources', () => {
   const entry = word('alternate');
   applyVocabularyAutoFill(entry);
-  assert.equal(entry.noun, true);
+  assert.equal(entry.noun, false);
   assert.equal(entry.translationsByPartOfSpeech!.noun, undefined);
-  assert.match(vocabularyAutoFillStatus(entry), /部分詞性尚無對應翻譯/);
+  assert.match(vocabularyAutoFillStatus(entry), /ECDICT 中文翻譯與詞性/);
   entry.text = 'measure';
   applyVocabularyAutoFill(entry);
   assert.match(vocabularyAutoFillStatus(entry), /Level 2／Level 4（自動帶入較低級）/);

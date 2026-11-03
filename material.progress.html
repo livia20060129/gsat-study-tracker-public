@@ -1,6 +1,8 @@
 <!doctype html>
 <html lang="zh-Hant">
 <head>
+  <script src="./page-transitions.js?v=171.6.0-public.48"></script>
+  <link rel="stylesheet" href="./site-shell.css?v=171.6.0-public.48">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#f5f8fc" />
@@ -65,7 +67,7 @@
             <div class="catalog-fields">
               <label>書名<input id="catalogTitle" required maxlength="180" /></label>
               <label>科目<select id="catalogSubject" aria-label="科目" required><option>國文</option><option>英文</option><option>數學</option><optgroup label="自然"><option>生物</option><option>物理</option><option>化學</option><option>地科</option></optgroup><optgroup label="社會"><option>公民</option><option>歷史</option><option>地理</option></optgroup></select></label>
-              <label>分類<select id="catalogGroup" aria-label="分類"></select></label>
+              <label><span id="catalogGroupLabel">分類</span><select id="catalogGroup" aria-label="分類"></select></label>
               <label>範圍模板<select id="catalogMode" aria-label="範圍模板"><option value="pages">頁碼</option><option value="unit">Unit</option><option value="round">回次</option></select></label>
               <label><span id="catalogTotalLabel">總頁數</span><input id="catalogTotal" type="number" min="1" max="10000" step="1" required /></label>
             </div>

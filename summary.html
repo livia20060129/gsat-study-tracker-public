@@ -3,10 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="./page-transitions.js?v=171.6.0-public.48"></script>
   <meta name="theme-color" content="#f5f8fc" />
   <link rel="icon" type="image/png" href="./book.png" />
   <link rel="apple-touch-icon" href="./book.png" />
-  <title>每日讀書完成度紀錄卡</title>
+  <title>週／月總結｜GSAT Study Tracker</title>
 </head>
 <body>
   <main class="summary-page">
@@ -20,7 +21,7 @@
         <button id="nextPeriod" type="button" aria-label="下一週">›</button>
       </div>
       <div class="summary-view-controls">
-        <a class="summary-back header-action-link" href="./index.html">回到 Tracker</a>
+        <a class="summary-back header-action-link" data-navigation="home" href="./index.html">回到 Tracker</a>
         <div class="summary-mode-switch" id="summaryModeSwitch" role="tablist" aria-label="總結尺度" data-active="0">
           <span aria-hidden="true"></span>
           <button type="button" role="tab" data-summary-mode="week" aria-selected="true">週</button>
@@ -57,7 +58,7 @@
       <section class="summary-card summary-trend-card" aria-labelledby="trendTitle">
         <div class="summary-section-head summary-trend-head">
           <h2 id="trendTitle">學習趨勢</h2>
-          <div class="summary-chart-legend"><span><i class="time-dot"></i>學習時間</span><span><i class="completion-dot"></i>完成率</span></div>
+          <div class="summary-chart-legend"><span><i class="time-dot"></i>當日進度</span><span><i class="makeup-time-dot"></i>補舊進度</span><span><i class="completion-dot"></i>完成率</span></div>
         </div>
         <div id="summaryTrend" class="summary-trend"></div>
       </section>

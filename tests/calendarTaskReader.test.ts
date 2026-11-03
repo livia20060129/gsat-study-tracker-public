@@ -75,3 +75,21 @@ test('Calendar task reader fails closed when any later page fails', async () => 
   await assert.rejects(() => loadAllCalendarTaskRows(client, 'user-a'), /calendar page failed/);
   assert.equal(requestIndex, 2);
 });
+
+function clientReturning(data: unknown): SupabaseCalendarTaskClient {
+  return { from() { return { select() { return {
+    eq() { return this; }, or() { return this; }, order() { return this; },
+    limit() { return Promise.resolve({ data, error: null }); },
+  }; } }; } } as unknown as SupabaseCalendarTaskClient;
+}
+
+test('non-array responses are errors rather than an authoritative empty schedule', async () => {
+  for (const value of [null, {}, { error: 'unavailable' }]) {
+    await assert.rejects(loadAllCalendarTaskRows(clientReturning(value), 'a'), /回應格式不完整/);
+  }
+  assert.deepEqual(await loadAllCalendarTaskRows(clientReturning([]), 'a'), []);
+});
+
+test('a malformed row cannot silently turn a partially read schedule into a successful deletion', async () => {
+  await assert.rejects(loadAllCalendarTaskRows(clientReturning([calendarRow(0), { title: 'missing keys' }]), 'a'), /缺少識別碼或日期/);
+});

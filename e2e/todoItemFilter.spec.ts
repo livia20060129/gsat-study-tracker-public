@@ -1,3 +1,4 @@
+import { expandTodoCard } from './helpers/todoCard.ts';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
@@ -64,18 +65,23 @@ test('scope options remove repeated subjects and group rounds while completion a
   expect(new Set(labels)).toEqual(new Set(['全部項目', '國文｜古今悅讀一百', '英文｜英文文法總複習', '英文｜Unlock 3']));
   await select.selectOption({ label: '國文｜古今悅讀一百' });
   await expect(page.locator('.todo-card')).toHaveCount(2);
-  await expect(page.locator('.todo-card h3')).toHaveText(['國文｜古今悅讀一百 第 45 回', '國文｜古今悅讀一百 第 46 回']);
+  await expect(page.locator('.todo-card h3')).toHaveText(['國文｜古今悅讀一百', '國文｜古今悅讀一百']);
+  for (const card of await page.locator('.todo-card').all()) await expandTodoCard(card);
   await expect(page.locator('.todo-card').first().locator('[data-todo-range="start"]')).toHaveValue('45');
   await expect(page.locator('.todo-card').last().locator('[data-todo-range="start"]')).toHaveValue('46');
   expect(await snapshot(page)).toEqual(before);
   await page.locator('.todo-card').first().locator('.todo-complete').click();
   await expect(page.locator('.todo-card')).toHaveCount(1);
-  await expect(page.locator('.todo-card h3')).toHaveText('國文｜古今悅讀一百 第 46 回');
+  await expect(page.locator('.todo-card h3')).toHaveText('國文｜古今悅讀一百');
+  await expect(page.locator('.todo-card [data-todo-range="start"]')).toHaveValue('46');
   const items = await page.evaluate(prefix => JSON.parse(localStorage.getItem(prefix + '2026-10-20')!).items, prefix);
   expect(items.find((item: { id: string }) => item.id === 'gujin-0').done).toBe(true);
   expect(items.find((item: { id: string }) => item.id === 'gujin-1').done).toBe(false);
   await page.locator('.todo-history-undo').click();
   await expect(page.locator('.todo-card')).toHaveCount(2);
+  for (const card of await page.locator('.todo-card').all()) await expandTodoCard(card);
+  await expect(page.locator('.todo-card').first().locator('[data-todo-range="start"]')).toHaveValue('45');
+  await expect(page.locator('.todo-card').last().locator('[data-todo-range="start"]')).toHaveValue('46');
   await page.setViewportSize({ width: 375, height: 900 });
   await page.screenshot({ path: testInfo.outputPath('todo-grouped-rounds-mobile.png') });
   await expect(page.locator('#todoError')).toBeHidden();
@@ -93,6 +99,7 @@ test('older scoped URLs restore the grouped chapter selection and Units retain t
   await expect(select.locator('option:checked')).toHaveText('英文｜英文文法總複習');
   await select.selectOption({ label: '英文｜Unlock 3' });
   await expect(page.locator('.todo-card')).toHaveCount(2);
+  for (const card of await page.locator('.todo-card').all()) await expandTodoCard(card);
   await expect(page.locator('.todo-card').first().locator('[data-range-unit="Unit"][data-todo-range="start"]')).toHaveValue('1');
   await expect(page.locator('.todo-card').last().locator('[data-range-unit="Unit"][data-todo-range="start"]')).toHaveValue('2');
   await page.reload();
@@ -196,6 +203,7 @@ test('item switching preserves running timers, completion dates and pending manu
   const select = page.getByRole('combobox', { name: '查看項目', exact: true });
   await select.selectOption('english:ACE Reading');
   const old = page.locator('.todo-card').filter({ has: page.locator('[data-item-id="ace-old"]') });
+  await expandTodoCard(old);
   await old.locator('[data-todo-completion-date]').fill('2026-10-22');
   await old.getByRole('button', { name: '計時', exact: true }).click();
   await old.getByRole('button', { name: '開始', exact: true }).click();

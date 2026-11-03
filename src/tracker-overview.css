@@ -1,0 +1,440 @@
+.today-info-grid {
+  grid-template-columns: minmax(220px,1fr) minmax(0,3fr);
+  align-items: start;
+}
+
+.today-info-grid>.field {
+  align-self: start;
+  min-height: 0;
+}
+
+.mood-native-source {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  min-width: 0 !important;
+  opacity: 0;
+  padding: 0 !important;
+  border: 0 !important;
+  pointer-events: none;
+}
+
+.mood-segments {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: repeat(6,minmax(0,1fr));
+  padding: 4px;
+  border: 1px solid #d3dfed;
+  border-radius: 12px;
+  background: #e9eff7;
+}
+
+.mood-segment-indicator {
+  position: absolute;
+  z-index: -1;
+  left: 4px;
+  top: 4px;
+  bottom: 4px;
+  width: calc((100% - 8px)/6);
+  border-radius: 8px;
+  background: #538bcd;
+  transform: translateX(calc(var(--mood-index,0)*100%));
+  transition: transform .25s ease;
+}
+
+.mood-segments button {
+  min-width: 0;
+  min-height: 44px;
+  padding: 5px 1px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #526b87;
+  font-size: 11px;
+  line-height: 1.4;
+  box-shadow: none;
+}
+
+.mood-segments button[aria-pressed=true] {
+  color: white;
+}
+
+.routine-disclosure {
+  grid-column: auto;
+  align-self: start;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: white;
+}
+
+.routine-disclosure>summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 48px;
+  padding: 12px 14px;
+  list-style: none;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.routine-disclosure>summary::-webkit-details-marker {
+  display: none;
+}
+
+.routine-disclosure-toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #71859f;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.routine-disclosure-toggle i {
+  transition: transform .24s ease;
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border: solid currentColor;
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+}
+
+.routine-collapse {
+  display: none;
+}
+
+.routine-disclosure[open] .routine-expand {
+  display: none;
+}
+
+.routine-disclosure[open] .routine-collapse {
+  display: inline;
+}
+
+.routine-disclosure[open] .routine-disclosure-toggle i {
+  transform: rotate(225deg);
+}
+
+.routine-disclosure #routineTimeField {
+  min-height: 0;
+  height: auto;
+  padding: 0 14px 12px;
+  border: 0;
+  background: transparent;
+  display: grid;
+  grid-template-columns: minmax(0,1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.routine-disclosure #routineTimeLabel {
+  display: none;
+}
+
+.routine-disclosure .routine-time-meta {
+  grid-column: 1/-1;
+  min-height: 0;
+}
+
+.routine-disclosure .routine-time-switch {
+  margin: 0;
+}
+
+.routine-disclosure .routine-time-input-stage {
+  min-height: 0;
+}
+
+.routine-disclosure .routine-time-inputs {
+  justify-content: center;
+  gap: 5px;
+}
+
+.routine-disclosure .routine-time-inputs input {
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+  max-width: 88px;
+}
+
+#overviewStats {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  align-items: stretch;
+  gap: 12px;
+}
+
+#overviewStats>.stat {
+  min-width: 0;
+  text-align: center;
+  padding: 14px;
+}
+
+.overview-time-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.overview-time-stat>h3 {
+  align-self: stretch;
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+.overview-time-stat #metricMinutesPanel {
+  display: flex !important;
+  position: static !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: none !important;
+  min-height: 0 !important;
+  width: 100%;
+  flex: 1;
+}
+
+.overview-time-stat .subject-time-donut {
+  min-height: 0;
+  width: 100%;
+  padding: 0;
+}
+
+.overview-time-stat .subject-time-chart {
+  width: min(220px,100%);
+  min-width: 0;
+}
+
+.overview-time-stat .subject-time-empty {
+  font-size: 11px;
+  min-height: 0;
+}
+
+.overview-time-stat .subject-time-ring-label {
+  font-size: 16px;
+  stroke: white;
+  stroke-width: 3px;
+  paint-order: stroke fill;
+  stroke-linejoin: round;
+  font-weight: 800;
+}
+
+.overview-metric-stat #overviewMetricTabs {
+  grid-template-columns: repeat(2,minmax(0,1fr));
+}
+
+.overview-metric-stat .metric-segment-indicator {
+  width: calc((100% - 8px)/2);
+}
+
+.overview-metric-stat[data-metric-view=completion] .metric-segment-indicator {
+  transform: translateX(100%);
+}
+
+.overview-metric-stat[data-metric-view=pages] .metric-segment-indicator {
+  transform: translateX(0);
+}
+
+.overview-metric-stat .metric-panel-stage {
+  display: grid;
+  min-height: 258px !important;
+  height: auto !important;
+}
+
+.overview-metric-stat .metric-panel-stage>[data-metric-panel] {
+  grid-area: 1/1;
+  position: relative;
+  inset: auto;
+  min-width: 0;
+  min-height: 258px;
+  max-height: none;
+  padding: 16px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(3px);
+  transition: opacity .2s ease,transform .2s ease;
+}
+
+.overview-metric-stat .metric-panel-stage>[data-metric-panel].is-active {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+}
+
+#mathPagesPanel {
+  gap: 18px;
+}
+
+#mathPagesPanel .metric-math-panel {
+  position: static;
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+  gap: 6px;
+  min-height: 0;
+  padding: 0;
+  width: 100%;
+}
+
+#mathPagesPanel h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #526b87;
+}
+
+#mathPagesPanel .metric-math-panel>strong {
+  font-size: 30px;
+  line-height: 1.3;
+}
+
+#mathPagesPanel .metric-math-panel>strong small {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+#mathPagesPanel .progress {
+  width: min(100%,220px);
+  height: 5px;
+}
+
+#mathPagesPanel .small {
+  font-size: 11px;
+}
+
+#completionRatePanel {
+  gap: 15px;
+  text-align: center;
+}
+
+#completionRatePanel .completion-metric {
+  width: 100%;
+  max-width: 340px;
+  padding: 0;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+}
+
+#completionRatePanel .completion-metric-head {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  font-size: 13px;
+}
+
+#completionRatePanel .completion-metric-head strong {
+  font-size: 24px;
+}
+
+#completionRatePanel .progress {
+  width: min(100%,240px);
+  height: 5px;
+}
+
+#completionRatePanel .small {
+  font-size: 11px;
+}
+
+.completion-notes {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  max-width: 100%;
+}
+
+.completion-notes>summary {
+  display: inline-block;
+  list-style: none;
+  color: #7d8b9c;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.completion-notes>summary::-webkit-details-marker {
+  display: none;
+}
+
+.completion-notes p {
+  font-size: 11px;
+  color: #74849a;
+  text-align: center;
+  line-height: 1.7;
+  margin: 8px 0 0;
+}
+
+.settlement-metrics {
+  width: 100%;
+  text-align: center;
+}
+
+.summary-donut-label-button {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  color: #26384d !important;
+  font-weight: 800 !important;
+  text-shadow: 1.5px 0 white,-1.5px 0 white,0 1.5px white,0 -1.5px white,1px 1px white,-1px -1px white !important;
+}
+
+.routine-disclosure #routineTimeField {
+  grid-template-rows: auto;
+}
+
+.routine-disclosure .routine-time-meta {
+  position: static;
+  grid-column: auto;
+  min-height: 19px;
+  min-width: 0;
+  flex: 1 1 0;
+  max-width: 80px;
+  font-size: 9px;
+  white-space: normal;
+  margin-left: auto;
+  margin-right: 10px;
+}
+
+@media (max-width:720px) {
+  .today-info-grid {
+    grid-template-columns: 1fr;
+  }
+  .routine-disclosure #routineTimeField {
+    grid-template-columns: 1fr;
+  }
+  .routine-disclosure .routine-time-input-stage {
+    margin-top: 0;
+  }
+  #overviewStats {
+    grid-template-columns: 1fr;
+  }
+  .overview-time-stat .subject-time-chart {
+    width: 190px;
+  }
+  .overview-metric-stat .metric-panel-stage {
+    min-height: 258px !important;
+  }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  .mood-segment-indicator, .overview-metric-stat .metric-panel, .routine-disclosure-toggle i {
+    transition: none;
+  }
+}

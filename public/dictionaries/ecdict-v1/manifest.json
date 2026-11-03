@@ -1,0 +1,11 @@
+{
+  "source": "https://github.com/skywind3000/ECDICT",
+  "sha256": "d1ecbdf9ee2b920afb6f430ca6b6bb9f559588cf0dff86e04bd255f9390843cc",
+  "license": "MIT",
+  "generatedOn": "2026-11-02",
+  "entries": 723781,
+  "coreEntries": 6182,
+  "shards": 256,
+  "totalBytes": 47680711,
+  "maxShardBytes": 195781
+}

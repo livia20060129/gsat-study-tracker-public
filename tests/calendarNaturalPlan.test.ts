@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { renderStudyReference } from '../src/ui/studyReference.ts';
 import { createContext, runInContext } from 'node:vm';
 import { parseCalendarTask, calendarFixedTemplate } from '../src/calendar/calendarBridge.ts';
 import type { CalendarTaskRow } from '../src/calendar/calendarBridge.ts';
@@ -15,6 +16,7 @@ import { completionIncludedInPeriod } from '../src/study/learningSummary.ts';
 import { isInteractiveStudyItem } from '../src/study/interactiveTasks.ts';
 import { numberedStudyScope, usesSharedNumberedTemplate } from '../src/data/numberedScopes.ts';
 import { applyNumberedScope } from '../src/study/numberedScopeProgress.ts';
+import { restoreMathScheduleFields } from '../src/study/mathScheduleFields.ts';
 
 const date = '2026-09-02';
 function row(id: string, title: string, description: string): CalendarTaskRow {
@@ -45,6 +47,7 @@ function app(rows = [biology, chemistry]) {
     calendarFixedTemplate, dedupePresetDefinitions, presetDefinitionSemanticKey,
     groupDailyWorkItems, ungroupDailyWorkItems, applyDailyWorkRangeOverrides,
     effectiveTemplatePresetKey, reconcileCalendarNaturalPriorCoverage,
+    restoreMathScheduleFields,
     cloneObj: clone, cloneValue: clone,
     calendarConnected: true, calendarCacheLoaded: true, DAILY_PRESET_START: '2026-08-17',
     CALENDAR_NATURAL_RECOMMENDED_PAGES: {
@@ -266,7 +269,9 @@ function editingApp(day: string, separated: boolean | 'biology', deferred = fals
     orderCardPageRange: () => ({ endAdjusted: false, end: '' }),
     validateCardPageRange: () => ({ valid: true, message: '' }),
     scienceMaterialOptions: () => '<option>123日的淬鍊</option>',
-    calendarTopicSourceRow: () => '',
+    calendarSourceRow: () => '',
+    renderStudyReference,
+    deduplicateStudyIdentityFields: () => {},
   });
   const mapStart = runtime.indexOf('var DAY123_PAGE_MAPS=');
   runInContext(runtime.slice(mapStart, runtime.indexOf('function day123PageMap(', mapStart)), ctx);

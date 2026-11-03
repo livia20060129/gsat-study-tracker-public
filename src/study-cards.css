@@ -1,0 +1,57 @@
+/* One item surface; sections and fields provide structure without extra cards. */
+:root{--study-card-line:#dce3ec;--study-card-surface:#fff;--study-title-size:22px;--study-range-size:18px;--study-detail-size:12px}
+.panel.study-record-section,.todo-panel.study-record-section{border:0;background:transparent;box-shadow:none;overflow:visible}
+.study-record-section>.panel-head,.study-record-section>.todo-panel-head{padding:12px 0;border-bottom:0}
+.study-record-section>.content,.study-record-section>.todo-panel-body,.study-record-section>.view-pane>.content{padding:0}
+
+.study-record-section .item.subject-card{margin-top:12px;padding:18px;border:1px solid var(--study-card-line);border-left:4px solid var(--subject-accent);border-radius:14px;background:var(--subject-soft,var(--study-card-surface));box-shadow:none}
+.study-record-section .item .item-top{margin:0;padding:0;border-radius:0;background:transparent}
+.study-record-section .item .item-title{color:var(--subject-ink,var(--text));font-size:var(--study-title-size);font-weight:800;line-height:1.4;overflow-wrap:anywhere}
+.study-record-section .item .inner{margin-top:16px;padding:16px 0 0;border:0;border-top:1px solid var(--study-card-line);border-radius:0;background:transparent}
+.study-record-section .item .inner .inner{margin-top:12px;padding-top:0;border:0}
+.study-record-section .item .field{min-width:0;padding:0;border:0;border-radius:0;background:transparent}
+.study-record-section .item .field>label{margin-bottom:6px;color:#64748b;font-size:var(--study-detail-size);font-weight:500;line-height:1.5}
+.study-record-section .item .fixed-book-value{min-height:0;padding:4px 0;border:0;border-radius:0;background:transparent}
+.study-record-section .item [data-study-hierarchy="identity"]>:is(input,select,.fixed-book-value){font-size:20px;font-weight:750;line-height:1.45}
+.study-record-section .item [data-study-hierarchy="range"]>:is(input,select,.fixed-book-value,.small,.inline){color:#243b53;font-size:var(--study-range-size);font-weight:650;line-height:1.45;font-variant-numeric:tabular-nums}
+.study-record-section .item :is(.item-desc,.study-reference-content .small){color:#64748b;font-size:var(--study-detail-size);line-height:1.6}
+.study-record-section .item .checkline label{color:#526176;font-size:var(--study-detail-size);font-weight:500}
+.study-record-section .item .completion-date-editor{color:#60738c}
+.study-record-section .item input:not([type=checkbox]),.study-record-section .item select,.study-record-section .item textarea{border-radius:10px}
+.study-record-section .item .completion-date-editor{gap:8px;margin-top:6px;padding:0;border:0;border-radius:0;background:transparent}
+.study-record-section .item .checkline{padding-top:12px;border-top:1px solid var(--study-card-line)}
+.study-record-section .item :is(.math-main-row,.science-main-row,.chinese-book-main-row,.english-book-row,.english-book-page-row) .compact-number>input{width:100%;max-width:160px}
+
+.study-record-section .item .item{margin:16px 0 0;padding:16px 0 0;border:0;border-top:1px solid var(--study-card-line);border-radius:0;background:transparent;box-shadow:none}
+.study-record-section .item .item .item-title{color:var(--subject-child-ink,var(--subject-ink))}
+.study-record-section .todo-card{padding:18px;border-color:var(--study-card-line);border-left-color:var(--subject-accent);border-radius:14px;background:color-mix(in srgb,var(--subject-accent) 8%,var(--study-card-surface))}
+.study-record-section .todo-card h3{font-size:var(--study-title-size);font-weight:800;line-height:1.4;overflow-wrap:anywhere}
+.study-record-section .todo-card dd[data-study-hierarchy="identity"]{font-size:20px;font-weight:750;line-height:1.45}
+.study-record-section .todo-card dd[data-study-hierarchy="range"]{color:#243b53;font-size:var(--study-range-size);font-weight:650;line-height:1.45;font-variant-numeric:tabular-nums}
+.study-record-section .todo-card .todo-range-input{height:44px;font-size:var(--study-range-size);font-weight:650;line-height:1.45}
+.study-record-section :is(.item-title,.todo-card h3) .study-heading-range{color:#243b53;font-size:var(--study-range-size);font-weight:650;line-height:1.45}
+.study-record-section .todo-card :is(.todo-description,.todo-record-grid dt,.todo-progress-option){color:#64748b;font-size:var(--study-detail-size)}
+.study-record-section .todo-record-grid,.study-record-section .todo-progress-editor{border-top-color:var(--study-card-line)}
+.study-reference-details{margin-top:14px;padding-top:12px;border-top:1px solid var(--study-card-line)}
+.study-reference-details>summary{width:fit-content;cursor:pointer;color:#64748b;font-size:13px;font-weight:600;line-height:1.6}
+.study-reference-details>summary:focus-visible{outline:2px solid var(--subject-accent,var(--accent));outline-offset:4px;border-radius:3px}
+.study-reference-content{display:grid;gap:12px;padding-top:12px}
+.study-record-section [hidden]{display:none!important}
+.study-record-section .item .study-inner-empty{display:none}
+.study-record-section .item .study-inner-checks-only{padding-top:0;border-top:0}
+
+@media(min-width:721px){
+  .study-record-section .item .science-integration-row{grid-template-columns:minmax(0,2fr) repeat(2,minmax(0,1fr))}
+  .science-integration-row>.science-page-text{grid-column:span 2}
+  .study-record-section .item .study-fields-deduplicated{grid-template-columns:repeat(var(--study-field-count),minmax(0,1fr))}
+  .study-fields-deduplicated>.field{grid-column:auto}
+}
+
+@media(max-width:720px){
+  .study-record-section .item.subject-card{padding:14px}
+  .study-record-section .item .item{padding:14px 0 0;margin:14px 0 0}
+  .study-record-section .item :is(.math-main-row,.science-main-row,.chinese-book-main-row,.english-book-row,.english-book-page-row){grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+  .study-record-section .item :is(.math-main-row,.science-main-row,.chinese-book-main-row,.english-book-row,.english-book-page-row)>.field:not(.compact-number){grid-column:1/-1}
+  .study-record-section .item :is(.math-main-row,.science-main-row,.chinese-book-main-row,.english-book-row,.english-book-page-row) .compact-number>input{max-width:none}
+  .study-record-section .todo-card{padding:14px}
+}

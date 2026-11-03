@@ -1,6 +1,22 @@
 import { expect, test } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
 
+test('pronunciation and Chinese controls use a separate row from export controls', async ({ page }) => {
+  for (const width of [1440, 375, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/vocabulary.review.html');
+    const reading = page.locator('.vocabulary-reading-tools');
+    const exporting = page.locator('.vocabulary-export-tools');
+    await expect(reading.locator('#toggleVocabularyTranslations')).toBeVisible();
+    await expect(reading.locator('#vocabularyAccent')).toBeVisible();
+    await expect(exporting.locator('#vocabularyExportFormat')).toBeVisible();
+    const first = (await reading.boundingBox())!;
+    const second = (await exporting.boundingBox())!;
+    expect(second.y).toBeGreaterThanOrEqual(first.y + first.height + 8);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  }
+});
+
 async function seedVocabulary(page: Page): Promise<void> {
   await page.goto('/vocabulary.review.html');
   await page.evaluate(() => {
@@ -20,9 +36,11 @@ async function seedVocabulary(page: Page): Promise<void> {
 }
 
 async function expectTwoColumns(rows: Locator): Promise<void> {
-  const first = (await rows.nth(0).boundingBox())!;
-  const second = (await rows.nth(1).boundingBox())!;
-  const third = (await rows.nth(2).boundingBox())!;
+  await expect.poll(() => rows.evaluateAll(nodes => nodes.every(node => !node.hasAttribute('data-disclosure-motion')))).toBe(true);
+  const [first, second, third] = await rows.evaluateAll(nodes => nodes.slice(0, 3).map(node => {
+    const rect = node.getBoundingClientRect();
+    return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+  }));
   expect(Math.abs(first.y - second.y)).toBeLessThan(1);
   expect(second.x).toBeGreaterThanOrEqual(first.x + first.width);
   expect(third.y).toBeGreaterThanOrEqual(first.y + first.height);
@@ -34,10 +52,10 @@ test('page references appear directly under the title and all word groupings use
   await seedVocabulary(page);
   const before = await page.evaluate(() => localStorage.getItem('study-v11:guest:2026-10-29'));
   const references = page.locator('#vocabularyReferences');
-  expect(await page.locator('h1').evaluate(node => node.nextElementSibling?.id)).toBe('vocabularyReferences');
+  expect(await page.locator('h1:visible').evaluate(node => node.nextElementSibling?.id)).toBe('vocabularyReferences');
   await expect(references.getByRole('link')).toHaveCount(3);
-  await expect(references).toContainText('大考中心（詞性／Level）');
-  await expect(references).toContainText('ECDICT（中文翻譯）');
+  await expect(references).toContainText('大考中心（Level）');
+  await expect(references).toContainText('ECDICT（中文翻譯／詞性）');
   await expect(page.locator('#vocabularyLegacySources')).toBeHidden();
   await expect(page.locator('.vocabulary-row a[href*="ECDICT"], .vocabulary-row .vocabulary-reference-sources')).toHaveCount(0);
   const rows = page.locator('.vocabulary-row');

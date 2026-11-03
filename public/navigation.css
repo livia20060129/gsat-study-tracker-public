@@ -1,0 +1,39 @@
+/* Shared by bundled app pages and standalone public pages. */
+:root{--site-page-width:1050px;--site-page-gutter:14px;--site-page-background:#edf2f8}
+@media screen{html:root,html>body{background:var(--site-page-background)}}
+.header-action-link{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;max-width:100%;min-height:40px;padding:9px 13px;border:1px solid #cbd8ea;border-radius:12px;background:#fff;color:#244ab5;font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;font-size:13px;font-weight:800;line-height:1.4;text-align:center;text-decoration:none;overflow-wrap:anywhere;box-shadow:0 3px 10px rgba(15,23,42,.04)}
+.header-action-link:hover{border-color:#9cb3df;background:#f7f9ff;text-decoration:none}
+.header-action-link:focus-visible{outline:3px solid rgba(49,94,251,.24);outline-offset:2px}
+.page-navigation-header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px}
+.page-navigation-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:10px;max-width:100%;margin-left:auto}
+.page-navigation-actions>.header-action-link{width:auto;flex:0 0 auto}
+.page-navigation-actions>.header-action-link,.summary-view-controls>.header-action-link{height:44px;min-height:44px;padding:2px 13px;white-space:normal;font-synthesis:none;text-rendering:optimizeLegibility;letter-spacing:normal}
+.header-action-link:is([data-navigation="home"],[href="./index.html"]){width:136px}
+body button{font-weight:800}
+body>main:not(.document),body.source-page,.prompt-header-inner,body .header-inner,body .site-footer{box-sizing:border-box;width:100%;max-width:var(--site-page-width);margin-left:auto;margin-right:auto;padding-left:var(--site-page-gutter);padding-right:var(--site-page-gutter)}
+body>main.document{box-sizing:border-box;width:100%;max-width:var(--site-page-width);margin-left:auto;margin-right:auto}
+.prompt-page>header{padding-left:0;padding-right:0}
+@media screen{
+  body>main:not(.document){padding-top:22px}
+  body.source-page{margin-top:22px}
+  body.prompt-page>header,body .header-inner{padding-top:22px}
+  body .page-navigation-header,body .summary-header{gap:16px}
+  body .page-navigation-header{align-items:flex-start}
+  body .summary-header{padding:0}
+  body .summary-heading{align-self:start}
+  body .page-navigation-header h1,body .summary-header h1{margin:0;padding:0;color:#172033;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;font-size:28px;font-weight:700;font-style:normal;line-height:1.55;letter-spacing:normal;text-align:left;font-synthesis:none;text-rendering:optimizeLegibility}
+  body .legal-page-heading{min-width:0}
+  body .legal-page-heading>.brand{display:block;margin:0;color:#64748b;font-size:13px;font-weight:400;line-height:1.55}
+}
+@media screen and (min-width:701px){
+  .page-navigation-actions{flex-shrink:0;min-width:136px}
+  body .page-navigation-header:not(.app-header){flex-wrap:nowrap}
+  body .page-navigation-header:not(.app-header)>.page-navigation-actions{max-width:calc(100% - 160px)}
+  body .page-navigation-header>:not(.page-navigation-actions){min-width:0}
+}
+@media(max-width:700px){
+  body .page-navigation-header{display:flex;align-items:stretch;flex-direction:column}
+  .page-navigation-header>.page-navigation-actions{order:-1;align-self:center;align-items:stretch;justify-content:center;width:100%;margin:0}
+  .page-navigation-actions>.header-action-link{flex:1 1 140px;min-width:0}
+  .page-navigation-actions>.header-action-link:is([data-navigation="home"],[href="./index.html"]),.summary-view-controls>.header-action-link:is([data-navigation="home"],[href="./index.html"]){order:-1;flex:1 0 100%;width:100%}
+}

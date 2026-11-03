@@ -17,10 +17,10 @@ export function vocabularyPrintDocument(
   const title = `英文${kind === '單字' ? '單字' : kind}表（${withTranslations ? '有' : '無'}翻譯）`;
   const notices = [];
   if (entries.some(entry => entry.referenceSources?.ceec)) {
-    notices.push('<p>詞性／級數參考：大學入學考試中心《高中英文參考詞彙表》（111 學年度起適用，109 年 7 月）。著作權屬財團法人大學入學考試中心基金會，僅供非營利目的使用。</p>');
+    notices.push('<p>學測級數參考：大學入學考試中心《高中英文參考詞彙表》（111 學年度起適用，109 年 7 月）。著作權屬財團法人大學入學考試中心基金會，僅供非營利目的使用。</p>');
   }
   if (withTranslations && entries.some(entry => entry.referenceSources?.ecdict || entry.dictionarySources?.some(source => source.provider === 'ecdict'))) {
-    notices.push('<p>中文參考：ECDICT（skywind3000/ECDICT），https://github.com/skywind3000/ECDICT 。僅擷取對應詞性、分列意思並以 OpenCC 轉為繁體；手動修改內容不代表來源認可。</p>');
+    notices.push('<p>中文翻譯與詞性參考：ECDICT（skywind3000/ECDICT），https://github.com/skywind3000/ECDICT 。分列意思並以 OpenCC 轉為繁體；手動修改內容不代表來源認可。</p>');
     notices.push(`<pre>${escapeHtml(ECDICT_MIT_LICENSE)}</pre>`);
   }
   if (withTranslations && entries.some(entry => entry.dictionarySources?.some(source => source.provider === 'cambridge'))) {
@@ -41,7 +41,7 @@ export function vocabularyPrintDocument(
   return `<!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${title}</title><style>
-@page{size:A4 portrait;margin:15mm}
+@page{size:A4 portrait;margin:20mm}
 *{box-sizing:border-box}body{margin:20px;color:#000;background:#fff;font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",Arial,sans-serif;font-size:11pt}
 h1{margin:0 0 12px;font-size:16pt;font-weight:600}table{width:100%;table-layout:fixed;border-collapse:collapse}col{width:33.333%}th,td{border:1px solid #000;padding:4px 8px;text-align:center;vertical-align:middle;overflow-wrap:anywhere;line-height:1.45}th{font-weight:500}td.meaning{height:8mm;white-space:pre-wrap}thead{display:table-header-group}tbody{break-inside:avoid;page-break-inside:avoid}tr{break-inside:avoid;page-break-inside:avoid}
 .print-actions{margin-bottom:18px;font:14px sans-serif}.print-actions button{margin-right:12px;padding:9px 14px;cursor:pointer}.print-actions p{margin:8px 0}

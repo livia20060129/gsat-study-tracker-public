@@ -1,28 +1,31 @@
 <!doctype html>
 <html lang="zh-Hant">
 <head>
+  <script src="./page-transitions.js?v=171.6.0-public.48"></script>
+  <link rel="stylesheet" href="./site-shell.css?v=171.6.0-public.48">
   <meta charset="utf-8">
+<link rel="stylesheet" href="./navigation.css?v=171.6.0-public.48">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GSAT 讀書排程管理 Prompt｜2026-09-18 最新版</title>
   <style>
-    :root{--bg:#f4f7fb;--paper:#fff;--ink:#172033;--muted:#64748b;--line:#dce3ec;--blue:#315efb;--soft:#f8fafc;--warn:#fff7e6;--green:#ecfdf3}
+    :root{--bg:var(--site-page-background);--paper:#fff;--ink:#172033;--muted:#64748b;--line:#dce3ec;--blue:#315efb;--soft:#f8fafc;--warn:#fff7e6;--green:#ecfdf3}
     *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.72 system-ui,-apple-system,"Segoe UI","Noto Sans TC",sans-serif}
     header{padding:26px 24px 8px;color:var(--ink);background:var(--bg)}
-    header .inner,main{max-width:1050px;margin:auto}h1{margin:0 0 10px;font-size:clamp(28px,4vw,36px);line-height:1.2}header p{margin:5px 0;color:var(--muted)}
+    header .inner,main{margin:auto}h1{margin:0 0 10px;font-size:clamp(28px,4vw,36px);line-height:1.2}header p{margin:5px 0;color:var(--muted)}
     .toolbar{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}button{padding:9px 13px;border:1px solid #cbd8ea;border-radius:12px;background:var(--blue);color:#fff;font-weight:750;box-shadow:0 3px 10px rgba(15,23,42,.08);cursor:pointer}button:hover{background:#244ab5}
     main{padding:18px 14px 64px}nav,section{margin-bottom:14px;padding:22px 24px;border:1px solid var(--line);border-radius:22px;background:var(--paper);box-shadow:0 5px 18px rgba(15,23,42,.04)}
-    nav ul{columns:2;margin-bottom:0}nav a{color:var(--blue);text-decoration:none}h2{margin:0 0 14px;padding-bottom:9px;border-bottom:2px solid var(--soft);font-size:23px}h3{margin:22px 0 8px;font-size:18px}
+    nav ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:0;padding:0;list-style:none}nav a{color:var(--blue);text-decoration:none}nav li{margin:0}nav .header-action-link{display:flex;justify-content:flex-start;height:100%}h2{margin:0 0 14px;padding-bottom:9px;border-bottom:2px solid var(--soft);font-size:23px}h3{margin:22px 0 8px;font-size:18px}
     li{margin:5px 0}code{padding:2px 6px;border-radius:5px;background:#f1f5f9;font-family:ui-monospace,SFMono-Regular,Consolas,monospace}pre{overflow:auto;padding:16px;border:1px solid #d7e0ec;border-radius:14px;background:var(--soft);line-height:1.55;white-space:pre-wrap}
     table{width:100%;border-collapse:collapse}th,td{padding:9px 11px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:var(--soft)}.important{padding:14px 16px;border-left:5px solid #f59e0b;border-radius:8px;background:var(--warn)}.ok{padding:14px 16px;border-left:5px solid #22c55e;border-radius:8px;background:var(--green)}
     .tag{display:inline-block;padding:1px 8px;border-radius:999px;background:#eef2ff;color:#3730a3;font-size:13px}.muted{color:var(--muted)}footer{padding:0 20px 40px;color:var(--muted);text-align:center}
-    @media(max-width:760px){nav ul{columns:1}section,nav{padding:20px}table{font-size:14px;display:block;overflow-x:auto}}@media print{header{padding:20px 0;background:#fff;color:#000}.toolbar,nav{display:none}body{background:#fff}section{box-shadow:none;break-inside:avoid}}
+    @media(max-width:760px){nav ul{grid-template-columns:minmax(0,1fr)}section,nav{padding:20px}table{font-size:14px;display:block;overflow-x:auto}}@media print{header{padding:20px 0;background:#fff;color:#000}.toolbar,nav,.page-navigation-actions{display:none}body{background:#fff}section{box-shadow:none;break-inside:avoid}}
   </style>
 </head>
-<body>
-<header><div class="inner">
-  <h1>GSAT 讀書排程與進度管理 Prompt</h1>
+<body class="prompt-page">
+<header><div class="inner prompt-header-inner">
+  <div class="page-navigation-header"><h1>GSAT 讀書排程與進度管理 Prompt</h1><div class="page-navigation-actions"><a class="header-action-link" data-navigation="home" href="./index.html">回到 Tracker</a></div></div>
   <p>將「可直接使用的 Prompt」貼到新對話，即可延續目前的排程、命名與備註格式。若新指示與本 Prompt 衝突，一律以使用者最新、最明確的指示為準。</p>
-  <p>最新版：2026-10-30（Asia/Taipei）</p>
+  <p>最新版：2026-09-19（Asia/Taipei）</p>
   <p>整合目前教材、教材主識別碼、Calendar 實際識別碼規則，以及所有最新格式修正。</p>
   <div class="toolbar"><button onclick="copyPrompt(this)">複製完整 Prompt</button></div>
 </div></header>

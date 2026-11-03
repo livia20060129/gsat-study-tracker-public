@@ -36,4 +36,8 @@ The browser is allowed to receive only `VITE_GOOGLE_CLIENT_ID`. A Google OAuth c
 
 ## Ongoing migration rule
 
+The public edition now shares the v171.6.132 client modules for persistent auth storage, session restoration, pending sync management, reversible local baseline compaction, math range preservation, vocabulary stars and local document exports. The early page frame and `site-shell.ts` provide common desktop rails and mobile sections; record forms keep their existing nodes and save handlers.
+
+Public-specific rules remain in place: `materialSelection.ts` filters the manual material choices, the material page keeps two panels and an external subject switch, and only fresh complete Calendar responses may reconcile schedules. `calendarScheduleContinuity.ts` supplies account/request invalidation, but the public UI never restores its schedule snapshots. Valid GSAT/GAST identifiers remain an admission rule rather than a built-in-material whitelist.
+
 New or rewritten Cloud and Calendar behavior should be implemented in typed application, domain, infrastructure, or UI modules. The legacy runtime may coordinate DOM events, but authentication decisions, configuration parsing, synchronization, and data rules should not be added there.

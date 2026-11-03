@@ -141,8 +141,8 @@ function subjectDonutMarkup(summary: LearningPeriodSummary): string {
   const subjectTime = groupedSummarySubjectTime(summary.timeEntries);
   const arcs = subjectTimeDonutSlices(subjectTime);
   const paths = arcs.map(slice => `<path class="summary-donut-slice" data-summary-subject-path="${slice.subject}" d="${subjectTimeArcPath(slice)}" fill="none" stroke="${slice.color}" tabindex="0" role="button" aria-label="${slice.subject} ${formatHours(slice.minutes)} 小時，占 ${slice.percent}%"></path>`).join('');
-  const labels = arcs.map(slice => {
-    const fontSize = slice.endPercent - slice.startPercent < 6 ? 9.5 : 13;
+  const labels = arcs.filter(slice => slice.endPercent - slice.startPercent >= 6).map(slice => {
+    const fontSize = 16;
     return `<button class="summary-donut-label-button" type="button" data-summary-subject="${slice.subject}" style="left:${slice.labelX / 1.6}%;top:${slice.labelY / 1.6}%;font-size:${fontSize}px" aria-label="查看${slice.subject}項目">${SUBJECT_TIME_SHORT_LABELS[slice.subject]}</button>`;
   }).join('');
   return `<div class="summary-donut-shell">
@@ -378,7 +378,14 @@ function renderTrend(summary: LearningPeriodSummary): void {
   }).join('');
   const bars = points.map(point => {
     const barHeight = plotHeight * point.totalMinutes / maxMinutes;
-    return `<rect x="${point.x - barWidth / 2}" y="${top + plotHeight - barHeight}" width="${barWidth}" height="${barHeight}" rx="4"><title>${point.date}：${formatWholeDuration(point.totalMinutes)}</title></rect>`;
+    const makeupHeight = plotHeight * point.makeupMinutes / maxMinutes;
+    const regularHeight = barHeight - makeupHeight;
+    const regularMinutes = Math.max(0, Math.round((point.totalMinutes - point.makeupMinutes) * 10) / 10);
+    const regular = regularMinutes > 0
+      ? `<rect data-time-kind="regular" data-minutes="${regularMinutes}" x="${point.x - barWidth / 2}" y="${top + plotHeight - regularHeight}" width="${barWidth}" height="${regularHeight}" rx="4"><title>當日進度：${formatWholeDuration(regularMinutes)}</title></rect>` : '';
+    const makeup = point.makeupMinutes > 0
+      ? `<rect class="trend-makeup-time" data-time-kind="makeup" data-minutes="${point.makeupMinutes}" x="${point.x - barWidth / 2}" y="${top + plotHeight - barHeight}" width="${barWidth}" height="${makeupHeight}" rx="4"><title>補舊進度：${formatWholeDuration(point.makeupMinutes)}</title></rect>` : '';
+    return `<g data-trend-date="${point.date}"><title>${point.date}：${formatWholeDuration(point.totalMinutes)}</title>${regular}${makeup}</g>`;
   }).join('');
   const line = points.map(point => `${point.x},${point.y}`).join(' ');
   const dots = points.map(point => `<circle cx="${point.x}" cy="${point.y}" r="3.8"><title>${point.date}：完成率 ${point.completionPercent}%</title></circle>`).join('');

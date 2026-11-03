@@ -64,7 +64,7 @@ test('other materials, unknown units, invalid fractions and mismatched totals ne
   const candidates = [
     { ...conditional('1/4'), material: '新關鍵' }, { ...conditional('1/4'), material: '智慧型' },
     { ...conditional('1/4'), title: '4A｜尚未收錄的單元' },
-    conditional('5/4'), conditional('0/4'), conditional('1/0'), conditional('1/3'),
+    conditional('5/4'), conditional('0/4'), conditional('1/0'), { ...conditional('1/3'), sourceDate: undefined },
   ];
   for (const parsed of candidates) assert.equal(resolveMathCalendarPlan(parsed, CALENDAR_MATH_PLAN), null);
 });
@@ -103,4 +103,25 @@ test('resolving a fraction preserves the parsed event, source identities and sch
   plan.start = 1;
   assert.deepEqual(parsed, before);
   assert.deepEqual(plans, CALENDAR_MATH_PLAN);
+});
+
+test('moved October 13 and 14 triangle parts use their original schedule dates when Calendar changed seven parts to five', () => {
+  // The descriptions were read from the two moved Calendar events on 2026-11-01.
+  for (const [part, sourceDay, start, end] of [[2, 13, 228, 236], [3, 14, 237, 245]]) {
+    const parsed = task('2｜三角比', `【講義版本】教學講義 【冊別】2 【單元進度】三角比（${part}/5） 【來源日期】2026/10/${sourceDay} 【識別碼】GSAT-SPLIT-\nMATH-2026-10-${sourceDay}`);
+    parsed.date = '2026-11-02';
+    const plan = resolveMathCalendarPlan(parsed, CALENDAR_MATH_PLAN);
+    assert.deepEqual(plan && [plan.book, plan.start, plan.end], ['2', start, end]);
+    assert.equal(plan?.calendarRangeSource, 'unit');
+  }
+});
+
+test('revised fractions require a known source date within the same material, volume and topic', () => {
+  const parsed = task('2｜三角比', '【講義版本】教學講義 【冊別】2 【單元進度】三角比（3/5） 【來源日期】2026/10/14');
+  for (const candidate of [
+    { ...parsed, sourceDate: undefined }, { ...parsed, sourceDate: '2026/10/11' },
+    { ...parsed, sourceDate: '2026/10/7' }, { ...parsed, material: '新關鍵' },
+    { ...parsed, book: '4A' }, { ...parsed, title: '2｜尚未收錄的主題' },
+    { ...parsed, progressIndex: 6, progressTotal: 5 },
+  ]) assert.equal(resolveMathCalendarPlan(candidate, CALENDAR_MATH_PLAN), null);
 });
