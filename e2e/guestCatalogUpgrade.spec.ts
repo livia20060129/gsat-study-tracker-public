@@ -117,7 +117,7 @@ test('mobile catalog creates a page map and retains saved Tracker cards and larg
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath('catalog-editor-mobile.png'), fullPage: true });
   await page.getByRole('button', { name: '取消編輯', exact: true }).click();
-  await page.getByRole('link', { name: '回到 Tracker', exact: true }).click();
+  await navigateSite(page, 'index.html');
   const card = await addSelectedCatalogItem(page);
   await card.locator('[data-field="start"]').fill('1'); await card.locator('[data-field="end"]').fill('10'); await card.locator('[data-field="end"]').blur();
   await expect(card.locator('[data-catalog-auto]')).toHaveText('Unit 1｜小主題 A');

@@ -1425,7 +1425,7 @@ test('learning summary uses one week/month control for the complete page', async
     };
   });
   expect(mobileHeader.headingFontSize).toBe('28px');
-  await expect(page.locator('.summary-back')).toBeHidden();
+  await expect(page.locator('.summary-back')).toHaveCount(0);
   await expect(page.locator('.site-mobile-bar')).toBeVisible();
   expect(Math.abs(mobileHeader.controlsCenter - mobileHeader.headerCenter)).toBeLessThan(3);
   await page.locator('[data-summary-subject="英文"]').click();

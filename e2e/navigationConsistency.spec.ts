@@ -11,6 +11,7 @@ test('all pages share desktop rails and three full-width mobile sections without
     for (const path of ['/', '/todo.html', '/summary.html', '/material.progress.html', '/vocabulary.review.html', '/privacy.html', '/terms.html', '/support.html', '/gpt.prompt.html', '/vocabulary.sources.html']) {
       await page.goto(path);
       await expect(page.locator('body')).toHaveClass(/has-site-shell/);
+      await expect(page.getByRole('link', { name: /^回到 Tracker$/i, includeHidden: true })).toHaveCount(0);
       if (width >= 1200) await expect(page.locator('[data-rail-date]')).toHaveCSS('color', 'rgb(237, 243, 252)');
       await expect(page.locator('#siteMobileBar [data-mobile-section]')).toHaveCount(3);
       const home = page.locator('.site-workspace-home');
