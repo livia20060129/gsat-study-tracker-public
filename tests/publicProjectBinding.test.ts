@@ -10,6 +10,7 @@ const calendarWorkflow = readFileSync(new URL('../.github/workflows/calendar-syn
 const deployWorkflow = readFileSync(new URL('../.github/workflows/deploy.yml', import.meta.url), 'utf8');
 const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8');
 const calendarRuntime = readFileSync(new URL('../supabase/functions/_shared/googleCalendar.ts', import.meta.url), 'utf8');
+const calendarAuthorization = readFileSync(new URL('../supabase/functions/_shared/calendarAuthorization.ts', import.meta.url), 'utf8');
 const privacyPolicy = readFileSync(new URL('../public/privacy.html', import.meta.url), 'utf8');
 const calendarController = readFileSync(new URL('../src/application/googleCalendarConnectionController.ts', import.meta.url), 'utf8');
 const calendarClientConfig = readFileSync(new URL('../src/config/googleCalendar.ts', import.meta.url), 'utf8');
@@ -48,10 +49,12 @@ test('Pages artifact keeps the official stable name across failed-job reruns', (
 
 test('public OAuth documentation and runtime use the same least-privilege Calendar scope', () => {
   const expectedScope = 'https://www.googleapis.com/auth/calendar.events.readonly';
-  assert.match(calendarRuntime, new RegExp(`CALENDAR_SCOPE = '${expectedScope.replaceAll('.', '\\.')}'`));
+  assert.match(calendarAuthorization, new RegExp(`CALENDAR_SCOPE = '${expectedScope.replaceAll('.', '\\.')}'`));
+  assert.match(calendarRuntime, /export \{ CALENDAR_SCOPE \} from '\.\/calendarAuthorization\.ts'/);
+  assert.match(calendarRuntime, /return buildCalendarAuthorizationUrl\(/);
   assert.match(privacyPolicy, /calendar\.events\.readonly/);
   assert.match(readme, /calendar\.events\.readonly/);
-  assert.doesNotMatch(`${calendarRuntime}\n${privacyPolicy}`, /auth\/calendar\.readonly|<code>calendar\.readonly<\/code>/);
+  assert.doesNotMatch(`${calendarRuntime}\n${calendarAuthorization}\n${privacyPolicy}`, /auth\/calendar\.readonly|<code>calendar\.readonly<\/code>/);
 });
 
 test('public OAuth documentation points back to the public custom domain', () => {

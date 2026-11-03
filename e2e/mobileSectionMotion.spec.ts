@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { showMobileSection } from './helpers/siteNavigation.ts';
+import { dispatchSectionSwipe } from './helpers/sectionSwipe.ts';
 
 interface SlideObservation { id: string; from: number; to: number; duration: number; hasOpacity: boolean }
 declare global {
@@ -83,6 +84,23 @@ test('a deep-page slide keeps the outgoing connection position, original inputs 
   await expect(page.locator('#notes')).toHaveValue('左右滑動仍保留原本輸入');
   expect(await page.evaluate(() => scrollY)).toBe(originalScroll);
   await expect(page.locator('.connection-dock')).toHaveCSS('position', 'sticky');
+});
+
+test('touch swipes use the same full-width opaque slides and preserve the navigation position', async ({ page }) => {
+  const header = await page.locator('#siteMobileBar').boundingBox();
+  const travel = await page.locator('body').evaluate(node => node.getBoundingClientRect().width);
+  await dispatchSectionSwipe(page, 'main', { x: 280, y: 300 }, { x: 90, y: 302 });
+  await expect(page.locator('body')).toHaveAttribute('data-mobile-section', 'tools');
+  const observations = await page.evaluate(() => window.mobileSlideProbe.observations);
+  expect(observations.some(value => value.id === 'study-mobile-section-out' && value.to - value.from === -travel)).toBe(true);
+  expect(observations.some(value => value.id === 'study-mobile-section-in' && value.from === travel && value.to === 0)).toBe(true);
+  expect(observations.every(value => value.duration === 240 && !value.hasOpacity)).toBe(true);
+  const midpoint = (await page.locator('#siteRightRail').boundingBox())!.x;
+  expect(midpoint).toBeGreaterThan(0);
+  expect(midpoint).toBeLessThan(travel);
+  expect(await page.locator('#siteMobileBar').boundingBox()).toEqual(header);
+  await page.evaluate(() => { for (const animation of window.mobileSlideProbe.animations) animation.finish(); });
+  await expect(page.locator('html')).not.toHaveAttribute('data-mobile-slide-direction');
 });
 
 test('rapid reversals, resizing and reduced motion remove temporary positions and keep the latest page', async ({ page }) => {

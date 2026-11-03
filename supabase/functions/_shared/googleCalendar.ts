@@ -3,8 +3,9 @@ import { classifyCalendarEvent } from './calendarClassification.ts';
 import { staleCalendarEventKeys } from './calendarSyncDiff.ts';
 import { readableErrorMessage } from './functionResponse.ts';
 import { chunksOf, collectStringKeysetPages } from './keysetPagination.ts';
+import { buildCalendarAuthorizationUrl } from './calendarAuthorization.ts';
 
-export const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events.readonly';
+export { CALENDAR_SCOPE } from './calendarAuthorization.ts';
 export const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
@@ -195,17 +196,11 @@ export async function verifyOAuthState(state: string): Promise<{ userId: string;
 
 export function buildGoogleAuthorizationUrl(state: string, clientId: string): string {
   const cfg = googleConfig();
-  const params = new URLSearchParams({
-    client_id: normalizeGoogleClientId(clientId),
-    redirect_uri: cfg.redirectUri,
-    response_type: 'code',
-    scope: CALENDAR_SCOPE,
-    access_type: 'offline',
-    prompt: 'consent',
-    include_granted_scopes: 'true',
+  return buildCalendarAuthorizationUrl({
+    clientId: normalizeGoogleClientId(clientId),
+    redirectUri: cfg.redirectUri,
     state,
   });
-  return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
 }
 
 export async function exchangeAuthorizationCode(code: string, clientId: string): Promise<GoogleTokenResponse> {

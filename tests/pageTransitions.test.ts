@@ -52,7 +52,7 @@ function setup(options: { native?: boolean; reduced?: boolean; animate?: boolean
     children: [new ContentElement('main', false), new ContentElement('left rail', true),
       new ContentElement('right rail', true), new ContentElement('mobile bar', true)],
   };
-  const document = { body, visibilityState: 'visible' };
+  const document = Object.assign(new EventTarget(), { body, visibilityState: 'visible', documentElement: { dataset: {} } });
   const window = Object.assign(new EventTarget(), { matchMedia: () => preference });
   if (options.native !== false) Object.assign(window, { onpagereveal: null });
   runInNewContext(source, { window, document, Element: ContentElement, HTMLElement: ContentElement });

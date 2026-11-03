@@ -1,7 +1,9 @@
 import type { Page } from '@playwright/test';
+import { siteNavigationPage } from '../../src/ui/siteNavigation.ts';
 
 export async function showMobileSection(page: Page, section: 'date' | 'content' | 'tools'): Promise<void> {
     if (!await page.evaluate(() => matchMedia('(max-width: 1199px)').matches)) return;
+    await page.locator('body[data-mobile-section]').waitFor({ state: 'attached' });
     const button = page.locator(`#siteMobileBar [data-mobile-section="${section}"]`);
     // Keyboard focus also reveals a navigation bar hidden by a previous scroll.
     await button.focus();
@@ -18,7 +20,12 @@ export async function navigateSite(page: Page, destination: string): Promise<voi
         return;
     }
     if (compact) await showMobileSection(page, summary ? 'date' : 'tools');
-    await rail.locator(`a[href="./${destination}"]`).click();
+    const link = rail.locator(`a[href="./${destination}"]`);
+    const target = new URL((await link.getAttribute('href'))!, page.url());
+    await link.click();
+    await page.waitForURL(url => url.origin === target.origin
+        && siteNavigationPage(url.pathname) === siteNavigationPage(target.pathname)
+        && url.search === target.search && url.hash === target.hash);
 }
 export async function goHome(page: Page): Promise<void> { await navigateSite(page, 'index.html'); }
 

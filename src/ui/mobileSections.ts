@@ -1,4 +1,15 @@
 type MobileSection = 'date' | 'content' | 'tools';
+const SECTION_ORDER: MobileSection[] = ['date', 'content', 'tools'];
+
+interface SectionSwipe {
+  identifier: number;
+  x: number;
+  y: number;
+  scroll: number;
+  startedAt: number;
+  section: MobileSection;
+  horizontal: boolean;
+}
 
 interface MobileSections {
   showContent(): void;
@@ -19,6 +30,7 @@ export function initializeMobileSections(left: HTMLElement, right: HTMLElement, 
   let selectionRevision = 0;
   let slideAnimations: Animation[] = [];
   let restorePositions: (() => void)[] = [];
+  let swipe: SectionSwipe | null = null;
 
   function cancelSectionMotion(): void {
     for (const animation of slideAnimations) animation.cancel();
@@ -103,14 +115,15 @@ export function initializeMobileSections(left: HTMLElement, right: HTMLElement, 
 
   function selectSection(next: MobileSection): void {
     if (!compact.matches) return;
+    swipe = null;
+    if (next !== section) document.dispatchEvent(new Event('study-mobile-section-change'));
     const revision = ++selectionRevision;
     cancelSectionMotion();
     if (section === next || reducedMotion.matches) {
       applySection(next);
       return;
     }
-    const order: MobileSection[] = ['date', 'content', 'tools'];
-    const direction = order.indexOf(next) > order.indexOf(section) ? 1 : -1;
+    const direction = SECTION_ORDER.indexOf(next) > SECTION_ORDER.indexOf(section) ? 1 : -1;
     const travel = document.body.getBoundingClientRect().width;
     const outgoing = sectionRoots(section).map(node => {
       const rect = node.getBoundingClientRect();
@@ -169,6 +182,62 @@ export function initializeMobileSections(left: HTMLElement, right: HTMLElement, 
     }
   }
 
+  function swipeDestination(deltaX: number): MobileSection | undefined {
+    return SECTION_ORDER[SECTION_ORDER.indexOf(section) + (deltaX < 0 ? 1 : -1)];
+  }
+
+  function startSwipe(event: TouchEvent): void {
+    swipe = null;
+    if (!compact.matches || event.defaultPrevented || event.touches.length !== 1) return;
+    if (!(event.target instanceof Element)) return;
+    if (event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"]),[role="slider"],[draggable="true"]')) return;
+    if (document.querySelector('.connection-dock[open],dialog[open],[aria-modal="true"]')) return;
+    if (window.getSelection()?.isCollapsed === false) return;
+    // Keep native browser edge gestures and nested horizontal scrollers available.
+    const touch = event.touches[0];
+    if (touch.clientX < 24 || touch.clientX > innerWidth - 24) return;
+    for (let node: Element | null = event.target; node && node !== document.body; node = node.parentElement) {
+      if (node.scrollWidth > node.clientWidth + 1 && /auto|scroll/.test(getComputedStyle(node).overflowX)) return;
+    }
+    swipe = { identifier: touch.identifier, x: touch.clientX, y: touch.clientY, scroll: scrollTop(),
+      startedAt: performance.now(), section, horizontal: false };
+  }
+
+  function moveSwipe(event: TouchEvent): void {
+    if (!swipe) return;
+    if (event.touches.length !== 1 || event.defaultPrevented || !event.cancelable
+      || swipe.section !== section || Math.abs(scrollTop() - swipe.scroll) > 8) { swipe = null; return; }
+    const touch = [...event.touches].find(touch => touch.identifier === swipe!.identifier);
+    if (!touch) { swipe = null; return; }
+    const dx = touch.clientX - swipe.x;
+    const dy = touch.clientY - swipe.y;
+    if (!swipe.horizontal && Math.abs(dy) >= 12 && Math.abs(dy) >= Math.abs(dx)) { swipe = null; return; }
+    if (Math.abs(dx) >= 18 && Math.abs(dx) > Math.abs(dy) * 1.5 && swipeDestination(dx)) swipe.horizontal = true;
+    if (swipe.horizontal) event.preventDefault();
+  }
+
+  function finishSwipe(event: TouchEvent): void {
+    const gesture = swipe;
+    swipe = null;
+    if (!gesture || !gesture.horizontal || !compact.matches || event.defaultPrevented || !event.cancelable
+      || event.touches.length || gesture.section !== section || performance.now() - gesture.startedAt > 1200
+      || Math.abs(scrollTop() - gesture.scroll) > 8) return;
+    const touch = [...event.changedTouches].find(touch => touch.identifier === gesture.identifier);
+    if (!touch) return;
+    const dx = touch.clientX - gesture.x;
+    const dy = touch.clientY - gesture.y;
+    const next = swipeDestination(dx);
+    if (!next || Math.abs(dx) < 64 || Math.abs(dx) <= Math.abs(dy) * 1.5) return;
+    // Cancel the compatibility click so a swiped link/button is never activated.
+    event.preventDefault();
+    selectSection(next);
+  }
+
+  document.addEventListener('touchstart', startSwipe, { passive: true });
+  document.addEventListener('touchmove', moveSwipe, { passive: false });
+  document.addEventListener('touchend', finishSwipe, { passive: false });
+  document.addEventListener('touchcancel', function cancelSwipe(): void { swipe = null; }, { passive: true });
+
   bar.addEventListener('click', function switchFromNavigation(event): void {
     const button = (event.target as Element).closest<HTMLButtonElement>('[data-mobile-section]');
     const next = button?.dataset.mobileSection;
@@ -186,6 +255,7 @@ export function initializeMobileSections(left: HTMLElement, right: HTMLElement, 
   });
   new MutationObserver(updateContentVisibility).observe(document.body, { childList: true });
   compact.addEventListener('change', function updateLayout(): void {
+    swipe = null;
     selectionRevision += 1;
     cancelSectionMotion();
     if (compact.matches) {
@@ -204,6 +274,7 @@ export function initializeMobileSections(left: HTMLElement, right: HTMLElement, 
   });
   reducedMotion.addEventListener('change', cancelSectionMotion);
   window.addEventListener('pagehide', function stopLeavingPageMotion(): void {
+    swipe = null;
     selectionRevision += 1;
     cancelSectionMotion();
   });

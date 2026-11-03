@@ -441,7 +441,20 @@ body.has-site-shell {
 }
 
 .site-mobile-home[aria-current=page] { color: var(--rail-blue); }
-.site-mobile-bar nav { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 4px; width: 100%; flex: 1; min-height: 0; }
+.site-mobile-bar nav {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 4px;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
 
 .site-mobile-bar button {
   display: flex;
@@ -508,6 +521,8 @@ body.has-site-shell {
 }
 
 @media (max-width:1199px) {
+  html[data-menu-page-entry], html[data-menu-page-departure] { overflow-x: clip; }
+  html[data-menu-page-entry=pending] body > :is(main,header,footer,section) { visibility: hidden; }
   html[data-mobile-slide-direction] { overflow-x: clip; }
   .site-mobile-content-hidden { display: none !important; }
   body[data-mobile-nav-hidden=true] .site-mobile-bar { transform: translateY(-100%); pointer-events: none; }

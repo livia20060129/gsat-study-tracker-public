@@ -19,7 +19,7 @@ test.beforeEach(async ({ context }) => {
     const animate = Element.prototype.animate;
     Element.prototype.animate = function observeEntry(keyframes, options): Animation {
       const animation = animate.call(this, keyframes, options);
-      if (animation.id === 'study-page-entry') {
+      if (animation.id === 'study-page-entry' || animation.id === 'study-menu-page-in') {
         const entry: MotionEntry = { generation: probe.generation, name: animation.id,
           duration: String(animation.effect!.getComputedTiming().duration), state: 'running',
           includesShell: this === document.body || this === document.documentElement
@@ -42,7 +42,7 @@ async function motion(page: Page): Promise<MotionProbe> {
   return page.evaluate(() => window.pageMotionProbe);
 }
 
-async function expectEntry(page: Page, previous?: MotionProbe): Promise<void> {
+async function expectEntry(page: Page, previous?: MotionProbe, kind: 'fade' | 'slide' = 'fade'): Promise<void> {
   await expect.poll(async () => {
     const probe = await motion(page);
     if (previous?.id === probe.id && probe.generation <= previous.generation) return false;
@@ -50,8 +50,8 @@ async function expectEntry(page: Page, previous?: MotionProbe): Promise<void> {
   }).toBe(true);
   const probe = await motion(page);
   const entry = probe.entries.filter(entry => entry.generation === probe.generation && entry.state === 'finished').at(-1)!;
-  expect(entry.name).toBe('study-page-entry');
-  expect(entry.duration).toBe('200');
+  expect(entry.name).toBe(kind === 'slide' ? 'study-menu-page-in' : 'study-page-entry');
+  expect(entry.duration).toBe(kind === 'slide' ? '240' : '200');
   expect(probe.entries.every(value => !value.includesShell), 'Sidebars and mobile controls stay outside page animations').toBe(true);
   expect(await page.locator('body').evaluate(node => getComputedStyle(node).opacity)).toBe('1');
   expect(await page.locator('body').evaluate(node => getComputedStyle(node).transform)).toBe('none');
@@ -81,7 +81,7 @@ test('real navigation links use the shared transition across app, legal and sour
   for (const path of ['todo.html', 'summary.html', 'material.progress.html', 'vocabulary.review.html']) {
     await navigateSite(page, path);
     await expect(page).toHaveURL(new RegExp('/' + path.replaceAll('.', '\\.') + '$'));
-    await expectEntry(page);
+    await expectEntry(page, undefined, path === 'summary.html' ? 'fade' : 'slide');
     if (path === 'vocabulary.review.html') {
       await page.locator('#vocabularyReferences a[href="./vocabulary.sources.html"]').click();
       await expect(page).toHaveURL(/\/vocabulary\.sources\.html$/);

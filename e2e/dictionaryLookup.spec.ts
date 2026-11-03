@@ -38,6 +38,8 @@ async function record(page: Page) {
 async function editCell(page: Page) {
   const row = page.locator('.vocabulary-row[data-entry-key="cell"]');
   await row.getByRole('button', { name: '編輯「cell」', exact: true }).click();
+  // The preview moves while the editor expands, even when its own box looks stable.
+  await expect(row).not.toHaveAttribute('data-disclosure-motion');
   return row;
 }
 
