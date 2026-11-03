@@ -1586,9 +1586,17 @@ test('manual material selectors use My Materials and keep existing records edita
 });
 
 
-test('daily overview only shows completed time and no math page statistics', async ({ page }) => {
-  await page.locator('#studyDate').fill('2026-09-20');
-  await page.locator('#studyDate').dispatchEvent('change');
+for (const width of [375, 760, 1440]) {
+test(`daily overview keeps centered 80-percent completion bars and no math page statistics (${width}px)`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 900 });
+  await page.evaluate(() => localStorage.setItem('study-v11:guest:2026-09-20', JSON.stringify({
+    date: '2026-09-20',
+    items: [true, false].map((done, index) => ({
+      id: `completion-layout-${index}`, type: 'general', source: 'preset', required: true,
+      title: '英文閱讀', done, minutes: done ? '20' : '', f: { subject: '英文', title: '英文閱讀', progress: done },
+    })),
+  })));
+  await selectStudyDate(page, '2026-09-20');
   await expect(page.locator('#settlementMetrics')).toBeVisible();
   await expect(page.locator('#overviewStats')).toContainText('今日完成時間');
   await expect(page.locator('#metricMinutesPanel')).toBeVisible();
@@ -1598,5 +1606,36 @@ test('daily overview only shows completed time and no math page statistics', asy
   await expect(page.locator('#overviewMetricTabs')).toHaveCount(0);
   await expect(page.locator('#metricMathTodayPanel')).toHaveCount(0);
   await expect(page.locator('#metricMathWeekPanel')).toHaveCount(0);
+  await expect(page.locator('#completionRatePanel .progress')).toHaveCount(2);
+  for (const expanded of [false, true]) {
+    if (expanded) await page.locator('.completion-notes > summary').click();
+    const layout = await page.locator('#completionRatePanel').evaluate(node => {
+      const panel = node.getBoundingClientRect();
+      const children = Array.from(node.children).filter(child => child.getClientRects().length)
+        .map(child => child.getBoundingClientRect());
+      return {
+        centerDifference: Math.abs((Math.min(...children.map(rect => rect.top)) + Math.max(...children.map(rect => rect.bottom))) / 2 - (panel.top + panel.bottom) / 2),
+        bars: Array.from(node.querySelectorAll('.completion-metric')).map(metric => {
+          const field = metric.getBoundingClientRect();
+          const bar = metric.querySelector('.progress')!.getBoundingClientRect();
+          return {
+            widthDifference: Math.abs(bar.width - field.width * .8),
+            centerDifference: Math.abs((bar.left + bar.right) / 2 - (field.left + field.right) / 2),
+            textOffsets: Array.from(metric.querySelectorAll('.completion-metric-head > *, .small'))
+              .map(label => Math.abs(label.getBoundingClientRect().left - field.left)),
+          };
+        }),
+      };
+    });
+    expect(layout.centerDifference).toBeLessThan(3);
+    for (const bar of layout.bars) {
+      expect(bar.widthDifference).toBeLessThan(1);
+      expect(bar.centerDifference).toBeLessThan(1);
+      for (const offset of bar.textOffsets) expect(offset).toBeLessThan(1);
+    }
+  }
+  await page.locator('.completion-notes > summary').click();
+  await page.locator('#overviewStats').screenshot({ path: testInfo.outputPath(`completion-bars-${width}.png`) });
 });
+}
 

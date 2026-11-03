@@ -27,7 +27,7 @@ test('keyboard segment navigation wraps in both directions', () => {
   assert.equal(adjacentOverviewMetric('minutes', -1), 'mathWeek');
 });
 
-test('overview keeps only the completed-time panel and centered completion metrics', () => {
+test('overview keeps only the completed-time panel and vertically centered completion metrics', () => {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const styles = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8');
   const runtime = readFileSync(new URL('../src/legacy-app.ts', import.meta.url), 'utf8');
@@ -36,7 +36,7 @@ test('overview keeps only the completed-time panel and centered completion metri
   assert.match(html, /class="overview-metric-title">今日完成時間/);
   assert.doesNotMatch(html, /今日數學頁數|本週數學頁數|metricMathTodayPanel|metricMathWeekPanel/);
   assert.doesNotMatch(runtime, /overviewMetricTabs|updateOverviewMetricView/);
-  assert.match(styles, /completion-stat #completionRatePanel\{grid-template-columns:minmax\(0,420px\);justify-content:center;align-content:center/);
-  assert.match(styles, /completion-stat \.completion-metric-head\{flex-direction:row;align-items:baseline;justify-content:space-between;text-align:left\}/);
+  assert.match(styles, /completion-stat #completionRatePanel\{grid-template-columns:minmax\(0,1fr\);justify-content:center;align-content:center/);
+  assert.match(styles, /completion-stat \.completion-metric-head\{flex-direction:column;align-items:flex-start;justify-content:center;text-align:left\}/);
   assert.match(styles, /completion-stat \.completion-metric \.small\{text-align:left\}/);
 });

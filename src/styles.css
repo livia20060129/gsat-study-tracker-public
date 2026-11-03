@@ -218,4 +218,4 @@ button{border:0;border-radius:12px;padding:9px 13px;font-weight:650;cursor:point
 @media(prefers-reduced-motion:reduce){
  .metric-panel-stage,.metric-panel-stage .metric-panel,.connection-dock,.connection-dock .connection-settings-content,.word-kind-indicator{transition:none!important}
 }
-.completion-stat #completionRatePanel{grid-template-columns:minmax(0,420px);justify-content:center;align-content:center;gap:14px}.completion-stat .completion-metric{text-align:left}.completion-stat .completion-metric-head{flex-direction:row;align-items:baseline;justify-content:space-between;text-align:left}.completion-stat .completion-metric .small{text-align:left}
+.completion-stat #completionRatePanel{grid-template-columns:minmax(0,1fr);justify-content:center;align-content:center;gap:14px}.completion-stat .completion-metric{text-align:left}.completion-stat .completion-metric-head{flex-direction:column;align-items:flex-start;justify-content:center;text-align:left}.completion-stat .completion-metric .small{text-align:left}

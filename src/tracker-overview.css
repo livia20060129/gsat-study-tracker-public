@@ -317,21 +317,20 @@
 
 #completionRatePanel {
   gap: 15px;
-  text-align: center;
+  text-align: left;
 }
 
 #completionRatePanel .completion-metric {
   width: 100%;
-  max-width: 340px;
   padding: 0;
   display: grid;
-  justify-items: center;
+  justify-items: start;
   gap: 6px;
 }
 
 #completionRatePanel .completion-metric-head {
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   gap: 4px;
   width: 100%;
@@ -343,7 +342,8 @@
 }
 
 #completionRatePanel .progress {
-  width: min(100%,240px);
+  width: 80%;
+  margin-inline: auto;
   height: 5px;
 }
 
@@ -375,14 +375,14 @@
 .completion-notes p {
   font-size: 11px;
   color: #74849a;
-  text-align: center;
+  text-align: left;
   line-height: 1.7;
   margin: 8px 0 0;
 }
 
 .settlement-metrics {
   width: 100%;
-  text-align: center;
+  text-align: left;
 }
 
 .summary-donut-label-button {
