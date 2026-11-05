@@ -74,7 +74,7 @@ export async function vocabularyPdfDocument(entries: VocabularyReviewEntry[], ki
     // Keep copyable Unicode glyphs; automatic fraction/ligature substitutions lose mappings.
     features: { frac: false, numr: false, dnom: false, liga: false, clig: false, calt: false, locl: false, ccmp: false },
   });
-  const googleBadge = withTranslations && entries.some(entry => entry.cloudTranslationSources?.length)
+  const googleBadge = withTranslations && entries.some(entry => entry.cloudTranslationSources?.length || entry.referenceSources?.google)
     ? await document.embedPng(googleTranslationBadgeBytes()) : undefined;
   const googleBadgeHeight = googleBadge ? googleBadge.height * 160 / googleBadge.width : 0;
   const attributionSpace = googleBadge ? googleBadgeHeight + 8 : 0;

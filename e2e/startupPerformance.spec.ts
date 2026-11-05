@@ -61,8 +61,9 @@ test('measure page startup with a realistic multi-month local history', async ({
   expect(metrics.find(row => row.page === '/privacy.html')!.datesRead).toBeLessThanOrEqual(7);
   const todo = metrics.find(row => row.page === '/todo.html')!;
   expect(todo.editors).toBe(0);
-  expect(todo.nodes).toBeLessThan(20_000);
+  expect(todo.nodes).toBeLessThan(5_000);
   expect(todo.readCount).toBeLessThan(200);
+  expect(metrics.find(row => row.page === '/')!.readCount).toBeLessThan(220);
   await page.goto('/privacy.html?date=2026-08-05');
   await expect(page.locator('[data-rail-date]')).toHaveText('08.05');
   await expect(page.locator('[data-rail-days]')).toHaveText('7');

@@ -1,5 +1,6 @@
 import { decodeStudyRecord, encodeLocalStudyRecord } from '../../storage/studyRecordCodec.ts';
 import type { KeyValueStorage } from './localStudyRecordRepository.ts';
+import { invalidateLocalRecordHistory } from './localRecordHistory.ts';
 
 export function isStorageQuotaError(cause: unknown): boolean {
   if (!cause || typeof cause !== 'object') return false;
@@ -22,6 +23,7 @@ export function compactConfirmedRecordStorage(storage: KeyValueStorage): number 
       const compact = encodeLocalStudyRecord(decoded.record);
       if (compact.length >= raw.length) continue;
       storage.setItem(key, compact);
+      invalidateLocalRecordHistory(storage, key);
       compacted += 1;
     } catch { /* One unreadable key must not prevent safe compaction of other confirmed records. */ }
   }

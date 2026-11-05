@@ -41,7 +41,7 @@ test('all typed fields save after leaving the field while page exit remains dura
 test('English review text stays in memory while typing and saves after leaving the field', () => {
   assert.match(runtime, /function updateEnglishReviewWordText\(target,item,completeWord\)/);
   assert.match(runtime, /if\(t\.matches\('\[data-word-text\]'\)&&x\)\{updateEnglishReviewWordText\(t,x\);return\}/);
-  assert.match(runtime, /function handleChange\(e\)\{[\s\S]*?if\(t\.matches\('\[data-word-text\]'\)&&x\)\{updateEnglishReviewWordText\(t,x,true\);persist\(false\);return\}/);
+  assert.match(runtime, /function handleChange\(e\)\{[\s\S]*?if\(t\.matches\('\[data-word-text\]'\)&&x\)\{wordInputCommits\.change\(t\);updateEnglishReviewWordText\(t,x,true\);persist\(false\);return\}/);
 });
 
 test('English review separates parts of speech from the animated content-kind switch', () => {

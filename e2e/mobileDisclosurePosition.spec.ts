@@ -16,7 +16,8 @@ async function seed(page: Page): Promise<void> {
     }] }));
   });
   await page.reload();
-  await expect(page.locator('.todo-card')).toHaveCount(2);
+  await expect(page.locator('.todo-card')).toHaveCount(1);
+  await expect(page.locator('#todoLongTermCount')).toHaveText('1 項');
 }
 
 async function recordToggle(page: Page, selector: string, trigger: string): Promise<PositionFrame[]> {

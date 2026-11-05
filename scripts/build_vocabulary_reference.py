@@ -179,6 +179,8 @@ def main():
         args.output.mkdir(parents=True, exist_ok=True)
         write_table(args.output / "ceecVocabulary.ts", "export const CEEC_VOCABULARY: Record<string, {level: number; levels: number[]; parts: string[]; entry: string; page: number}>", official)
         write_table(args.output / "ceecTranslations.ts", "export const CEEC_TRANSLATIONS: Record<string, Partial<Record<string, string[]>>>", translations)
+        from build_compact_vocabulary import write_compact_tables
+        write_compact_tables(args.output, official, translations)
 
 
 if __name__ == "__main__":

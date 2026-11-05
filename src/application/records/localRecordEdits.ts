@@ -5,6 +5,8 @@ import {
 } from '../../storage/recordSync.ts';
 import type { StudyRecord } from '../../types.ts';
 import { studyRecordConflictLocations } from '../../storage/conflictPresentation.ts';
+import { rangeCompletionSignature } from '../../study/rangeCompletion.ts';
+import { synchronizeRangeCompletion } from './synchronizeRangeCompletion.ts';
 
 /** Shares the editor's loaded-base merge with standalone pages. */
 export function reconcileLocalRecordEdit(draft: StudyRecord, latest: StudyRecord | null, base: StudyRecord): StudyRecordMergeResult {
@@ -30,5 +32,9 @@ export function saveLocalRecordEdit(
   }
   const edited = markRecordLocallyEdited(merged.record, loaded.record);
   if (!repository.save(edited)) throw new Error(`無法儲存本機紀錄：${repository.saveError() || '寫入失敗。'} 輸入仍保留，這次修改尚未儲存。`);
+  if (rangeCompletionSignature(edited) !== rangeCompletionSignature(loaded.record)) {
+    synchronizeRangeCompletion(storage, prefix);
+    return repository.load(edited.date) ?? edited;
+  }
   return edited;
 }

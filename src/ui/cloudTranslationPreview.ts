@@ -1,20 +1,7 @@
 import { CloudTranslationError, translateWithGoogle } from '../application/cloudTranslationClient.ts';
-import { cloudTranslationInput, GOOGLE_TRANSLATE_URL, type CloudTranslation } from '../study/cloudTranslation.ts';
+import { cloudTranslationInput, type CloudTranslation } from '../study/cloudTranslation.ts';
 import type { CloudTranslationTarget } from '../study/cloudTranslationSelection.ts';
 import { VOCABULARY_PARTS_OF_SPEECH, type VocabularyPartOfSpeechField } from '../study/vocabularyTranslationCounts.ts';
-
-export function googleTranslationAttribution(): HTMLAnchorElement {
-  const link = document.createElement('a');
-  link.className = 'google-translation-attribution';
-  link.href = GOOGLE_TRANSLATE_URL;
-  link.target = '_blank';
-  link.rel = 'noopener noreferrer';
-  const image = document.createElement('img');
-  image.src = `${import.meta.env.BASE_URL}google-translate-attribution.png`;
-  image.alt = 'powered by Google Translate';
-  link.append(image);
-  return link;
-}
 
 export interface CloudTranslationPreviewOptions {
   text: string;
@@ -32,13 +19,14 @@ export class CloudTranslationPreview {
   private targetChosen = false;
   private controller: AbortController | undefined;
   private disposed = false;
+  private requestSerial = 0;
   private readonly options: CloudTranslationPreviewOptions;
   constructor(options: CloudTranslationPreviewOptions) {
     this.options = options;
     this.element.className = 'cloud-translation-preview';
     this.element.setAttribute('aria-label', `Google 翻譯「${options.text}」`);
     this.query.type = 'button';
-    this.query.textContent = '使用 Google 翻譯';
+    this.query.textContent = 'Google 翻譯';
     this.query.dataset.cloudTranslationQuery = '';
     const signedIn = /^study-v11:user:[^:]+:$/.test(options.scope);
     this.query.disabled = !signedIn || !cloudTranslationInput(options.text);
@@ -83,11 +71,20 @@ export class CloudTranslationPreview {
   }
   dispose(): void {
     this.disposed = true;
+    this.invalidate();
+  }
+  invalidate(): void {
+    this.requestSerial++;
+    if (this.controller || this.output.childNodes.length) this.status.textContent = '先前 Google 預覽已清除，可重新查詢。';
     this.controller?.abort();
+    this.controller = undefined;
     this.output.replaceChildren();
     this.confirmation = undefined;
+    this.query.disabled = !/^study-v11:user:[^:]+:$/.test(this.options.scope) || !cloudTranslationInput(this.options.text);
   }
   private async lookup(): Promise<void> {
+    this.element.dispatchEvent(new CustomEvent('translation-preview-query', { bubbles: true, detail: this }));
+    const serial = ++this.requestSerial;
     this.controller = new AbortController();
     this.query.disabled = true;
     this.output.replaceChildren();
@@ -95,7 +92,19 @@ export class CloudTranslationPreview {
     this.status.textContent = '正在使用 Google 翻譯…';
     try {
       const result = await translateWithGoogle(this.options.text, this.options.scope, this.controller.signal);
-      if (this.disposed) return;
+      if (this.disposed || serial !== this.requestSerial) return;
+      if (this.target && this.options.partsOfSpeech?.length === 0 && !this.target.value && !this.targetChosen) {
+        const { loadVocabularyFallbackParts } = await import('../study/vocabularyFallbackParts.ts');
+        const parts = await loadVocabularyFallbackParts(this.options.text);
+        let fields = parts?.parts ?? [];
+        if (!fields.length) {
+          const { loadEcdictTranslations } = await import('../study/ecdictLookup.ts');
+          const translations = await loadEcdictTranslations(this.options.text).catch(() => null);
+          fields = VOCABULARY_PARTS_OF_SPEECH.filter(([field]) => translations?.[field]?.some(meaning => meaning.trim())).map(([field]) => field);
+        }
+        if (this.disposed || serial !== this.requestSerial) return;
+        this.updatePartsOfSpeech(fields);
+      }
       const translated = document.createElement('p');
       translated.className = 'cloud-translation-result';
       translated.lang = 'zh-Hant-x-mtfrom-en';
@@ -114,10 +123,10 @@ export class CloudTranslationPreview {
         else if (outcome === 'unchanged') this.status.textContent = '這筆翻譯已存在。';
         else this.status.textContent = '紀錄已變更或無法儲存，尚未填入翻譯。';
       });
-      this.output.replaceChildren(translated, googleTranslationAttribution(), confirm);
+      this.output.replaceChildren(translated, confirm);
       this.status.textContent = 'Google 機器翻譯。請確認內容，再追加填入；既有翻譯會保留。';
     } catch (error) {
-      if (!this.disposed) this.status.textContent = error instanceof CloudTranslationError ? error.message : '翻譯暫時無法使用，請稍後再試；既有翻譯已保留。';
-    } finally { if (!this.disposed) this.query.disabled = false; }
+      if (!this.disposed && serial === this.requestSerial) this.status.textContent = error instanceof CloudTranslationError ? error.message : '翻譯暫時無法使用，請稍後再試；既有翻譯已保留。';
+    } finally { if (!this.disposed && serial === this.requestSerial) this.query.disabled = false; }
   }
 }

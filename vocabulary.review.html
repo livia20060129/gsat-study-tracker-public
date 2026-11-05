@@ -14,23 +14,11 @@
     <header class="vocabulary-page-header page-navigation-header">
       <div>
         <h1>英文單字複習</h1>
+        <p id="googleTranslationSupport" class="vocabulary-reference-sources">Google 翻譯支援</p>
         <p id="vocabularyReferences" class="vocabulary-reference-sources">參考來源：<a href="https://www.ceec.edu.tw/xmdoc?xsmsid=0K213553204833715309" target="_blank" rel="noopener noreferrer">大考中心（Level）</a>｜<a href="https://github.com/skywind3000/ECDICT" target="_blank" rel="noopener noreferrer">ECDICT（中文翻譯／詞性）</a>｜<a href="https://cloud.google.com/translate" target="_blank" rel="noopener noreferrer">Google Translate（按需機器翻譯）</a>｜<a href="./vocabulary.sources.html">單字資料來源與授權</a></p>
         <p id="vocabularyLegacySources" class="vocabulary-reference-sources" hidden>部分既有資料保留 Cambridge Dictionary 的歷史出處；該自動查詢服務已停用；自動釋義查詢使用 ECDICT，外部查閱連結可切換辭典。</p>
       </div>
     </header>
-
-    <section id="cloudTranslationSupport" class="vocabulary-panel" aria-labelledby="cloudTranslationTitle">
-      <div class="vocabulary-panel-head"><div>
-        <h2 id="cloudTranslationTitle">Google 翻譯支援</h2>
-        <p>需先登入 Tracker；每帳號每月最多 5,000 字元，台灣時間每月 1 日重設。</p>
-      </div></div>
-      <div class="vocabulary-panel-body">
-        <label class="cloud-translation-target">翻譯項目
-          <select id="cloudTranslationEntry" aria-label="Google 翻譯項目"><option value="">請選擇要翻譯的英文</option></select>
-        </label>
-        <div id="cloudTranslationPreview"><p class="cloud-translation-status">請先選擇要翻譯的英文。</p></div>
-      </div>
-    </section>
 
     <section class="vocabulary-panel" aria-labelledby="vocabularyTitle">
       <div class="vocabulary-panel-head">
@@ -69,7 +57,7 @@
         <div class="vocabulary-reading-tools" role="group" aria-label="中文與發音">
         <button id="toggleVocabularyTranslations" type="button" aria-controls="vocabularyList" aria-pressed="false">隱藏中文</button>
         <label class="vocabulary-accent">發音口音 <select id="vocabularyAccent"><option value="en-US">美式</option><option value="en-GB">英式</option></select></label>
-        <label class="vocabulary-accent">查詢辭典 <select id="vocabularyDictionary"><option value="oxford">牛津辭典</option><option value="cambridge">劍橋中英字典</option></select></label>
+        <label class="vocabulary-accent">查詢辭典 <select id="vocabularyDictionary"><option value="oxford">牛津辭典</option><option value="cambridge">劍橋英漢辭典</option></select></label>
         </div>
         <div class="vocabulary-export-tools" role="group" aria-label="匯出單字表">
         <label class="vocabulary-accent">匯出格式 <select id="vocabularyExportFormat"><option value="pdf">PDF（Adobe）</option><option value="docx">Word（DOCX）</option></select></label>

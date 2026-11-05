@@ -15,6 +15,14 @@ import { createDictionaryLookupHandler } from '../supabase/functions/_shared/dic
 const result: DictionaryLookupResult = { provider: 'ecdict', word: 'cell', sourceUrl: ECDICT_SOURCE_URL,
   meanings: [{ partOfSpeech: 'noun', text: '測試意思甲' }, { partOfSpeech: 'verb', text: '測試意思乙' }] };
 
+test('dictionary preview can use its own completed response after the shared cache has evicted it', () => {
+  assert.equal(localDictionaryLookup('detachedlookupfixture'), null);
+  assert.deepEqual(localDictionaryLookup('detachedlookupfixture', { noun: ['獨立回應'] }), {
+    provider: 'ecdict', word: 'detachedlookupfixture', sourceUrl: ECDICT_SOURCE_URL,
+    meanings: [{ partOfSpeech: 'noun', text: '獨立回應' }],
+  });
+});
+
 function record(word: EnglishReviewWordEntry = { id: 'word', text: 'cell', noun: true, translation: '手動翻譯', gsatLevel: 4, showGsatLevel: false }): StudyRecord {
   return { date: '2026-10-26', notes: '保留筆記', items: [{ id: 'item', type: 'englishVocabInteractive', done: true,
     required: false, minutes: '25', checkedOn: '2026-10-26', f: { words: [word] } }] };

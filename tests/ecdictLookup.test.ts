@@ -38,6 +38,24 @@ test('unavailable dictionary data can be retried and is not cached as a missing 
   assert.equal(calls, 2);
 });
 
+test('concurrent extended queries retain their response when more than eight buckets finish together', async () => {
+  const words = ['novelty', 'practitioner', 'adored', 'adulation', 'rigidity', 'intergenerational',
+    'perpetuation', 'impregnable', 'counterproductive', 'unfathomable', 'palatable', 'exorbitant']
+    .filter(word => !Object.hasOwn(CEEC_TRANSLATIONS, word));
+  assert.ok(words.length > 8);
+  let release = function (): void {};
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  const values = Object.fromEntries(words.map(word => [word, { noun: ['測試翻譯'] }]));
+  const lookup = createEcdictLookup(async function fetchTogether() {
+    await gate;
+    return { ok: true, async json() { return values; } };
+  }, '/');
+  const requests = words.map(word => lookup.load(word));
+  release();
+  const results = await Promise.all(requests);
+  for (const [index, word] of words.entries()) assert.deepEqual(results[index], values[word], word);
+});
+
 test('shipped extended shards enrich unlisted English with ECDICT POS and Chinese without inventing a Level', async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async function fetchDictionary(url): Promise<Response> {

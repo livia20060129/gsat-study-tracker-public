@@ -46,8 +46,9 @@ export function studyTextIncludes(context: string, value: string): boolean {
 export function studyBookIncludes(context: string, book: string): boolean {
   const canonical = canonicalPageMappedBook(book);
   if (canonical && canonical === canonicalPageMappedBook(context)) return true;
-  const identity = book.replace(/^(?:國文|英文|數學A?|自然|生物|物理|化學|地科)\s*[｜|：:]\s*/, '').replace(/講義$/, '');
-  return studyTextIncludes(omitStudyRanges(context, ['pages', 'unit', 'round']), identity);
+  const identity = book.replace(/^(?:國文|英文|數學A?|自然|生物|物理|化學|地科)\s*[｜|：:]\s*/, '');
+  const text = omitStudyRanges(context, ['pages', 'unit', 'round']);
+  return studyTextIncludes(text, identity) || studyTextIncludes(text, identity.replace(/講義$/, ''));
 }
 
 export function omitStudyRanges(text: string, kinds: readonly StudyRangeKind[]): string {

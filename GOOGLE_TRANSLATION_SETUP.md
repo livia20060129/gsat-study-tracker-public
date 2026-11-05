@@ -1,6 +1,6 @@
 # 公開版 Google Cloud Translation 設定
 
-適用：v171.6.0-public.54。公開 Supabase 專案仍為 `xcpnxkkixsxzgbqsiuud`。
+適用：v171.6.0-public.56。公開 Supabase 專案仍為 `xcpnxkkixsxzgbqsiuud`。
 
 ## Google Cloud 與 Secret
 
@@ -34,9 +34,9 @@
 
 ## 覆蓋與部署
 
-必要檔案依相同路徑覆蓋 public.53，執行 `npm ci`、`npm test`、`npm run build`。
+必要檔案依相同路徑覆蓋 public.54／public.55，執行 `npm ci`、`npm test`、`npm run build`。
 
-本版新增 `20261105145700_cloud_translation_monthly_limit.sql`，必須先套用，再重新部署 `cloud-translate`，最後發布完整 `dist`。只換前端不會讓正式後端改成每月額度。原有 GitHub Actions 已按此順序部署，不需要修改工作流程或新增 GitHub secret。
+本版新增 `20261105222021_cloud_translation_request_quota.sql`（沿用先前月額度 migration），必須先套用，再重新部署 `cloud-translate`，最後發布完整 `dist`。只換前端不會讓正式後端改成每月額度。原有 GitHub Actions 已按此順序部署，不需要修改工作流程或新增 GitHub secret。
 
 手動部署時，先安全設定既有 Supabase CLI 登入憑證及資料庫密碼，再於專案根目錄執行：
 
@@ -47,15 +47,15 @@ npx --yes supabase@2.116.0 db push
 npx --yes supabase@2.116.0 functions deploy cloud-translate --project-ref xcpnxkkixsxzgbqsiuud
 ```
 
-先確認 dry-run 列出的全部待套用遷移，再執行 push。沒有修改舊遷移或讀書紀錄；新增月額度表並替換原限額函式。升級時保留本月已預留用量。由於舊版只保存 UTC 每日彙總，升級採保守方式納入台灣月初前一個 UTC 日期，避免跨時區漏算；新用量直接按台灣月份記錄。
+先確認 dry-run 列出的全部待套用遷移，再執行 push。沒有修改舊遷移或讀書紀錄；新增私有扣額收據表與限額 RPC，原月額度及既有用量保留。升級時保留本月已預留用量。由於舊版只保存 UTC 每日彙總，升級採保守方式納入台灣月初前一個 UTC 日期，避免跨時區漏算；新用量直接按台灣月份記錄。
 
 ## 上線驗證
 
-1. 登入 Tracker → 英文單字複習 → 最上方「Google 翻譯支援」→ 選擇英文項目及填入詞性 →「使用 Google 翻譯」。這會真的呼叫 Google，可能計費。
-2. 單一已勾選詞性自動帶入；有多個或尚未勾選時，由使用者指定。組合／句子不加詞性。Google 只翻譯，不推測詞性或學測級數。
+1. 登入 Tracker → 英文單字複習 → 字卡「編輯」→「Google 翻譯」。頁首顯示支援標誌及月字元上限。這會真的呼叫 Google，可能計費。
+2. 單一已勾選詞性自動帶入；有多個時由使用者指定；尚未勾選時可參考同拼法本機詞性，沒有單一可靠結果時仍由使用者指定。組合／句子不加詞性。Google 只翻譯，不推測詞性或學測級數。
 3. 確認之前不應改寫紀錄。按「填入 Google 翻譯」後保留舊中文、星號、級數及跨日來源；重新整理後仍存在。
 4. 已存到未分詞性的翻譯可在字卡編輯區刪除，最後一筆也能刪除；重新整理不應復原。
-5. 查詢辭典切換劍橋中英字典／牛津辭典，確認英文連結與選擇保存正確。只有點擊英文連結才開啟外部網站，不擷取其釋義。
+5. 查詢辭典切換劍橋英漢辭典／牛津辭典，確認英文連結與選擇保存正確。只有點擊英文連結才開啟外部網站，不擷取其釋義。
 6. 登出後 Google 按鈕停用，不能產生付費翻譯請求。額度耗盡顯示每月限制；其餘手動編輯與 ECDICT 繼續可用。
 7. 有翻譯 PDF／Word／列印檔保留 Google 來源標示，無翻譯練習檔不含答案。
 
@@ -65,4 +65,11 @@ npx --yes supabase@2.116.0 functions deploy cloud-translate --project-ref xcpnxk
 
 既有翻譯 key、安全邊界與 Google 官方來源圖沿用；本次更新的是 UI、分類保存與資料庫額度。[Google 標示規則](https://docs.cloud.google.com/translate/attribution)。
 
-本次以替代 Google 回應及本機 PostgreSQL 相容環境驗證詞性、刪除、登入、每月上限、跨日不重設、台灣月界線與安全權限。未修改正式資料庫或部署 public.54；正式啟用須完成上述部署步驟。
+本次以替代 Google 回應及本機 PostgreSQL 相容環境驗證詞性、刪除、登入、每月上限、跨日不重設、台灣月界線與安全權限。未修改正式資料庫或部署 public.56；正式啟用須完成上述部署步驟。
+
+## 快取與扣額重試
+
+- 快取只在各瀏覽器／伺服器執行個體記憶體中保留，最多 256 筆成功結果，依帳號及原英文隔離，不保證跨裝置或重新部署仍命中。命中不扣額，同時相同查詢合併執行。
+- 扣額 RPC 的兩次傳輸嘗試沿用同一伺服器產生的 UUID；新私有收據保證同一預留不重複扣。它不是不同 HTTP 查詢或重新按下按鈕的免費重試保證；Google 已送出的失敗仍依原規則計數。
+- 額度拒絕可顯示已用、剩餘及重設日期；不顯示上游原始錯誤或憑證。
+- 仍只在使用者按下 Google 按鈕時呼叫付費服務。自動單字查詢、背景接續及 ECDICT 下載不發出 Google 請求。

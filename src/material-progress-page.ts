@@ -267,9 +267,9 @@ function render(): void {
   empty.hidden = materials.length > 0;
 }
 
-function load(): void {
+function load(fresh = false): void {
   try {
-    const result = readMaterialProgressRecords(localStorage);
+    const result = readMaterialProgressRecords(localStorage, fresh);
     records = result.records;
     prefix = result.prefix;
     catalog = effectiveMaterialCatalog(builtins, records, true);
@@ -329,7 +329,7 @@ const editor = new MaterialCatalogEditor({
   },
 });
 
-element<HTMLButtonElement>('refreshProgress').addEventListener('click', load);
+element<HTMLButtonElement>('refreshProgress').addEventListener('click', function refreshProgress(): void { load(true); });
 element<HTMLDivElement>('materialSelectionList').addEventListener('change', event => {
   const checkbox = (event.target as HTMLElement).closest<HTMLInputElement>('input[type="checkbox"]');
   if (!checkbox) return;

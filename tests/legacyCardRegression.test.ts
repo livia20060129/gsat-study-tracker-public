@@ -1,3 +1,4 @@
+import { completedRangeIndex, reconcileRangeCompletion } from '../src/study/rangeCompletion.ts';
 import assert from 'node:assert/strict';
 import { resolveMathCalendarPlan } from '../src/calendar/mathPlan.ts';
 import { readFileSync } from 'node:fs';
@@ -264,6 +265,8 @@ test('cloud bootstrap renders the saved day without replacing it with fallback p
         return true;
       },
       ensureEnglishReviewWordEntryIds: () => false,
+      readBrowserRecordHistory: () => [],
+      completedRangeIndex, reconcileRangeCompletion, store: {}, STORE_PREFIX: 'study-v11:guest:',
       writeHeader: () => {},
       render: () => {
         renderCalls += 1;

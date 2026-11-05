@@ -23,6 +23,7 @@ import { STUDY_PROGRESS_FIELDS, studyItemProgress } from './itemProgress.ts';
 import { studyItemSubject } from './subjectOrder.ts';
 import { normalizeStudyTimerState } from './studyTimer.ts';
 import { validatePageRange } from './pageRangeValidation.ts';
+import { compareTraditionalChinese } from './textOrder.ts';
 
 export const OVERDUE_TASK_SUBJECTS = ['all', 'chinese', 'english', 'math', 'natural', 'other'] as const;
 export type OverdueTaskSubject = typeof OVERDUE_TASK_SUBJECTS[number];
@@ -100,7 +101,7 @@ const ITEM_TYPE_LABELS: Record<string, string> = {
 };
 
 const DETAIL_FIELDS: Array<[string, string]> = [
-  ['subject', '科目'], ['material', '講義'], ['book', '書名／冊別'], ['title', '教材'],
+  ['subject', '科目'], ['material', '講義版本'], ['book', '書名／冊別'], ['title', '教材'],
   ['start', '起始頁'], ['end', '結束頁'], ['unit', '單元'], ['unitStart', '起始單元'],
   ['unitEnd', '結束單元'], ['chapter', '章節'], ['topic', '主題'], ['round', '回次'],
   ['year', '年份'], ['exam', '考試'], ['status', '狀態'], ['level', '級別'],
@@ -359,8 +360,8 @@ export function overdueTasks(records: StudyRecord[], today: string): OverdueTask
 
   return entries.sort((left, right) => (
     left.recordDate.localeCompare(right.recordDate)
-    || left.subjectLabel.localeCompare(right.subjectLabel, 'zh-Hant')
-    || left.title.localeCompare(right.title, 'zh-Hant')
+    || compareTraditionalChinese(left.subjectLabel, right.subjectLabel)
+    || compareTraditionalChinese(left.title, right.title)
   ));
 }
 

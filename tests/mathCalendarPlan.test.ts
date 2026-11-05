@@ -60,11 +60,11 @@ test('explicit combined-volume titles retain their original fraction sequence on
   assert.equal(resolveMathCalendarPlan(contradictory, CALENDAR_MATH_PLAN), null);
 });
 
-test('other materials, unknown units, invalid fractions and mismatched totals never borrow teaching pages', () => {
+test('other materials, unknown units and invalid fractions never borrow teaching pages', () => {
   const candidates = [
     { ...conditional('1/4'), material: '新關鍵' }, { ...conditional('1/4'), material: '智慧型' },
     { ...conditional('1/4'), title: '4A｜尚未收錄的單元' },
-    conditional('5/4'), conditional('0/4'), conditional('1/0'), { ...conditional('1/3'), sourceDate: undefined },
+    conditional('5/4'), conditional('0/4'), conditional('1/0'), conditional('1/100'),
   ];
   for (const parsed of candidates) assert.equal(resolveMathCalendarPlan(parsed, CALENDAR_MATH_PLAN), null);
 });
@@ -105,9 +105,8 @@ test('resolving a fraction preserves the parsed event, source identities and sch
   assert.deepEqual(plans, CALENDAR_MATH_PLAN);
 });
 
-test('moved October 13 and 14 triangle parts use their original schedule dates when Calendar changed seven parts to five', () => {
-  // The descriptions were read from the two moved Calendar events on 2026-11-01.
-  for (const [part, sourceDay, start, end] of [[2, 13, 228, 236], [3, 14, 237, 245]]) {
+test('revised triangle fractions divide the known chapter into five parts instead of selecting an old source-date segment', () => {
+  for (const [part, sourceDay, start, end] of [[2, 13, 232, 243], [3, 14, 244, 255]]) {
     const parsed = task('2｜三角比', `【講義版本】教學講義 【冊別】2 【單元進度】三角比（${part}/5） 【來源日期】2026/10/${sourceDay} 【識別碼】GSAT-SPLIT-\nMATH-2026-10-${sourceDay}`);
     parsed.date = '2026-11-02';
     const plan = resolveMathCalendarPlan(parsed, CALENDAR_MATH_PLAN);
@@ -116,12 +115,60 @@ test('moved October 13 and 14 triangle parts use their original schedule dates w
   }
 });
 
-test('revised fractions require a known source date within the same material, volume and topic', () => {
+test('revised fractions require the same known material, volume and topic but do not depend on a moved source date', () => {
   const parsed = task('2｜三角比', '【講義版本】教學講義 【冊別】2 【單元進度】三角比（3/5） 【來源日期】2026/10/14');
   for (const candidate of [
     { ...parsed, sourceDate: undefined }, { ...parsed, sourceDate: '2026/10/11' },
-    { ...parsed, sourceDate: '2026/10/7' }, { ...parsed, material: '新關鍵' },
+    { ...parsed, sourceDate: '2026/10/7' },
+  ]) assert.deepEqual([resolveMathCalendarPlan(candidate, CALENDAR_MATH_PLAN)?.start, resolveMathCalendarPlan(candidate, CALENDAR_MATH_PLAN)?.end], [244, 255]);
+  for (const candidate of [
+    { ...parsed, material: '新關鍵' },
     { ...parsed, book: '4A' }, { ...parsed, title: '2｜尚未收錄的主題' },
     { ...parsed, progressIndex: 6, progressTotal: 5 },
   ]) assert.equal(resolveMathCalendarPlan(candidate, CALENDAR_MATH_PLAN), null);
+});
+
+test('November 4 3A trigonometry uses a tenth of pages 1 to 78 and does not borrow the source-date volume 2 range', () => {
+  const description = '【講義版本】教學講義 【冊別】3A 【單元進度】三角函數（1/10） 【來源日期】2026/10/17 【識別碼】GSAT-SPLIT-\nMATH-2026-10-17';
+  const parsed = task('3A｜三角函數', description);
+  parsed.date = '2026-11-04';
+  assert.equal(parsed.book, '3A');
+  assert.equal(parsed.material, '教學講義');
+  assert.deepEqual([parsed.progressIndex, parsed.progressTotal], [1, 10]);
+  const fraction = resolveMathCalendarPlan(parsed, CALENDAR_MATH_PLAN)!;
+  assert.deepEqual([fraction.book, fraction.start, fraction.end], ['3A', 1, 8]);
+  assert.equal(fraction.calendarRangeSource, 'unit');
+  const explicit = task('3A｜三角函數', description + '【頁碼範圍】p.4–9');
+  const resolved = resolveMathCalendarPlan(explicit, CALENDAR_MATH_PLAN)!;
+  assert.deepEqual([resolved.material, resolved.book, resolved.start, resolved.end], ['教學講義', '3A', 4, 9]);
+  assert.equal(resolved.calendarRangeSource, 'calendar');
+});
+
+test('repartitioned fractions cover each known chapter page exactly once with no empty or overlapping parts', () => {
+  for (const [book, topic, total, first, last] of [
+    ['3A', '三角函數', 10, 1, 78], ['2', '三角比', 5, 219, 279], ['4A', '條件機率與貝氏定理', 3, 151, 196],
+  ] as const) {
+    const pages: number[] = [];
+    const sizes: number[] = [];
+    for (let part = 1; part <= total; part += 1) {
+      const parsed = task(`${book}｜${topic}`, `【講義版本】教學講義 【冊別】${book} 【單元進度】${part}/${total}`);
+      const plan = resolveMathCalendarPlan(parsed, CALENDAR_MATH_PLAN)!;
+      assert.ok(plan);
+      sizes.push(plan.pages);
+      for (let page = plan.start; page <= plan.end; page += 1) pages.push(page);
+    }
+    assert.deepEqual(pages, Array.from({ length: last - first + 1 }, (_, index) => first + index));
+    assert.ok(Math.max(...sizes) - Math.min(...sizes) <= 1);
+  }
+});
+
+test('repartitioning refuses incomplete, overlapping or mixed-volume chapter boundaries', () => {
+  const parsed = task('3A｜三角函數', '【講義版本】教學講義 【冊別】3A 【單元進度】1/10');
+  const gap = { ...CALENDAR_MATH_PLAN };
+  delete gap['2026-10-22'];
+  assert.equal(resolveMathCalendarPlan(parsed, gap), null);
+  const overlap = { ...CALENDAR_MATH_PLAN, '2026-12-01': { ...CALENDAR_MATH_PLAN['2026-10-20'], end: 12, pages: 12 } };
+  assert.equal(resolveMathCalendarPlan(parsed, overlap), null);
+  const mixed = task('2＋4A｜基本機率＋條件機率', '【講義版本】教學講義 【冊別】2＋4A 【單元進度】1/6');
+  assert.equal(resolveMathCalendarPlan(mixed, CALENDAR_MATH_PLAN), null);
 });

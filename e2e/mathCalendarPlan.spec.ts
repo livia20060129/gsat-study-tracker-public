@@ -7,26 +7,40 @@ const date = '2026-10-29';
 const userId = '00000000-0000-0000-0000-000000000090';
 const prefix = `study-v11:user:${userId}:`;
 
-async function openMathCalendar(page: Page, manual = false, scenario: 'conditional' | 'triangle' | 'unresolved' = 'conditional'): Promise<void> {
+async function openMathCalendar(page: Page, manual = false, scenario: 'conditional' | 'triangle' | 'unresolved' | 'trigonometry' = 'conditional'): Promise<void> {
   const cloudRecords = new Map<string, Record<string, unknown>>();
-  const recordDate = scenario === 'conditional' ? date : '2026-11-02';
+  let recordDate = date;
   let parts = manual ? [2] : [1, 2];
   let book = '4A', topic = '條件機率與貝氏定理', total = 4;
   let recordedStart = manual ? '170' : '', recordedEnd = manual ? '172' : '';
   if (scenario !== 'conditional') {
+    recordDate = '2026-11-02';
     parts = manual ? [3] : [2, 3];
     book = '2'; topic = '三角比'; total = 5;
     recordedStart = manual ? '240' : ''; recordedEnd = manual ? '243' : '';
   }
   if (scenario === 'unresolved') {
+    topic = '尚未收錄的單元';
     parts = [2]; recordedStart = '228'; recordedEnd = '236';
   }
+  if (scenario === 'trigonometry') {
+    recordDate = '2026-11-04';
+    parts = [1]; book = '3A'; topic = '三角函數'; total = 10;
+    recordedStart = manual ? '3' : ''; recordedEnd = manual ? '5' : '';
+  }
   const calendarRows = parts.map(function calendarRow(part) {
-    const sourceDay = scenario === 'conditional' ? part + 6 : part + 11;
+    let sourceDay = part + 11;
+    if (scenario === 'conditional') sourceDay = part + 6;
+    if (scenario === 'trigonometry') sourceDay = 17;
     const source = scenario === 'unresolved' ? '' : `【來源日期】2026/10/${sourceDay}`;
     return { event_key: `test:part${part}`, source_event_id: `part${part}`, calendar_id: 'test',
       event_date: recordDate, title: `${book}｜${topic}`, category: 'math', event_updated_at: null, metadata: {},
       description: `【講義版本】教學講義 【冊別】${book} 【單元進度】${topic}（${part}/${total}） ${source} 【識別碼】part${part}` };
+  });
+  if (scenario === 'trigonometry') calendarRows.push({
+    event_key: 'test:newkey', source_event_id: 'newkey', calendar_id: 'test',
+    event_date: recordDate, title: '1-2｜排列組合與機率', category: 'math', event_updated_at: null, metadata: {},
+    description: '【講義版本】新關鍵 【冊別】1-2 【頁碼範圍】p.117–121 【來源日期】2026/10/14 【識別碼】GSAT-NEWKEY-MATH-20261014',
   });
   await page.context().route('https://xcpnxkkixsxzgbqsiuud.supabase.co/**', async route => {
     const request = route.request();
@@ -143,21 +157,21 @@ test('refreshing a moved math fraction preserves deliberate page overrides while
   expect(errors).toEqual([]);
 });
 
-test('November 2 triangle source dates repair 2/5 and 3/5 ranges on desktop/mobile and retain saves after navigation', async ({ page }, testInfo) => {
+test('November 2 triangle fractions divide the full chapter into five parts on desktop/mobile and retain saves after navigation', async ({ page }, testInfo) => {
   const recordDate = '2026-11-02';
   await openMathCalendar(page, false, 'triangle');
   const card = page.locator('.item.subject-math').filter({ has: page.locator('[data-field="book"] option[value="2"]:checked') }).first();
   for (const width of [1280, 375, 320]) {
     await page.setViewportSize({ width, height: 900 });
-    await expect(card.locator('[data-field="start"]').first()).toHaveValue('228');
-    await expect(card.locator('[data-field="end"]').first()).toHaveValue('245');
+    await expect(card.locator('[data-field="start"]').first()).toHaveValue('232');
+    await expect(card.locator('[data-field="end"]').first()).toHaveValue('255');
     await expect(card.locator('[data-field="start"]').first()).toBeEditable();
     await expect(card.locator('[data-field="end"]').first()).toBeEditable();
     await expect(card.locator('[data-math-auto]').first()).not.toHaveText('尚無對應資料');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await card.screenshot({ path: testInfo.outputPath(`triangle-restored-${width}.png`) });
   }
-  for (const [part, start, end] of [[2, '228', '236'], [3, '237', '245']] as const) {
+  for (const [part, start, end] of [[2, '232', '243'], [3, '244', '255']] as const) {
     await expect.poll(async () => (await source(page, part, recordDate)).item?.f.start).toBe(start);
     const saved = await source(page, part, recordDate);
     expect(saved.item.f.end).toBe(end);
@@ -168,21 +182,70 @@ test('November 2 triangle source dates repair 2/5 and 3/5 ranges on desktop/mobi
   await selectStudyDate(page, '2026-11-03');
   await selectStudyDate(page, recordDate);
   await page.reload();
-  await expect(card.locator('[data-field="start"]').first()).toHaveValue('228');
-  await expect(card.locator('[data-field="end"]').first()).toHaveValue('245');
+  await expect(card.locator('[data-field="start"]').first()).toHaveValue('232');
+  await expect(card.locator('[data-field="end"]').first()).toHaveValue('255');
   await expect(card.locator('[data-done]').first()).toBeChecked();
 });
 
-test('revised triangle source-date resolution keeps manually edited pages and updates suggestions', async ({ page }) => {
+test('revised triangle fractions keep manually edited pages and update suggestions', async ({ page }) => {
   await openMathCalendar(page, true, 'triangle');
   const card = page.locator('.item.subject-math').filter({ has: page.locator('[data-field="book"] option[value="2"]:checked') }).first();
   await expect(card.locator('[data-field="start"]')).toHaveValue('240');
   await expect(card.locator('[data-field="end"]')).toHaveValue('243');
-  await expect.poll(async () => (await source(page, 3, '2026-11-02')).item?.f.calendarSuggestedStart).toBe(237);
-  expect((await source(page, 3, '2026-11-02')).item.f.calendarSuggestedEnd).toBe(245);
+  await expect.poll(async () => (await source(page, 3, '2026-11-02')).item?.f.calendarSuggestedStart).toBe(244);
+  expect((await source(page, 3, '2026-11-02')).item.f.calendarSuggestedEnd).toBe(255);
   await page.reload();
   await expect(card.locator('[data-field="start"]')).toHaveValue('240');
   await expect(card.locator('[data-field="end"]')).toHaveValue('243');
+});
+
+test('November 4 3A tenth repairs blank pages without mixing lecture versions and preserves later manual edits', async ({ page }, testInfo) => {
+  const recordDate = '2026-11-04';
+  await openMathCalendar(page, false, 'trigonometry');
+  const card = page.locator('.item.subject-math').filter({ has: page.locator('[data-field="book"] option[value="3A"]:checked') }).last();
+  const newkey = page.locator('.item.subject-math').filter({ has: page.locator('[data-field="book"] option[value="1~2"]:checked') }).last();
+  for (const width of [1280, 375, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(card.locator('[data-field="start"]')).toHaveValue('1');
+    await expect(card.locator('[data-field="end"]')).toHaveValue('8');
+    await expect(card.locator('[data-field="start"]')).toBeEditable();
+    await expect(card.locator('[data-field="end"]')).toBeEditable();
+    await expect(card.locator('.fixed-book-value').filter({ hasText: /^教學講義$/ })).toBeVisible();
+    expect((await card.innerText()).split('教學講義').length - 1).toBe(1);
+    await expect(newkey.locator('[data-field="start"]')).toHaveValue('117');
+    await expect(newkey.locator('[data-field="end"]')).toHaveValue('121');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await card.screenshot({ path: testInfo.outputPath(`trigonometry-tenth-${width}.png`) });
+  }
+  const saved = await source(page, 1, recordDate);
+  expect(saved.item.f.calendarSourceDate).toBe('2026/10/17');
+  expect(saved.item.minutes).toBe('17');
+  await card.locator('[data-field="start"]').fill('2');
+  await card.locator('[data-field="start"]').blur();
+  await card.locator('[data-field="end"]').fill('7');
+  await card.locator('[data-field="end"]').blur();
+  await card.locator('[data-done]').first().check();
+  await selectStudyDate(page, '2026-11-05');
+  await selectStudyDate(page, recordDate);
+  await page.reload();
+  await expect(card.locator('[data-field="start"]')).toHaveValue('2');
+  await expect(card.locator('[data-field="end"]')).toHaveValue('7');
+  await expect(card.locator('[data-done]').first()).toBeChecked();
+  expect((await source(page, 1, recordDate)).notes).toBe('保留今天的筆記');
+});
+
+test('a saved 3A manual range survives tenth repartitioning while suggestions update to pages 1 through 8', async ({ page }) => {
+  await openMathCalendar(page, true, 'trigonometry');
+  const card = page.locator('.item.subject-math').filter({ has: page.locator('[data-field="book"] option[value="3A"]:checked') }).last();
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await expect(card.locator('[data-field="start"]')).toHaveValue('3');
+    await expect(card.locator('[data-field="end"]')).toHaveValue('5');
+    const saved = await source(page, 1, '2026-11-04');
+    expect([saved.item.f.calendarSuggestedStart, saved.item.f.calendarSuggestedEnd]).toEqual([1, 8]);
+    expect(saved.item.minutes).toBe('17');
+    await page.reload();
+    await expect(page.locator('#calendarStatusBadge')).toHaveText('已連接');
+  }
 });
 
 test('an unresolved Calendar refresh keeps the last saved math pages and minutes instead of replacing them with blanks', async ({ page }) => {

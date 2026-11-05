@@ -7,30 +7,35 @@ async function seed(page: Page): Promise<void> {
   await page.evaluate(({ prefix }) => {
     localStorage.clear();
     localStorage.setItem('study-v11:meta:active-record-prefix', prefix);
-    for (const date of ['2026-09-01', '2026-10-05', '2026-10-06', '2026-11-01', '2026-11-02', '2026-11-04']) {
+    for (const [index, date] of ['2026-09-01', '2026-10-05', '2026-10-06', '2026-11-01', '2026-11-02', '2026-11-04'].entries()) {
+      // Organization tests need distinct work; identical completed ranges now intentionally check other dates.
+      const unit = date === '2026-11-02' ? 1 : 10 + index * 2;
+      const start = date === '2026-11-02' ? 10 : 30 + index * 20;
+      const round = date === '2026-11-02' ? 5 : 10 + index;
       localStorage.setItem(prefix + date, JSON.stringify({ schemaVersion: 2, date, notes: '保留筆記', items: [
         { id: 'grammar', type: 'extra', title: '英文｜Essential Grammar in Use', source: 'preset', required: true, done: false, minutes: '15',
-          f: { title: 'Essential Grammar in Use', scopeKind: 'unit', unitStart: '1', unitEnd: '2' } },
-        { id: 'ace', type: 'extra', title: '英文｜ACE Reading', source: 'preset', required: true, done: false, minutes: '20', f: { title: 'ACE Reading', round: '5' } },
+          f: { title: 'Essential Grammar in Use', scopeKind: 'unit', unitStart: String(unit), unitEnd: String(unit + 1) } },
+        { id: 'ace', type: 'extra', title: '英文｜ACE Reading', source: 'preset', required: true, done: false, minutes: '20', f: { title: 'ACE Reading', round: String(round) } },
         { id: 'science', type: 'scienceReview', title: '物理讀書', source: 'preset', required: true, done: false, minutes: '25',
-          f: { subject: '物理', material: '新關鍵', start: '10', end: '12', progress: true, graded: false, corrected: false } },
+          f: { subject: '物理', material: '新關鍵', start: String(start), end: String(start + 2), progress: true, graded: false, corrected: false } },
       ] }));
     }
   }, { prefix });
   await page.reload();
-  await expect(page.locator('.todo-card')).toHaveCount(18);
+  await expect(page.locator('.todo-card')).toHaveCount(12);
 }
 
 test('30-day tasks stay visible, older tasks collapse by default and both groups support persistent date sorting', async ({ page }) => {
   await seed(page);
   await expect(page.locator('#todoRecentList .todo-card')).toHaveCount(12);
-  await expect(page.locator('#todoLongTermList .todo-card')).toHaveCount(6);
+  await expect(page.locator('#todoLongTermList .todo-card')).toHaveCount(0);
+  await expect(page.locator('#todoLongTermCount')).toHaveText('6 項');
   await expect(page.locator('#todoLongTerm')).not.toHaveAttribute('open', '');
-  await expect(page.locator('#todoLongTermList .todo-card').first()).toBeHidden();
   await expect(page.locator('#todoRecentList .todo-card').first().locator('.todo-overdue')).toHaveText('逾期 30 天');
   await page.locator('#todoSort').selectOption('newest');
   await expect(page.locator('#todoRecentList .todo-card').first().locator('.todo-overdue')).toHaveText('逾期 1 天');
   await page.locator('#todoLongTerm > summary').click();
+  await expect(page.locator('#todoLongTermList .todo-card')).toHaveCount(6);
   await expect(page.locator('#todoLongTermList .todo-card').first().locator('.todo-overdue')).toHaveText('逾期 31 天');
   await page.reload();
   await expect(page.locator('#todoSort')).toHaveValue('newest');
@@ -93,8 +98,8 @@ test('batch skip includes collapsed matching long-term tasks and leaves another 
   await science.locator('[data-todo-timer-action="toggle"]').click();
   await page.getByRole('tab', { name: '英文', exact: true }).click();
   await page.locator('#todoItemFilter').selectOption('english:Essential Grammar in Use');
-  await expect(page.locator('#todoLongTermList .todo-card')).toHaveCount(2);
-  await expect(page.locator('#todoLongTermList .todo-card').first()).toBeHidden();
+  await expect(page.locator('#todoLongTermList .todo-card')).toHaveCount(0);
+  await expect(page.locator('#todoLongTermCount')).toHaveText('2 項');
   page.once('dialog', async dialog => { expect(dialog.message()).toContain('將跳過 6 項，其中長期逾期 2 項'); await dialog.accept(); });
   await page.locator('#todoBatchSkip').click();
   await expect(page.locator('.todo-card')).toHaveCount(0);
@@ -120,7 +125,7 @@ test('all cards start compact with a scope summary and whole-card editing withou
   }
   await expect(card.locator('.todo-complete')).toBeVisible();
   await expect(card.locator('.todo-skip')).toBeVisible();
-  await expect(card.locator('.todo-range-summary')).toHaveText('p.10–12');
+  await expect(card.locator('.todo-range-summary')).toHaveText('新關鍵｜p.10–12');
   await expect(card.locator('.todo-expand')).toHaveCSS('border-top-width', '0px');
   await expect(card.locator('.todo-expand')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
   expect(await card.locator('.todo-actions').evaluate(node => node.children[0].classList.contains('todo-expand') && node.children[1].classList.contains('todo-complete'))).toBe(true);
@@ -134,7 +139,7 @@ test('all cards start compact with a scope summary and whole-card editing withou
   await card.locator('[data-todo-timer-action="toggle"]').click();
   await page.clock.runFor(60_000);
   await card.locator('h3').click();
-  await expect(card.locator('.todo-range-summary')).toHaveText('p.10–18');
+  await expect(card.locator('.todo-range-summary')).toHaveText('新關鍵｜p.10–18');
   await page.clock.runFor(60_000);
   await card.click({ position: { x: 8, y: 8 } });
   await expect(card.locator('[data-todo-timer-display]')).toHaveText('02:00');

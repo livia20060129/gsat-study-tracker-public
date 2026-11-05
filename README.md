@@ -1,22 +1,18 @@
 # GSAT Study Tracker
 
-目前版本：**公開版 v171.6.0-public.55**
+目前版本：**公開版 v171.6.0-public.56**
 
 公開版學測讀書追蹤器，整合 Google Calendar 唯讀排程、手動新增項目、Supabase 跨裝置同步、計時、完成率、教材進度與學習總結。
 
 > 此資料夾是與自用版完全分開的公開版本。公開版不建立星期別、固定日期或內建教材行程；Tracker 只加入實際從 Google Calendar 讀到且能辨識科目／教材，或帶有有效 GSAT／GAST 學習識別碼的排程，使用者仍可手動新增項目。
 
-本版修正 GitHub Actions 在安裝 Deno 時下載 GitHub release ZIP 遇到 HTTP 504 的阻塞。CI 改由官方 npm 套件安裝固定版本 Deno 2.9.6，安裝後核對實際版本；安裝失敗或版本不符仍會立即停止。三個 Supabase Edge Functions 的凍結 lockfile 型別檢查、所有測試與原本部署順序均保留。安裝來源參考 [Deno 官方文件](https://docs.deno.com/runtime/getting_started/installation/)。
+本版同步個人版 v171.6.142～v171.6.148 的共用改善：完成範圍自動比對、數學已知章節重新分段、講義版本顯示、單字查詢接續，以及歷史快取、待辦延後建立及單字列表重用。公開版的獨立 Supabase／OAuth、無固定排程、我的教材、社會細科、GSAT／GAST 通用匯入及 Calendar 失敗保護均保留。
 
-保留 public.54：將「Google 翻譯支援」集中到英文單字複習頁面最上方：選擇英文項目、填入詞性，再預覽與確認。單一已勾選詞性自動帶入，多個或尚未勾選時由使用者指定。未分詞性最後一筆也可刪除，重新整理及跨來源日不會復原。查詢辭典可在劍橋中英字典／牛津辭典之間切換並記住選擇。Google 翻譯必須登入，每帳號每月最多 5,000 字元，台灣時間每月 1 日重設；限制由伺服器與資料庫執行。沿用 public.53 的翻譯安全邊界及 public.52 的效能優化。
+Google 翻譯按鈕改放在各字卡編輯區；支援標誌只集中於英文單字複習頁頁首。仍須登入並主動按下按鈕才送出所選英文，每月上限維持 **5,000 字元**，支援單字、組合與句子。單一既有詞性自動帶入；未標詞性時只參考同拼法本機資料，多種詞性保留使用者選擇，不從譯文猜測。保留預覽後確認、手動中文與最後一筆未分類刪除。查詢辭典統一為「劍橋英漢辭典／牛津辭典」。
 
-公開版繼續使用獨立 Supabase 與 OAuth 設定、`calendar.events.readonly`、通用 GSAT／GAST 識別碼、1050px 內容上限與灰字頁尾。教材頁保留「我的教材／教材進度」兩卡片、卡片外的科目切換及已勾選教材才顯示於手動新增的規則；自然／社會科使用原本的細科分類。每日統計只保留完成時間圓環及兩種完成率。Calendar 失敗或逾時時保留已儲存紀錄，不以舊快照重建排程。
+瀏覽器與伺服器加入依帳號隔離的翻譯快取及同時查詢去重；快取命中不扣額。新增私有扣額收據，伺服器傳輸重試沿用同一識別碼，不會重複扣字元；額度訊息可顯示已用、剩餘與台灣時間重設日期。這不保證分開送出的失敗 Google 查詢免扣額。
 
-各頁已移除獨立的「回到 Tracker」按鈕；使用共用側欄與手機頂部導覽切換頁面，回首頁可點 GSAT Tracker。
-
-完成率樣式參照個人版 v171.6.137：兩條進度條為欄位內容寬度的 80%，水平置中；標題、百分比與項目數靠左，整組統計維持垂直置中。覆蓋後需重新建置並部署完整 `dist`，才會載入新的樣式雜湊檔。
-
-覆蓋 public.54 後，commit 並 push 至 main，讓新工作流程使用 npm 安裝 Deno。可先執行 `npm ci`、`npm test`、`npm run build`。本次不新增網站功能、資料庫遷移、套件依賴或 Secret；若 public.54 尚未成功部署，既有 release 仍會依序套用月額度遷移、部署 cloud-translate，再發布網站。原有 GOOGLE_TRANSLATION_API_KEY 沿用。未建立 commit、push 或執行線上部署。
+沿用 public.55 的官方 npm Deno 2.9.6 安裝與版本核對。新增 PostgreSQL 測試引擎僅供開發驗證；Google key 及其他 Secrets 沿用。需先套用新增 migration、部署 `cloud-translate`，再建置發布前端；既有 GitHub Actions 已依此順序執行。尚未建立 commit、push、部署或修改正式資料。
 
 public.51 已包含共用 OAuth 修正：公開版原本就使用 `calendar.events.readonly`，並明確設定 `include_granted_scopes=false`，避免新授權合併先前權限。若尚未部署 public.51，請透過既有 GitHub Actions release 流程部署公開版的 `google-calendar` 與 `google-calendar-callback`，使兩個入口都帶入 `_shared/calendarAuthorization.ts`。公開 Supabase 專案、Client ID、callback 及環境變數沿用原設定；部署後須從網站重新發起 Calendar 連線才會使用新授權網址。[Edge Functions 部署會一起封裝相依模組](https://supabase.com/docs/guides/functions/architecture)。
 

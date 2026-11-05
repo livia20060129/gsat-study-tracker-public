@@ -2,6 +2,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.114.0';
 import { createCloudTranslationHandler } from '../_shared/cloudTranslationHandler.ts';
 import { CLOUD_TRANSLATION_MONTHLY_CHARACTERS, type CloudTranslation } from '../_shared/cloudTranslationProtocol.ts';
 import { requestGoogleTranslation } from '../_shared/googleCloudTranslation.ts';
+import { reserveCloudTranslationRequest, type CloudTranslationQuota } from '../_shared/cloudTranslationQuota.ts';
 
 function requiredEnv(name: string): string {
   const value = Deno.env.get(name)?.trim();
@@ -28,14 +29,15 @@ const handler = createCloudTranslationHandler({
     return error || data.user?.is_anonymous ? null : data.user?.id ?? null;
   },
   configured(): boolean { return Boolean(Deno.env.get('GOOGLE_TRANSLATION_API_KEY')?.trim()); },
-  async reserve(userId, characters): Promise<boolean> {
-    const { data, error } = await admin.rpc('reserve_cloud_translation_usage', {
-      p_user_id: userId, p_characters: characters,
+  async reserve(userId, characters): Promise<CloudTranslationQuota> {
+    const args = { p_user_id: userId, p_request_id: crypto.randomUUID(), p_characters: characters,
       p_user_limit: configuredLimit('GOOGLE_TRANSLATION_USER_MONTHLY_CHAR_LIMIT', CLOUD_TRANSLATION_MONTHLY_CHARACTERS, CLOUD_TRANSLATION_MONTHLY_CHARACTERS),
-      p_global_limit: configuredLimit('GOOGLE_TRANSLATION_GLOBAL_DAILY_CHAR_LIMIT', 200000),
-    });
-    if (error) throw new Error('Translation quota unavailable');
-    return data === true;
+      p_global_limit: configuredLimit('GOOGLE_TRANSLATION_GLOBAL_DAILY_CHAR_LIMIT', 200000) };
+    return reserveCloudTranslationRequest(async function reserve(requestId): Promise<unknown> {
+      const { data, error } = await admin.rpc('reserve_cloud_translation_request', { ...args, p_request_id: requestId });
+      if (error) throw new Error('Translation quota unavailable');
+      return data;
+    }, args.p_request_id);
   },
   async translate(text, signal): Promise<CloudTranslation> {
     return requestGoogleTranslation(text, requiredEnv('GOOGLE_TRANSLATION_API_KEY'), signal);

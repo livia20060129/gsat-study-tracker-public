@@ -18,7 +18,7 @@ export function todoRangeSummary(details: readonly OverdueTaskDetail[]): string 
   const range = first && last && first !== last ? `${first}–${last}` : first || last;
   const parts: string[] = [];
   const book = details.find(detail => ['書名／冊別', '冊別', '冊數'].includes(detail.label));
-  if (book && /^\d+(?:\s*[–—~～\-至]\s*\d+)*$/.test(book.value.trim())) parts.push(`第 ${book.value.trim()} 冊`);
+  if (book && /^\d+[A-Za-z]?(?:\s*[–—~～\-至]\s*\d+[A-Za-z]?)*$/.test(book.value.trim())) parts.push(`第 ${book.value.trim()} 冊`);
   if (range) {
     const kind = start?.rangeKind ?? end?.rangeKind;
     if (kind === 'unit') parts.push(`Unit ${range}`);
@@ -56,5 +56,8 @@ export function todoStudyDisplay(entry: Pick<OverdueTaskEntry, 'title' | 'descri
     if (!omitStudyRanges(part, kinds).trim()) return false;
     return !context.some(previous => studyBookIncludes(previous, part.trim()));
   }).join('｜');
-  return { title, details, description: studyReferenceText(description, context), rangeSummary: todoRangeSummary(entry.details) };
+  const material = entry.details.find(detail => ['講義', '講義版本'].includes(detail.label))?.value.trim() ?? '';
+  const version = material && !studyBookIncludes(title, material) ? material : '';
+  const rangeSummary = [version, todoRangeSummary(entry.details)].filter(Boolean).join('｜');
+  return { title, details, description: studyReferenceText(description, context), rangeSummary };
 }

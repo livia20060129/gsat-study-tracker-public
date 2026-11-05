@@ -10,6 +10,9 @@ test('book identity recognizes existing catalog aliases and does not conflate di
   assert.equal(studyBookIncludes('主題百匯：克漏字', '主題百匯：篇章結構·閱讀測驗'), false);
   assert.equal(studyBookIncludes('英文｜ACE Readings', 'ACE Reading'), false);
   assert.equal(studyBookIncludes('自訂教材｜Unit 2', '英文｜自訂教材'), true);
+  assert.equal(studyBookIncludes('數學｜教學講義', '教學講義'), true);
+  assert.equal(studyBookIncludes('數學｜教學講義解答', '教學講義'), false);
+  assert.equal(studyBookIncludes('數學｜新關鍵', '教學講義'), false);
 });
 
 test('chapter comparisons cover Ch., Chapter and Chinese ordinals without confusing numeric prefixes', () => {

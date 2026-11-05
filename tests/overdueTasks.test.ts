@@ -89,7 +89,7 @@ test('待辦帶出原紀錄卡的學習時間與已填欄位', () => {
   assert.deepEqual(results[0].details, [
     { label: '項目類型', value: '自然複習' },
     { label: '科目', value: '化學' },
-    { label: '講義', value: '新關鍵' },
+    { label: '講義版本', value: '新關鍵' },
     { label: '起始頁', value: '40', editableRange: 'start' },
     { label: '結束頁', value: '52', editableRange: 'end' },
     { label: 'Google Calendar 當日主題', value: '物質的構造' },

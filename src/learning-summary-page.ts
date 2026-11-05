@@ -34,6 +34,7 @@ import {
   type SubjectTimeSubject,
 } from './study/subjectTime.ts';
 import type { StudyRecord } from './types.ts';
+import { ACTIVE_RECORD_PREFIX_KEY } from './storage/local.ts';
 
 const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日'];
 const STATUS_DAY_COMPLETION_STORAGE_KEY = 'study-summary:include-status-days-in-completion';
@@ -57,6 +58,7 @@ function storeStatusDayCompletionPreference(include: boolean): void {
 let activeMode: SummaryMode = location.hash === '#month' ? 'month' : 'week';
 let activeAnchor = dateKey(new Date());
 let records: StudyRecord[] = [];
+let recordPrefix = '';
 let includeStatusDaysInCompletion = storedStatusDayCompletionPreference();
 let selectedSubject: SubjectTimeSubject | null = null;
 let pendingSubjectEntryOrigin: DOMRect | null = null;
@@ -581,6 +583,7 @@ function loadRecords(): void {
   try {
     const result = readMaterialProgressRecords(localStorage);
     records = result.records;
+    recordPrefix = result.prefix;
     const source = result.prefix.startsWith('study-v11:user:') ? '目前登入帳號的本機同步資料' : '訪客本機資料';
     element<HTMLParagraphElement>('summarySource').textContent = `${source}｜共讀取 ${records.length} 天紀錄`;
     element<HTMLParagraphElement>('summaryError').hidden = true;
@@ -655,5 +658,9 @@ document.addEventListener('click', event => {
   document.querySelectorAll('.summary-day.is-tooltip-open').forEach(node => node.classList.remove('is-tooltip-open'));
   document.querySelectorAll<HTMLButtonElement>('[data-summary-day]').forEach(node => node.setAttribute('aria-expanded', 'false'));
 });
-window.addEventListener('storage', loadRecords);
+window.addEventListener('storage', function updateChangedHistory(event): void {
+  if (event.storageArea && event.storageArea !== localStorage) return;
+  if (event.key === null || event.key === ACTIVE_RECORD_PREFIX_KEY
+    || (event.key.startsWith(recordPrefix) && /^\d{4}-\d{2}-\d{2}$/.test(event.key.slice(recordPrefix.length)))) loadRecords();
+});
 loadRecords();

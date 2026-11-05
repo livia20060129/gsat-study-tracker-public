@@ -1,3 +1,4 @@
+import { synchronizeRangeCompletion } from './application/records/synchronizeRangeCompletion.ts';
 import './todo-page.css';
 import { animateDisclosureChange, initializeDisclosureMotion } from './ui/disclosureMotion.ts';
 import { applyStudyHeadingHierarchy, studyFieldHierarchy } from './ui/studyFieldHierarchy.ts';
@@ -14,7 +15,7 @@ import { todoStudyDisplay } from './ui/todoStudyDisplay.ts';
 import { updateTodoList } from './ui/keyedTodoList.ts';
 import { normalizedOverdueSort, organizedOverdueEntries, skipOverdueRecordBatch } from './study/overdueOrganization.ts';
 import { LocalStudyRecordRepository } from './infrastructure/storage/localStudyRecordRepository.ts';
-import { readMaterialProgressRecords } from './study/materialProgress.ts';
+import { activeStudyRecordPrefix, readMaterialProgressRecords } from './study/materialProgress.ts';
 import { normalizedOverdueItemFilter, overdueEntriesForItem, overdueItemFilterForSubject, overdueItemOptions } from './study/overdueItemFilter.ts';
 import {
   normalizedOverduePeriod, OVERDUE_PERIODS, overdueEntriesForPeriod, overduePeriodIndex, overduePeriodRange,
@@ -65,6 +66,8 @@ const draftBases = new Map<string, StudyRecord>();
 let displayedTimers = new Map<string, StudyTimerState>();
 let displayedEntries = new Map<string, OverdueTaskEntry>();
 let renderedDate = localDateKey();
+let longTermEntries: OverdueTaskEntry[] = [];
+let longTermLoaded = false;
 
 function draftKey(action: TodoActionTarget): string {
   return `${action.recordDate}:${action.itemId}`;
@@ -453,7 +456,11 @@ function render(): void {
   element<HTMLElement>('todoSummary').textContent = todoSummaryText(entries.length, periodEntries.length, filtered.length);
   const organized = organizedOverdueEntries(filtered, activeSort);
   updateTodoList(element<HTMLDivElement>('todoRecentList'), organized.recent, createTodoCard);
-  updateTodoList(element<HTMLDivElement>('todoLongTermList'), organized.longTerm, createTodoCard);
+  longTermEntries = organized.longTerm;
+  if (longTermLoaded || element<HTMLDetailsElement>('todoLongTerm').open) {
+    updateTodoList(element<HTMLDivElement>('todoLongTermList'), longTermEntries, createTodoCard);
+    longTermLoaded = true;
+  }
   element<HTMLDetailsElement>('todoLongTerm').hidden = organized.longTerm.length === 0;
   element('todoLongTermCount').textContent = `${organized.longTerm.length} 項`;
   element<HTMLSelectElement>('todoSort').value = activeSort;
@@ -482,12 +489,12 @@ function skipFilteredSubject(): void {
   let skipped = 0;
   const handledAt = new Date().toISOString();
   try {
-    if (readMaterialProgressRecords(localStorage).prefix !== scope) throw new Error('帳號資料空間已改變，已停止批次處理。');
+    if (activeStudyRecordPrefix(localStorage) !== scope) throw new Error('帳號資料空間已改變，已停止批次處理。');
     const pointer = readTimerPointer();
     if (pointer && selected.some(entry => sameTimerTarget(pointer, entry))) pauseActiveTimer();
     const repository = new LocalStudyRecordRepository(localStorage, scope);
     for (const [date, ids] of targets) {
-      if (readMaterialProgressRecords(localStorage).prefix !== scope) throw new Error('帳號資料空間已改變，已停止後續處理。');
+      if (activeStudyRecordPrefix(localStorage) !== scope) throw new Error('帳號資料空間已改變，已停止後續處理。');
       const loaded = repository.loadResult(date);
       if (loaded.status !== 'ok') throw new Error(`${date} 的原始紀錄無法讀取，已停止後續處理。`);
       let count = 0;
@@ -516,7 +523,7 @@ function saveRecordChange(
   const base = useDraftBase ? draftBases.get(action.recordDate) ?? records[index] : records[index];
   const edited = saveLocalRecordEdit(localStorage, recordPrefix, base, update);
   if (!edited) return false;
-  records[index] = edited;
+  records = readMaterialProgressRecords(localStorage).records;
   return true;
 }
 
@@ -547,7 +554,11 @@ function writeTimerPointer(pointer: StudyTimerPointer | null): void {
 function sameTimerTarget(pointer: StudyTimerPointer | null, action: TodoActionTarget): boolean {
   if (!pointer || pointer.entryId || pointer.date !== action.recordDate) return false;
   const record = records.find(record => record.date === action.recordDate);
-  return Boolean(record && sameStudyTimerTarget(record, pointer, { date: action.recordDate, itemId: action.itemId }));
+  if (!record) return false;
+  if (pointer.itemId === action.itemId) return true;
+  // Alias resolution relinks grouped sources; keep the cached history snapshot untouched.
+  const comparison = JSON.parse(JSON.stringify(record)) as StudyRecord;
+  return sameStudyTimerTarget(comparison, pointer, { date: action.recordDate, itemId: action.itemId });
 }
 
 function currentTimer(action: TodoActionTarget): StudyTimerState | null {
@@ -739,13 +750,19 @@ function refreshTimerDisplays(): void {
 
 function load(forceCards = false): void {
   try {
-    const result = readMaterialProgressRecords(localStorage);
+    let result = readMaterialProgressRecords(localStorage, forceCards);
+    const rangeSync = synchronizeRangeCompletion(localStorage, result.prefix);
+    if (rangeSync.saved.length) result = readMaterialProgressRecords(localStorage);
     records = result.records;
-    if (recordPrefix !== result.prefix) { drafts.clear(); draftBases.clear(); expandedCards.clear(); }
+    if (recordPrefix !== result.prefix) {
+      drafts.clear(); draftBases.clear(); expandedCards.clear();
+      longTermLoaded = false;
+      element('todoLongTermList').replaceChildren();
+    }
     recordPrefix = result.prefix;
     const source = result.prefix.startsWith('study-v11:user:') ? '目前登入帳號的本機同步資料' : '訪客本機資料';
     element<HTMLSpanElement>('recordSource').textContent = `${source}｜已讀取 ${result.records.length} 天紀錄`;
-    setError('');
+    setError(rangeSync.failedDates.length ? `以下日期尚未完成範圍同步：${rangeSync.failedDates.join('、')}。請確認儲存空間後重新讀取。` : '');
     setFeedback('');
     if (forceCards) element<HTMLDivElement>('todoList').querySelectorAll<HTMLElement>('.todo-card')
       .forEach(card => { delete card.dataset.todoSignature; });
@@ -784,6 +801,19 @@ function readLocationFilters(): void {
   activeItem = normalizedOverdueItemFilter(new URLSearchParams(location.search).get('item'));
   activeSort = normalizedOverdueSort(new URLSearchParams(location.search).get('order'));
 }
+
+function loadLongTermCards(): void {
+  if (longTermLoaded) return;
+  updateTodoList(element<HTMLDivElement>('todoLongTermList'), longTermEntries, createTodoCard);
+  longTermLoaded = true;
+}
+
+element('todoLongTerm').addEventListener('click', function prepareLongTerm(event): void {
+  if ((event.target as Element).closest('summary')?.parentElement === event.currentTarget) loadLongTermCards();
+});
+element<HTMLDetailsElement>('todoLongTerm').addEventListener('toggle', function programmaticOpening(): void {
+  if (element<HTMLDetailsElement>('todoLongTerm').open) loadLongTermCards();
+});
 
 element<HTMLSelectElement>('todoSort').addEventListener('change', function selectOrder(): void {
   activeSort = normalizedOverdueSort(element<HTMLSelectElement>('todoSort').value);

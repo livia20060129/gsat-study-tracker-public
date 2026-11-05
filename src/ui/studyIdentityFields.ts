@@ -55,9 +55,15 @@ function deduplicateCard(card: HTMLElement): void {
     if (!IDENTITY_LABELS.has(label) || !select?.value) return [];
     return [select.hasAttribute('data-chinese-kind') ? select.selectedOptions[0].textContent ?? select.value : select.value];
   });
+  const readonlyMaterials = fields.flatMap(field => {
+    const label = field.querySelector(':scope > label')?.textContent?.trim();
+    if (label !== '講義版本' || field.querySelector('input,select,textarea')) return [];
+    const value = field.querySelector<HTMLElement>(':scope > .fixed-book-value');
+    return value ? [originalText(value)] : [];
+  });
   const heading = card.querySelector<HTMLElement>(':scope > .item-top .item-title');
   if (heading) {
-    const title = studyHeadingText(originalText(heading), selectedBooks, kinds);
+    const title = studyHeadingText(originalText(heading), [...selectedBooks, ...readonlyMaterials], kinds);
     const subjects: Record<string, string> = { chinese: '國文', english: '英文', math: '數學', science: '自然' };
     const subject = Object.entries(subjects).find(([key]) => card.classList.contains(`subject-${key}`))?.[1];
     displayText(heading, title || subject || '讀書項目');
@@ -80,7 +86,7 @@ function deduplicateCard(card: HTMLElement): void {
     const scope = SCOPE_LABELS.has(label);
     const remaining = scope ? studyReferenceText(text, context) : text;
     if (scope) displayText(value, remaining);
-    const repeated = IDENTITY_LABELS.has(label)
+    const repeated = label !== '講義版本' && IDENTITY_LABELS.has(label)
       ? context.some(previous => studyBookIncludes(previous, text))
       : scope && !remaining;
     field.hidden = repeated;

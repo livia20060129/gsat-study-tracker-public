@@ -16,7 +16,7 @@ export function vocabularyPrintDocument(
   withTranslations: boolean,
 ): string {
   const title = `英文${kind === '單字' ? '單字' : kind}表（${withTranslations ? '有' : '無'}翻譯）`;
-  const googleAttribution = withTranslations && entries.some(entry => entry.cloudTranslationSources?.length)
+  const googleAttribution = withTranslations && entries.some(entry => entry.cloudTranslationSources?.length || entry.referenceSources?.google)
     ? `<tr><th colspan="3"><a href="https://translate.google.com/"><img src="data:image/png;base64,${GOOGLE_TRANSLATION_BADGE_BASE64}" alt="powered by Google Translate" style="width:200px;height:auto"></a></th></tr>` : '';
   const notices = [];
   if (entries.some(entry => entry.referenceSources?.ceec)) {

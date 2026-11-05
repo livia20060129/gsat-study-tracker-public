@@ -4,7 +4,7 @@ export function vocabularyDictionaryLink(query: string, dictionary: VocabularyDi
   const text = query.trim();
   if (dictionary === 'cambridge') return {
     url: text ? `https://dictionary.cambridge.org/dictionary/english-chinese-traditional/${encodeURIComponent(text)}` : '',
-    label: '劍橋中英字典',
+    label: '劍橋英漢辭典',
   };
   return { url: text ? `https://www.oxfordlearnersdictionaries.com/search/english/?q=${encodeURIComponent(text)}` : '',
     label: "Oxford Learner's Dictionaries" };

@@ -124,11 +124,11 @@ test('fraction-only Calendar math uses page-map guidance without creating an off
     [['4A', '151', '162'], ['4A', '163', '174']]);
 });
 
-test('November 2 moved triangle events restore both page fields and original source dates', () => {
+test('November 2 moved triangle events apply revised chapter fractions while retaining original source dates', () => {
   const moved = '2026-11-02';
   const context = app([2, 3].map(part => row(`triangle-${part}`, '2｜三角比',
     `【講義版本】教學講義 【冊別】2 【單元進度】三角比（${part}/5） 【來源日期】2026/10/${part + 11} 【識別碼】GSAT-SPLIT-\nMATH-2026-10-${part + 11}`, moved)));
   const definitions = context.cloudCalendarDefsForDate(moved);
   assert.deepEqual(Array.from(definitions, (definition: { f: Record<string, string> }) => [definition.f.start, definition.f.end, definition.f.calendarSourceDate]),
-    [['228', '236', '2026/10/13'], ['237', '245', '2026/10/14']]);
+    [['232', '243', '2026/10/13'], ['244', '255', '2026/10/14']]);
 });

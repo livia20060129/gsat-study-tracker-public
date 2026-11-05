@@ -40,7 +40,7 @@ export async function vocabularyDocxDocument(entries: VocabularyReviewEntry[], k
         }
     }
     const title = vocabularyExportTitle(kind, withTranslations);
-    const googleAttribution = withTranslations && entries.some(entry => entry.cloudTranslationSources?.length);
+    const googleAttribution = withTranslations && entries.some(entry => entry.cloudTranslationSources?.length || entry.referenceSources?.google);
     const document = new Document({ creator: 'GSAT Study Tracker', title,
         styles: { default: { document: { run: { font: 'Microsoft JhengHei', size: 22, color: '000000' } } } },
         sections: [{ headers: googleAttribution ? { default: new Header({ children: [new Paragraph({ children: [

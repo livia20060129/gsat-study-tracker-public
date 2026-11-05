@@ -1,3 +1,5 @@
+import type { VocabularyDefaultSource } from './vocabularyDefaults.ts';
+import { isVocabularyLookupPending, markVocabularyLookupPending } from './vocabularyLookupLifecycle.ts';
 import type { EnglishReviewWordEntry, GsatVocabularyLevel, StudyItem, StudyRecord, VocabularyStars, VocabularyTranslations } from '../types.ts';
 import { isVocabularyStarKey, normalizedVocabularyStars, remapVocabularyMeaningStars } from './vocabularyStars.ts';
 import { applyVocabularyAutoFill, markVocabularyManualFields, vocabularyAutoFillSources } from './vocabularyAutoFill.ts';
@@ -33,6 +35,8 @@ export interface VocabularyWordEdits {
   translationRemoval?: { field: keyof VocabularyTranslations; index: number };
   autoFill?: boolean;
   autoFillTranslations?: VocabularyTranslations;
+  autoFillSource?: VocabularyDefaultSource;
+  autoFillParts?: import('./vocabularyFallbackParts.ts').VocabularyFallbackParts;
   dictionarySelection?: DictionaryLookupResult;
   cloudTranslation?: CloudTranslation;
   cloudTranslationTarget?: CloudTranslationTarget;
@@ -46,6 +50,7 @@ export interface VocabularyWordEdits {
 }
 
 export interface VocabularyReviewEntry {
+  lookupPending?: boolean;
   vocabularyStars?: VocabularyStars;
   key: string;
   text: string;
@@ -60,7 +65,7 @@ export interface VocabularyReviewEntry {
   translationsByPartOfSpeech: VocabularyTranslations;
   sourceDates: string[];
   occurrenceCount: number;
-  referenceSources?: { ceec: boolean; ecdict: boolean };
+  referenceSources?: { ceec: boolean; ecdict: boolean; google?: boolean };
   dictionarySources?: DictionarySourceReference[];
   cloudTranslationSources?: CloudTranslation[];
 }
@@ -180,6 +185,7 @@ function collectItemWords(
         entries.set(key, entry);
       }
       entry.occurrenceCount += 1;
+      if (isVocabularyLookupPending(word)) entry.lookupPending = true;
       if (word.vocabularyStars) entry.vocabularyStars = { ...entry.vocabularyStars, ...normalizedVocabularyStars(word.vocabularyStars) };
       const sources = dictionarySources(word.dictionarySources);
       if (sources.length) entry.dictionarySources = dictionarySources([...(entry.dictionarySources ?? []), ...sources]);
@@ -189,6 +195,7 @@ function collectItemWords(
       if (referenceSources) entry.referenceSources = {
         ceec: entry.referenceSources?.ceec === true || referenceSources.ceec,
         ecdict: entry.referenceSources?.ecdict === true || referenceSources.ecdict,
+        ...(entry.referenceSources?.google || referenceSources.google ? { google: true } : {}),
       };
       if (date) entry.sourceDates.add(date);
       const translation = normalizedTranslation(word.translation);
@@ -283,6 +290,7 @@ function updateItemWords(
         const nextText = normalizedWordText(edits.text);
         if (nextText && word.text !== nextText) {
           word.text = nextText;
+          markVocabularyLookupPending(word);
           changed = true;
         }
       }
@@ -297,8 +305,9 @@ function updateItemWords(
           word.beautifulSentences = beautifulSentences;
           changed = true;
         }
+        if (fixedCombination || beautifulSentences) delete word.vocabularyLookupPending;
       }
-      if ((edits.text !== undefined || edits.autoFill) && applyVocabularyAutoFill(word, edits.autoFillTranslations)) changed = true;
+      if ((edits.text !== undefined || edits.autoFill) && applyVocabularyAutoFill(word, edits.autoFillTranslations, edits.autoFillSource, edits.autoFillParts)) changed = true;
       if (edits.partsOfSpeech) {
         markVocabularyManualFields(word, VOCABULARY_PARTS_OF_SPEECH.map(([field]) => field));
         for (const [field] of VOCABULARY_PARTS_OF_SPEECH) {
@@ -349,6 +358,7 @@ function updateItemWords(
       }
       if (edits.dictionarySelection && applyDictionarySelection(word, edits.dictionarySelection)) changed = true;
       if (edits.cloudTranslation && applyCloudTranslation(word, edits.cloudTranslation, edits.cloudTranslationTarget)) changed = true;
+      if (edits.translation !== undefined || edits.translationsByPartOfSpeech !== undefined || edits.dictionarySelection || edits.cloudTranslation) delete word.vocabularyLookupPending;
       if (word.vocabularyStars && (edits.translation !== undefined || edits.translationsByPartOfSpeech !== undefined)) {
         const removal = edits.translationRemoval;
         const partOfSpeech = VOCABULARY_PARTS_OF_SPEECH.find(([field]) => field === removal?.field)?.[1] ?? '未分詞性';

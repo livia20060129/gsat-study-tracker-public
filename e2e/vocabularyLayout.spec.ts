@@ -47,12 +47,14 @@ async function expectTwoColumns(rows: Locator): Promise<void> {
   expect(Math.abs(first.width - second.width)).toBeLessThan(1);
 }
 
-test('page references appear directly under the title and all word groupings use two desktop columns', async ({ page }, testInfo) => {
+test('the Google badge and references sit under the title and all word groupings use two desktop columns', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1200, height: 1000 });
   await seedVocabulary(page);
   const before = await page.evaluate(() => localStorage.getItem('study-v11:guest:2026-10-29'));
   const references = page.locator('#vocabularyReferences');
-  expect(await page.locator('h1:visible').evaluate(node => node.nextElementSibling?.id)).toBe('vocabularyReferences');
+  expect(await page.locator('h1:visible').evaluate(node => node.nextElementSibling?.id)).toBe('googleTranslationSupport');
+  expect(await page.locator('#googleTranslationSupport').evaluate(node => node.nextElementSibling?.id)).toBe('vocabularyReferences');
+  await expect(page.locator('#googleTranslationSupport img')).toHaveAttribute('alt', 'Powered by Google Translate');
   await expect(references.getByRole('link')).toHaveCount(4);
   await expect(references).toContainText('大考中心（Level）');
   await expect(references).toContainText('ECDICT（中文翻譯／詞性）');

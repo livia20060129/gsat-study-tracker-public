@@ -1,0 +1,495 @@
+{
+  "version": "171.6.0-public.56",
+  "files": [
+    {
+      "path": "ARCHITECTURE.md",
+      "bytes": 8798,
+      "sha256": "50d556ec8d7d127a5fd0719b2158bda552e6ad78afd4e2d69bcb8addb5a660ef"
+    },
+    {
+      "path": "GOOGLE_TRANSLATION_SETUP.md",
+      "bytes": 6735,
+      "sha256": "ac876e7c57fe64b0c5e7df4c986ee10d6d1a297f35158cae9525d9feda007122"
+    },
+    {
+      "path": "LATEST_UPDATE.md",
+      "bytes": 66843,
+      "sha256": "088976fa536325faf6c84697ca43d8e1444b01a19f2527c8da25be189ceb7b42"
+    },
+    {
+      "path": "package-lock.json",
+      "bytes": 102935,
+      "sha256": "f4052941e0a51e02903a52da647169eb1d27c9bbf7cdafe8ba5d70d457c966e6"
+    },
+    {
+      "path": "package.json",
+      "bytes": 1755,
+      "sha256": "7c6ded3cfce1fe36bdc6a7de5f83ad2ecad625cca8b4cd919ce7fd35f72a24d4"
+    },
+    {
+      "path": "README.md",
+      "bytes": 38542,
+      "sha256": "9d2f2e2a9f1424da19e9a72f9e1c323b1d65bd0776bfa730788e41ced6dbf52e"
+    },
+    {
+      "path": "vocabulary.review.html",
+      "bytes": 5476,
+      "sha256": "241b8b4c22ce6f594f9954b7db4e87794e89877b1882571904b383c9ee70a2ff"
+    },
+    {
+      "path": "VOCABULARY_SOURCES.md",
+      "bytes": 6268,
+      "sha256": "3216bedde42e6fa7e07810e8393d9047a4883986d33e20d78576acacb18d494a"
+    },
+    {
+      "path": ".github/workflows/deploy.yml",
+      "bytes": 7855,
+      "sha256": "4b67a91808037535beaac7ba232f19665b482a41b35c8ee7a2a241a6c9e92221"
+    },
+    {
+      "path": "e2e/cloudTranslation.spec.ts",
+      "bytes": 19926,
+      "sha256": "a850c1475bde5b7fe339fbeaa7dedac7225dcb47698e8671ee0f4f0d4362fcf9"
+    },
+    {
+      "path": "e2e/disclosureMotion.spec.ts",
+      "bytes": 12269,
+      "sha256": "56a1dae9c22876e9dd4c134cdfcf20d82bab3569ae8c5f1d7e6bfefdc113bd73"
+    },
+    {
+      "path": "e2e/mathCalendarPlan.spec.ts",
+      "bytes": 16443,
+      "sha256": "640cf0b450245fe4698acb7bf6b8bf70573c0d851fc00c8c83adc68b17353cd3"
+    },
+    {
+      "path": "e2e/mobileDisclosurePosition.spec.ts",
+      "bytes": 4562,
+      "sha256": "9894ae366fedf564c5f594f1a45f100e68a74a0c98755933bd6707eafda80b6b"
+    },
+    {
+      "path": "e2e/rangeCompletion.spec.ts",
+      "bytes": 5187,
+      "sha256": "41f9c671f16747d0d576af96eda99c26f966e428efea802ad3bfffb2275e084e"
+    },
+    {
+      "path": "e2e/runtimeOptimizations.spec.ts",
+      "bytes": 6549,
+      "sha256": "8e89fbd7c632b42548c73c2f70602e3ac649f31773583ef441daed0517353e84"
+    },
+    {
+      "path": "e2e/runtimePerformance.spec.ts",
+      "bytes": 5436,
+      "sha256": "bd66f61e220a74f64597e1c4c7232e257ceb733e1faa58f7a5b5e49dbaa5c1b9"
+    },
+    {
+      "path": "e2e/startupPerformance.spec.ts",
+      "bytes": 4294,
+      "sha256": "0527ff9f46310498a108fe40f7c6703da6933d7e3b1d606de9f40ccf7c992c15"
+    },
+    {
+      "path": "e2e/todoOrganization.spec.ts",
+      "bytes": 14780,
+      "sha256": "ce94be1ebfad15fb3a93844d9baaf55f42528d92ad150b8a90c0999cf84cc797"
+    },
+    {
+      "path": "e2e/vocabularyAutoFill.spec.ts",
+      "bytes": 22840,
+      "sha256": "83a19f314471ae47ad18bae1a2d6b1ccd31f9c95ec902662258a55968cacb594"
+    },
+    {
+      "path": "e2e/vocabularyLayout.spec.ts",
+      "bytes": 7726,
+      "sha256": "72d3f2e1f5130cfd2d66463aa8f5f585156ad351a0545e65aea7a961f26ae7f0"
+    },
+    {
+      "path": "e2e/helpers/todoCard.ts",
+      "bytes": 1125,
+      "sha256": "9b9e31c35aa04cc02972ecdc195845fbab80582568a866260d0ad9a36b8c3158"
+    },
+    {
+      "path": "public/gpt.prompt.html",
+      "bytes": 44605,
+      "sha256": "f4047e8385b862395b498ed5f52642d5f369e12a4edce92a06791d78226ee6ae"
+    },
+    {
+      "path": "public/privacy.html",
+      "bytes": 18327,
+      "sha256": "df2f13e51d35c29c967aa8b170c36484da1045a64b166a33ddcbabfab076a194"
+    },
+    {
+      "path": "public/support.html",
+      "bytes": 8687,
+      "sha256": "354c5954fabb140f780183ec42bf4cde69bf14719f85cce127bcc22f58a3798c"
+    },
+    {
+      "path": "public/vocabulary.sources.html",
+      "bytes": 5294,
+      "sha256": "94c0c17c9f015234f3bc28c4a3312489a6107864d157d9a19f89eecd3d57b00f"
+    },
+    {
+      "path": "scripts/build_compact_vocabulary.py",
+      "bytes": 1857,
+      "sha256": "b78698466a85fc6d5ccbc519db3c703867ccf141b5b550d0e1e7b13aedcb9878"
+    },
+    {
+      "path": "scripts/build_ecdict_fallback_parts.py",
+      "bytes": 2188,
+      "sha256": "53ab5e32bd8d7fda8611bc7b9b204ab9663a17b31ea8689d9e639739c42055e7"
+    },
+    {
+      "path": "scripts/build_vocabulary_reference.py",
+      "bytes": 8759,
+      "sha256": "ff46a2810fbdd2539ea217d1f7ee74bb77ba1327f535bbde51f4451e4c7a4e83"
+    },
+    {
+      "path": "src/learning-summary-page.ts",
+      "bytes": 35797,
+      "sha256": "9f320bc39ebf492da328257d2b156b67c291a9ab2fa714643afba27706185422"
+    },
+    {
+      "path": "src/legacy-app.ts",
+      "bytes": 370903,
+      "sha256": "a4a502ecd582dc39ec2a405b1ebbd43885f1b648c438828c693def1070d7d350"
+    },
+    {
+      "path": "src/material-progress-page.ts",
+      "bytes": 17825,
+      "sha256": "00ab518beb6a5a0cddcc4ffd5b45a000f29c7ccbe45937258036ed82cf776d03"
+    },
+    {
+      "path": "src/todo-page.ts",
+      "bytes": 47851,
+      "sha256": "521b99991e049e010ebce1a7d773299c2bd2c393b9731a0a6bf6406de19a1b4e"
+    },
+    {
+      "path": "src/types.ts",
+      "bytes": 6359,
+      "sha256": "58033ac58e8117919e1a0cedad35a7c3d57daad1e3b06d80dd1d36a0c528feb3"
+    },
+    {
+      "path": "src/vocabulary-review-page.ts",
+      "bytes": 52252,
+      "sha256": "97b6a5db4d31a0ea5289593d9c26a5ddb374f81ebf4f02e9468e8cc5bc33d8f7"
+    },
+    {
+      "path": "src/application/cloudTranslationClient.ts",
+      "bytes": 6683,
+      "sha256": "32c0fc09fae9d71e7102d83cf2aa214835bd72ba2f79d6f4c82c73c884112045"
+    },
+    {
+      "path": "src/application/records/localRecordEdits.ts",
+      "bytes": 2249,
+      "sha256": "61eaa1e283bdc1b7c3943b6d9eb90b2b38cc777ee4155f209970cee40075b57a"
+    },
+    {
+      "path": "src/application/records/synchronizeRangeCompletion.ts",
+      "bytes": 1656,
+      "sha256": "14c15bee4d15846bc2c558c3cdbd3c7c5bd0e9e798e59bc23137fcadc9d33419"
+    },
+    {
+      "path": "src/calendar/mathPlan.ts",
+      "bytes": 6562,
+      "sha256": "896e32621bc67173832d74e93766ae2adf3e7aadad8db7ab49cf2381133306c9"
+    },
+    {
+      "path": "src/data/ceecCompactIndex.ts",
+      "bytes": 74820,
+      "sha256": "3ca318292a106d62393f0b8cca54f4c5c7b0d10734ea0727f7a098fa47e4f6b9"
+    },
+    {
+      "path": "src/data/ceecCompactTranslations.ts",
+      "bytes": 456921,
+      "sha256": "7f0ffd0a603c4231f33078fd277ddcb9c740ef46bd3905ed82bcd236facc6aaf"
+    },
+    {
+      "path": "src/data/ecdictFallbackParts.ts",
+      "bytes": 389515,
+      "sha256": "1cdafd28a363e26ac2788c1607c861dec9146c81b59d5ae4429f108d24416b8a"
+    },
+    {
+      "path": "src/infrastructure/storage/localRecordCompaction.ts",
+      "bytes": 1497,
+      "sha256": "c8f5926dbfa49e85e7e4ca9e853438b95d1e756b5514ce6de7773bf6fc0e5b4d"
+    },
+    {
+      "path": "src/infrastructure/storage/localRecordHistory.ts",
+      "bytes": 3820,
+      "sha256": "651df432f666a7b1b53c803c829b3a92e0222bcd3d8cdd36f88bdaac0e4e9113"
+    },
+    {
+      "path": "src/infrastructure/storage/localStudyRecordRepository.ts",
+      "bytes": 5216,
+      "sha256": "f79caf018aaca6a9cb189eabb8a344b4bb2eb721a64f518ededa5410cd882457"
+    },
+    {
+      "path": "src/study/ceecCoreTranslations.ts",
+      "bytes": 1379,
+      "sha256": "9c13eb6008f29a82c463dfc1119834ada6d9e021a942a71fdcfff6d4d0f76bba"
+    },
+    {
+      "path": "src/study/ceecReferenceIndex.ts",
+      "bytes": 1241,
+      "sha256": "c96bb19b147dfd95f777623e168403f209d1c023d7cb136f09a7015711db945e"
+    },
+    {
+      "path": "src/study/completionTree.ts",
+      "bytes": 8994,
+      "sha256": "da2dbceaf9522b028efea4a47c0572c83e093bf272fb796f1e310d01d593f37c"
+    },
+    {
+      "path": "src/study/ecdictLookup.ts",
+      "bytes": 3022,
+      "sha256": "46dfe97eae8076a07e9f5b6235f1fe896c99e705797cea7907f96c94b464e6a0"
+    },
+    {
+      "path": "src/study/localDictionaryLookup.ts",
+      "bytes": 887,
+      "sha256": "e8fbaba32a024259c7e7d04a56d8f2ae47c2e46898b7f5faa049d2de077788f7"
+    },
+    {
+      "path": "src/study/materialProgress.ts",
+      "bytes": 40710,
+      "sha256": "0f2c3fb5c90fa69b32bce199f3c602554ae15d977f59cb1146fd23201f119fec"
+    },
+    {
+      "path": "src/study/overdueTasks.ts",
+      "bytes": 23409,
+      "sha256": "00635c7ad8f447a19cda0cdc946ee9fcbb1e7a35cc61031fc55f4071e6808d65"
+    },
+    {
+      "path": "src/study/rangeCompletion.ts",
+      "bytes": 7591,
+      "sha256": "25b5988a0994aa522877fb92e6d54af308ae02f525de919b981fbc2eefa91c31"
+    },
+    {
+      "path": "src/study/rangeCompletionChoice.ts",
+      "bytes": 708,
+      "sha256": "bdf2998e99d0ff1b2d5b542765b2e1248f2b0dee76ffa418ee4bfd6ef6b0218f"
+    },
+    {
+      "path": "src/study/vocabularyAutoFill.ts",
+      "bytes": 8964,
+      "sha256": "e150568a075dcb93be340e465a133bb929ae9edecd49fd10e641513ce2bd7e5d"
+    },
+    {
+      "path": "src/study/vocabularyDefaults.ts",
+      "bytes": 2043,
+      "sha256": "6f118c3be2b6687f78364325bc38b134a922086edb6fc927424c8118db698b61"
+    },
+    {
+      "path": "src/study/vocabularyDictionaryLink.ts",
+      "bytes": 597,
+      "sha256": "73cc8fd358c2cbc94fe9001ed2c8eab763df4bd9b5b67f1f93d82a3e4e45d0b7"
+    },
+    {
+      "path": "src/study/vocabularyDocx.ts",
+      "bytes": 4916,
+      "sha256": "a0be4fcf5659c3dda69f5424ba4f67b6d968aafed2ca7e877f84066bcef5f55f"
+    },
+    {
+      "path": "src/study/vocabularyExportContent.ts",
+      "bytes": 2013,
+      "sha256": "28bf5f7fe522beebc553d5000e4e032a9a4260e2bd6e82f8e3694668867c6291"
+    },
+    {
+      "path": "src/study/vocabularyFallbackParts.ts",
+      "bytes": 1089,
+      "sha256": "6e4e7c9843e6a902694c81e9e908b30af90215d27dc2774b36ecd6858bf4f14f"
+    },
+    {
+      "path": "src/study/vocabularyLookupLifecycle.ts",
+      "bytes": 933,
+      "sha256": "2ed64e03fa90bc1ed1cc44bde7b40b4a1ec1589f2b0e4fc1b5b8407d7bdf0a46"
+    },
+    {
+      "path": "src/study/vocabularyPdf.ts",
+      "bytes": 7791,
+      "sha256": "82e56e600e807a780c7e926e63c310f3972c22d3a643d9b853a075d4fe35ab7c"
+    },
+    {
+      "path": "src/study/vocabularyPrint.ts",
+      "bytes": 5315,
+      "sha256": "8e61d43ff7da9f0177895468365f1a2d1072adee946d70f62d2fc334e5a5ff5d"
+    },
+    {
+      "path": "src/study/vocabularyReview.ts",
+      "bytes": 17444,
+      "sha256": "1f78b834517b902653b872c776b49016833eeb3f31296bb186602540ef63324f"
+    },
+    {
+      "path": "src/ui/cloudTranslationPreview.ts",
+      "bytes": 7205,
+      "sha256": "ce4393e4ea18a2d6ba287a55137ee5ebdca2e7ebc31f32500da7dab0eccc8606"
+    },
+    {
+      "path": "src/ui/dictionaryPreview.ts",
+      "bytes": 5236,
+      "sha256": "6bcf3f5ed0ee1a1481d4698a3d612054512f04bcb4862b8dbc33f4b14c613a16"
+    },
+    {
+      "path": "src/ui/googleTranslationAttribution.ts",
+      "bytes": 550,
+      "sha256": "edec5c6c2dcebf3ae167603f7db7cbbcf9db4c9af182ea1865179af3551113af"
+    },
+    {
+      "path": "src/ui/patchChildOrder.ts",
+      "bytes": 659,
+      "sha256": "a13c15c8972640f87e9c629e2e1c7e4f4d6f5e937140c367d5bac5e8ed585cb3"
+    },
+    {
+      "path": "src/ui/studyDisplayText.ts",
+      "bytes": 5094,
+      "sha256": "672d638c7cca5bceb8a6290cd7223c5a016a5c036af054eba3dd7edf4119a8bf"
+    },
+    {
+      "path": "src/ui/studyIdentityFields.ts",
+      "bytes": 7035,
+      "sha256": "dfd64d396e1cbdbe6e096d9b645ca83e43735d1070a57a937c4c67930408124f"
+    },
+    {
+      "path": "src/ui/todoStudyDisplay.ts",
+      "bytes": 3474,
+      "sha256": "d79c4c00c8f6dceb0a6a407667b7f07dadf6564990575ad8cdd2238ed662d7bc"
+    },
+    {
+      "path": "src/ui/vocabularyDictionaryLinks.ts",
+      "bytes": 808,
+      "sha256": "d5d2ec4a99d8186959cbb6d6f2604b983f8cea79c3d744d4b415f06b99cc8298"
+    },
+    {
+      "path": "src/ui/wordInputCommitGate.ts",
+      "bytes": 824,
+      "sha256": "495116d79781067888a23cd24cb46d79e4510a0e7aa6032d3e446bf0824a8aad"
+    },
+    {
+      "path": "src/ui/wordLookupFeedback.ts",
+      "bytes": 1007,
+      "sha256": "d1aa2cd6616c03efeb14e44137abfbcabd54894416c69ee9059e0d59f108f08f"
+    },
+    {
+      "path": "supabase/functions/cloud-translate/index.ts",
+      "bytes": 2705,
+      "sha256": "a5cff21a3808d39403ba6c55cdf4b470e3bc850b5ce27b202efda0b4459ab6d9"
+    },
+    {
+      "path": "supabase/functions/_shared/cloudTranslationHandler.ts",
+      "bytes": 5521,
+      "sha256": "5da96ecbf0b452252e538e15162129f070cb6375b5e7d3d011e7ffe1507c8a85"
+    },
+    {
+      "path": "supabase/functions/_shared/cloudTranslationQuota.ts",
+      "bytes": 1932,
+      "sha256": "4120635489d07e70910c9a1ca13cf211c7ae97b523c4b9ccf6ff7d5302ed146d"
+    },
+    {
+      "path": "supabase/functions/_shared/dictionaryEntries.ts",
+      "bytes": 3764,
+      "sha256": "7df21254dd1dc13159511a589f1e60886f65805648ac8db8368109e388d5b17a"
+    },
+    {
+      "path": "supabase/migrations/20261105222021_cloud_translation_request_quota.sql",
+      "bytes": 3477,
+      "sha256": "721d9292f756a09cdf3b0cc2256b3dda9e6f8770fdebb5777f916d289f2731d5"
+    },
+    {
+      "path": "tests/calendarMathRuntime.test.ts",
+      "bytes": 6079,
+      "sha256": "0a1851ed4520d080571547091918da71411ed645d103c4624f200cd81ee40582"
+    },
+    {
+      "path": "tests/cloudTranslationQuota.test.ts",
+      "bytes": 5272,
+      "sha256": "c8998ac99c79714afdd3ed9fe4c2796fc3d659a37ce8b3ec7ea0f1397f0edd1b"
+    },
+    {
+      "path": "tests/cloudTranslationReliability.test.ts",
+      "bytes": 4974,
+      "sha256": "7e83dbbc55b72b65b605915b3ce3bcec48db2086f6001ace54885decf658ad81"
+    },
+    {
+      "path": "tests/compactVocabulary.test.ts",
+      "bytes": 1393,
+      "sha256": "9bfdbdb4835629dc56f1c21e809c562c492b9cfc20a68f6b124d94db5dc44e75"
+    },
+    {
+      "path": "tests/dictionaryLookup.test.ts",
+      "bytes": 11281,
+      "sha256": "5869dfbdc0fa79cfcc83d4f187f257767a9cb90f1fe2a4a02f7a3176a3a8e0e5"
+    },
+    {
+      "path": "tests/ecdictLookup.test.ts",
+      "bytes": 6026,
+      "sha256": "f4546929578b96f2a18d81aba24732b66cea3ddede2b0454ce937f1eca3c0812"
+    },
+    {
+      "path": "tests/englishReviewWordVisibility.test.ts",
+      "bytes": 4703,
+      "sha256": "55a65018fafbc7ca934b0df481154eb15facd5b1d0d8b34956da0ae99660ab65"
+    },
+    {
+      "path": "tests/legacyCardRegression.test.ts",
+      "bytes": 52008,
+      "sha256": "7c6bb2bd645248b0f87b7481ac333ae66efa7b1b8dbc4b7fc2f7e37aeb1ab1c2"
+    },
+    {
+      "path": "tests/localRecordHistory.test.ts",
+      "bytes": 3448,
+      "sha256": "db8e4146e1a912dd4cb22b0e124b1727a26ec721481a7cfae13635015f9a9b90"
+    },
+    {
+      "path": "tests/mathCalendarPlan.test.ts",
+      "bytes": 10394,
+      "sha256": "7da177676f0f5698a392ec81420be48241c3f7c4e374bf1b31b9903ba9722780"
+    },
+    {
+      "path": "tests/overdueTasks.test.ts",
+      "bytes": 22392,
+      "sha256": "5aabf2da737896b64a9714f1a5ac2083e789256d8bbb8a5acb7f2dda2c5085a6"
+    },
+    {
+      "path": "tests/rangeCompletion.test.ts",
+      "bytes": 9814,
+      "sha256": "67bd406e04fa4f94a38afaa3211bf22fac51bf19e092fa7c781ad5a7d8a946c9"
+    },
+    {
+      "path": "tests/safetyUxRegression.test.ts",
+      "bytes": 8525,
+      "sha256": "472f3bd8b4dd98b43c8d344deedcfe6b6afb3b60e81759893d1408d0363e5aff"
+    },
+    {
+      "path": "tests/studyDisplayText.test.ts",
+      "bytes": 4371,
+      "sha256": "cae3a0e0dac137821dcba58dfeb18acaaafc9dd91400dd0f367e6e0733245c6a"
+    },
+    {
+      "path": "tests/supabaseBundle.test.ts",
+      "bytes": 8950,
+      "sha256": "934dabd408301ac29f2672333b664fd50103886dcf000221f0b1a651bf97e49b"
+    },
+    {
+      "path": "tests/todoStudyDisplay.test.ts",
+      "bytes": 4447,
+      "sha256": "b12454b644b0aff86d5921b21c36e74e18aba83b2c39152bf939d52f405a1244"
+    },
+    {
+      "path": "tests/vocabularyFallbackParts.test.ts",
+      "bytes": 5416,
+      "sha256": "187f4d210a7ce9b27f06167237d443876561af62e1c48b2797fe3a1933507605"
+    },
+    {
+      "path": "tests/vocabularyLookupLifecycle.test.ts",
+      "bytes": 4216,
+      "sha256": "ad692b00fc5bc42f6eacf3ae8f69d372b5bc5b4909373fd9c44ce6539f7e5426"
+    },
+    {
+      "path": "tests/wordInputCommitGate.test.ts",
+      "bytes": 1088,
+      "sha256": "e395bf697cb2cf3f03b285ede30c4782f3ec2d176424ced10297b30be4c2b0bf"
+    },
+    {
+      "path": "tests/wordLookupFeedback.test.ts",
+      "bytes": 1770,
+      "sha256": "fa0497bd481161869b4cecf11aa6992ebb89c6ff2994c1c87226151301c8974f"
+    }
+  ]
+}

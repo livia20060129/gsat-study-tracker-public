@@ -32,43 +32,41 @@ async function records(page: Page, active = prefix) {
   return page.evaluate(({ active, dates }) => dates.map(date => JSON.parse(localStorage.getItem(active + date)!)), { active, dates });
 }
 
-async function selectEntry(page: Page, text = 'cell', kind = '單字') {
-  const panel = page.locator('#cloudTranslationSupport');
-  await panel.getByRole('combobox', { name: 'Google 翻譯項目', exact: true }).selectOption({ label: `${text}（${kind}）` });
-  return panel;
-}
-
 async function editor(page: Page, text = 'cell') {
   const row = page.locator('.vocabulary-row').filter({ has: page.getByRole('button', { name: `編輯「${text}」`, exact: true }) });
-  await row.getByRole('button', { name: `編輯「${text}」`, exact: true }).click();
+  if (await row.count()) await row.getByRole('button', { name: `編輯「${text}」`, exact: true }).click();
   const editing = page.locator('.vocabulary-row').filter({ has: page.getByRole('button', { name: `完成「${text}」`, exact: true }) });
   await expect(editing).not.toHaveAttribute('data-disclosure-motion');
   return editing;
+}
+async function selectEntry(page: Page, text = 'cell', kind = '單字') {
+  await page.locator(`[data-content-kind="${kind}"]`).click();
+  return editor(page, text);
 }
 
 function translation(text: string, translatedText = 'Google 候選翻譯') {
   return { ok: true, result: { provider: 'google-cloud-translation', text, translatedText, sourceLanguage: 'en', targetLanguage: 'zh-TW' } };
 }
 
-test('one Google support panel sits above the list, shows the monthly character cap and requires login while ECDICT remains offline', async ({ page }) => {
+test('the header badge and character cap are above the list, while editor buttons require login and ECDICT remains offline', async ({ page }) => {
   await seed(page, false);
   let calls = 0;
   await page.route(endpoint, route => { calls += 1; return route.fulfill({ json: translation('cell') }); });
   const before = await records(page, 'study-v11:guest:');
   const panel = await selectEntry(page);
-  await expect(panel).toContainText('5,000 字元');
+  await expect(page.locator('#googleTranslationSupport')).toContainText('5,000 字元');
   await expect(panel.locator('[data-cloud-translation-query]')).toBeDisabled();
   await expect(panel.locator('.cloud-translation-status').last()).toContainText('請先登入');
-  expect((await panel.boundingBox())!.y).toBeLessThan((await page.locator('#vocabularyTitle').boundingBox())!.y);
+  expect((await page.locator('#googleTranslationSupport').boundingBox())!.y).toBeLessThan((await page.locator('#vocabularyTitle').boundingBox())!.y);
   const row = await editor(page);
-  await expect(page.locator('.vocabulary-row [data-cloud-translation-query]')).toHaveCount(0);
+  await expect(page.locator('.vocabulary-row [data-cloud-translation-query]')).toHaveCount(1);
   await row.locator('[data-dictionary-lookup]').click();
   await expect(row.locator('[data-dictionary-meaning]').first()).toBeVisible();
   expect(calls).toBe(0);
   expect(await records(page, 'study-v11:guest:')).toEqual(before);
 });
 
-test('the top preview sends only selected English and appends to its single checked POS across all source dates', async ({ page }, testInfo) => {
+test('the editor preview sends only selected English and appends to its single checked POS across all source dates', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 375, height: 900 });
   await seed(page);
   let calls = 0;
@@ -84,7 +82,8 @@ test('the top preview sends only selected English and appends to its single chec
   expect(calls).toBe(0);
   await panel.locator('[data-cloud-translation-query]').click();
   await expect(panel.locator('.cloud-translation-result')).toHaveText('細胞');
-  await expect(panel.locator('.google-translation-attribution img')).toBeVisible();
+  await expect(page.locator('#googleTranslationSupport .google-translation-attribution img')).toBeVisible();
+  await expect(page.locator('.vocabulary-row .google-translation-attribution')).toHaveCount(0);
   expect(await records(page)).toEqual(before);
   await panel.locator('[data-cloud-translation-apply]').click();
   const saved = await records(page);
@@ -100,20 +99,22 @@ test('the top preview sends only selected English and appends to its single chec
     expect(record.notes).toBe('私人筆記不可傳送');
     expect(record.items[0].minutes).toBe('25');
   }
+  await panel.locator('[data-cloud-translation-query]').click();
+  await expect(panel.locator('[data-cloud-translation-apply]')).toBeVisible();
   await panel.locator('[data-cloud-translation-apply]').click();
   expect(await records(page)).toEqual(saved);
   for (const width of [320, 375]) {
     await page.setViewportSize({ width, height: 900 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   }
-  await panel.screenshot({ path: testInfo.outputPath('google-translation-top-mobile.png') });
+  await panel.screenshot({ path: testInfo.outputPath('google-translation-editor-mobile.png') });
   await page.reload();
-  await expect(page.locator('.vocabulary-row[data-entry-key="cell"] .google-translation-attribution')).toBeVisible();
+  await expect(page.locator('#googleTranslationSupport .google-translation-attribution')).toBeVisible();
   expect(calls).toBe(1);
 });
 
 for (const [kind, text] of [['組合', 'look after'], ['句子', 'Hello world!']] as const) {
-  test(`the top Google panel supports ${kind} and renders provider text literally`, async ({ page }) => {
+  test(`the editor Google button supports ${kind} and renders provider text literally`, async ({ page }) => {
     await seed(page);
     await page.route(endpoint, route => route.fulfill({ json: translation(text, '<img src=x onerror=alert(1)>中文') }));
     const panel = await selectEntry(page, text, kind);
@@ -194,7 +195,7 @@ test('a completed preview cannot save after the account changes before confirmat
   expect(await records(page)).toEqual(before);
 });
 
-test('multiple POS require a choice; card rerenders and dictionary switching preserve the one top preview', async ({ page }) => {
+test('multiple POS require a choice and dictionary switching preserves the editor preview', async ({ page }) => {
   await seed(page);
   await page.evaluate(({ prefix, dates }) => {
     for (const date of dates) {
@@ -211,12 +212,10 @@ test('multiple POS require a choice; card rerenders and dictionary switching pre
   await panel.locator('[data-cloud-translation-query]').click();
   await expect(panel.locator('[data-cloud-translation-apply]')).toBeDisabled();
   await panel.getByRole('combobox', { name: 'Google 翻譯填入詞性' }).selectOption('adjective');
-  await page.getByRole('button', { name: '詞性', exact: true }).click();
-  await page.locator('.vocabulary-row[data-entry-key="cell"]').first().getByRole('button', { name: '編輯「cell」', exact: true }).click();
   await page.getByRole('combobox', { name: '查詢辭典', exact: true }).selectOption('cambridge');
   await expect(panel.locator('.cloud-translation-result')).toHaveText('Google 候選翻譯');
   await expect(page.locator('[data-cloud-translation-query]')).toHaveCount(1);
-  await expect(page.locator('.vocabulary-row [data-cloud-translation-query]')).toHaveCount(0);
+  await expect(page.locator('.vocabulary-row [data-cloud-translation-query]')).toHaveCount(1);
   await panel.locator('[data-cloud-translation-apply]').click();
   const word = (await records(page))[0].items[0].f.words[0];
   expect(word.adjective).toBe(true);
@@ -269,4 +268,61 @@ test('dictionary switching updates all word links, persists and does not modify 
   await expect(link).toHaveAttribute('href', 'https://www.oxfordlearnersdictionaries.com/search/english/?q=cell');
   expect(await records(page)).toEqual(before);
   expect(requests).toEqual([]);
+});
+
+test('an untagged word uses exact local POS data for a Google preview without putting the badge in its card', async ({ page }) => {
+  await seed(page);
+  await page.evaluate(({ prefix, dates }) => {
+    for (const date of dates) {
+      const record = JSON.parse(localStorage.getItem(prefix + date)!);
+      const word = record.items[0].f.words[0];
+      word.text = 'intriguing'; delete word.noun;
+      localStorage.setItem(prefix + date, JSON.stringify(record));
+    }
+  }, { prefix, dates });
+  await page.reload();
+  await page.route(endpoint, route => route.fulfill({ json: translation('intriguing', '引人入勝的') }));
+  const row = await selectEntry(page, 'intriguing');
+  await row.locator('[data-cloud-translation-query]').click();
+  await expect(row.getByRole('combobox', { name: 'Google 翻譯填入詞性' })).toHaveValue('adjective');
+  await row.locator('[data-cloud-translation-apply]').click();
+  const word = (await records(page))[0].items[0].f.words[0];
+  expect(word.adjective).toBe(true);
+  expect(word.translationsByPartOfSpeech.adjective).toEqual(['引人入勝的']);
+  expect(word.translation).toContain('人工原意');
+  await expect(page.locator('.vocabulary-row .google-translation-attribution')).toHaveCount(0);
+  await expect(page.locator('#googleTranslationSupport img')).toHaveCount(1);
+});
+
+test('a newer ECDICT lookup cancels a delayed Google preview and only the selected source can be applied', async ({ page }) => {
+  await seed(page);
+  let release!: () => void, started!: () => void;
+  const received = new Promise<void>(resolve => { started = resolve; });
+  const ready = new Promise<void>(resolve => { release = resolve; });
+  await page.route(endpoint, async route => { started(); await ready; await route.fulfill({ json: translation('cell') }).catch(() => {}); });
+  const before = await records(page);
+  const row = await selectEntry(page);
+  await row.locator('[data-cloud-translation-query]').click();
+  await received;
+  await row.locator('[data-dictionary-lookup]').click();
+  await expect(row.locator('[data-dictionary-meaning]').first()).toBeVisible();
+  release();
+  await expect(row.locator('[data-cloud-translation-apply]')).toHaveCount(0);
+  expect(await records(page)).toEqual(before);
+});
+
+test('closing an editor discards its delayed Google result and keeps the original records', async ({ page }) => {
+  await seed(page);
+  let release!: () => void, started!: () => void;
+  const ready = new Promise<void>(resolve => { release = resolve; });
+  const received = new Promise<void>(resolve => { started = resolve; });
+  await page.route(endpoint, async route => { started(); await ready; await route.fulfill({ json: translation('cell') }).catch(() => {}); });
+  const before = await records(page);
+  const row = await selectEntry(page);
+  await row.locator('[data-cloud-translation-query]').click();
+  await received;
+  await row.getByRole('button', { name: '完成「cell」', exact: true }).click();
+  release();
+  await expect(page.locator('[data-cloud-translation-apply]')).toHaveCount(0);
+  expect(await records(page)).toEqual(before);
 });

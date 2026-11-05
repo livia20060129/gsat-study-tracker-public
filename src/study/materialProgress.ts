@@ -1,3 +1,4 @@
+import { readBrowserRecordHistory } from '../infrastructure/storage/localRecordHistory.ts';
 import {
   BOOK_PAGE_MAPS,
   canonicalPageMappedBook,
@@ -606,25 +607,24 @@ function visitStudyItem(recorded: Map<string, MaterialCoverage>, item: StudyItem
   });
 }
 
-function coveredLength(ranges: readonly [number, number][], start: number, end: number): number {
-  const intersections = ranges
-    .map(([low, high]) => [Math.max(start, low), Math.min(end, high)] as [number, number])
-    .filter(([low, high]) => low <= high)
-    .sort((left, right) => left[0] - right[0]);
-  if (intersections.length === 0) return 0;
-
-  let total = 0;
-  let [currentStart, currentEnd] = intersections[0];
-  for (const [low, high] of intersections.slice(1)) {
-    if (low <= currentEnd + 1) {
-      currentEnd = Math.max(currentEnd, high);
-      continue;
-    }
-    total += currentEnd - currentStart + 1;
-    currentStart = low;
-    currentEnd = high;
+/** Union once per material, rather than sorting the same history for each chapter. */
+function mergedCoverageRanges(ranges: readonly [number, number][]): Array<[number, number]> {
+  const merged: Array<[number, number]> = [];
+  for (const [low, high] of [...ranges].sort((left, right) => left[0] - right[0])) {
+    const previous = merged.at(-1);
+    if (previous && low <= previous[1] + 1) previous[1] = Math.max(previous[1], high);
+    else merged.push([low, high]);
   }
-  return total + currentEnd - currentStart + 1;
+  return merged;
+}
+
+function coveredLength(ranges: readonly [number, number][], start: number, end: number): number {
+  let total = 0;
+  for (const [low, high] of ranges) {
+    if (low > end) break;
+    if (high >= start) total += Math.min(end, high) - Math.max(start, low) + 1;
+  }
+  return total;
 }
 
 function segmentCompletionPercent(segment: SegmentDefinition, coverage: MaterialCoverage): number {
@@ -671,8 +671,9 @@ export function materialProgressRows(records: readonly StudyRecord[]): MaterialP
   }
   return [...definitions.values()].map(definition => {
     const found = recorded.get(definition.id) ?? { ranges: [], exactKeys: new Set<string>() };
+    const coverage = { ranges: mergedCoverageRanges(found.ranges), exactKeys: found.exactKeys };
     const segments = definition.segments.map((segment, index) => {
-      const completionPercent = segmentCompletionPercent(segment, found);
+      const completionPercent = segmentCompletionPercent(segment, coverage);
       const completionWeight = segment.end === Number.MAX_SAFE_INTEGER
         ? 1
         : Math.max(1, segment.end - segment.start + 1);
@@ -728,11 +729,16 @@ export function activeStudyRecordPrefix(storage: Pick<Storage, 'length' | 'key' 
   return userPrefix ?? 'study-v11:guest:';
 }
 
-export function readMaterialProgressRecords(storage: Pick<Storage, 'length' | 'key' | 'getItem'>): {
+export function readMaterialProgressRecords(storage: Pick<Storage, 'length' | 'key' | 'getItem'>, fresh = false): {
   prefix: string;
   records: StudyRecord[];
 } {
   const prefix = activeStudyRecordPrefix(storage);
+  try {
+    if (typeof window !== 'undefined' && storage === window.localStorage) {
+      return { prefix, records: readBrowserRecordHistory(storage, prefix, fresh) };
+    }
+  } catch { /* Use the supplied fallback storage when browser storage is inaccessible. */ }
   const records: StudyRecord[] = [];
   for (let index = 0; index < storage.length; index += 1) {
     const key = storage.key(index) ?? '';

@@ -1,5 +1,6 @@
 import type { StudyItem } from '../types.ts';
 import { isConfirmedDeferred } from './deferDays.ts';
+import { markRangeCompletionByUser } from './rangeCompletionChoice.ts';
 import {
   applyCompletionDateChange,
   deferredCompletionDate,
@@ -77,6 +78,7 @@ export function applyManualCompletionMetadata(
   function visit(target: StudyItem, inheritedCarrier: StudyItem | null): void {
     if (!target || visited.has(target)) return;
     visited.add(target);
+    markRangeCompletionByUser(target, checked);
     const carrier = target.deferredCarry ? target : inheritedCarrier;
     const previousDeferredCompletedOn = target.deferredCompletedOn || deferredCompletionDate(target);
     const change = manualCompletionDateChange({

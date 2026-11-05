@@ -48,3 +48,9 @@ python scripts/build_ecdict_lookup.py --dictionary "完整路徑/ecdict.csv" --p
 - 編輯模式的字典預覽仍可勾選意思再追加，保留既有中文。來源集中於單字複習頁標題下方；舊紀錄中的歷史來源繼續保留，不將其他字典釋義改標為 ECDICT。
 
 執行完整單元、型別、正式建置與 Chromium／WebKit 測試，涵蓋表外字、詞性差異、手動優先、延遲回應、載入失敗重試、範圍／日期跳轉、JSON round-trip、合併與 PDF 授權。資料版本見 `public/vocabulary-reference-manifest.json` 及詞庫目錄內的 manifest。
+
+## public.56 共用查詢改善
+
+- 來源資料與授權不變；瀏覽器使用由既有 CEEC 資料產生的 compact index，翻譯按需解析並快取最多 256 筆。建置工具為 `build_compact_vocabulary.py`。同拼法本機詞性補充索引由 `build_ecdict_fallback_parts.py` 產生並按需載入。
+- ECDICT 每個請求使用自身下載結果，不因其他查詢淘汰分片而漏填；明確編輯的待查單字可在切頁後接續。手動修改與取消優先。
+- Google 必須登入並按字卡編輯區按鈕，確認後才填入。標誌集中於單字複習頁首；額度、快取及保存方式見 `GOOGLE_TRANSLATION_SETUP.md`。辭典連結名稱為「劍橋英漢辭典」。

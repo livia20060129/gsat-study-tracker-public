@@ -37,7 +37,7 @@ function sourceDateKey(value: string | undefined, eventDate: string): string {
   return `${match[1] || eventDate.slice(0, 4)}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
 }
 
-/** Match an existing schedule within its material and volume; never estimate pages from a fraction. */
+/** Find known unit ranges within the selected material and volume. */
 function matchingPlans(task: MathTask, plans: Readonly<Record<string, ScheduledMathPlan>>): Array<[string, ScheduledMathPlan]> {
   const books = bookKey(task.book).split('+');
   const material = task.material || '教學講義';
@@ -56,6 +56,27 @@ function matchingPlans(task: MathTask, plans: Readonly<Record<string, ScheduledM
     if (!unique.has(key)) unique.set(key, entry);
   }
   return [...unique.values()];
+}
+
+/** Repartition a known complete unit into whole pages when its number of parts changes. */
+function repartitionUnit(
+  matches: ReadonlyArray<readonly [string, ScheduledMathPlan]>, index: number, total: number,
+): ScheduledMathPlan | undefined {
+  if (!matches.length || new Set(matches.map(([, plan]) => bookKey(plan.book))).size !== 1) return undefined;
+  const ranges = matches.map(([, plan]) => plan).sort((left, right) => left.start - right.start);
+  let end = ranges[0].end;
+  for (const range of ranges.slice(1)) {
+    if (range.start !== end + 1) return undefined;
+    end = range.end;
+  }
+  const start = ranges[0].start;
+  const pages = end - start + 1;
+  if (total > pages) return undefined;
+  const perPart = Math.floor(pages / total);
+  const remainder = pages % total;
+  const partStart = start + (index - 1) * perPart + Math.min(index - 1, remainder);
+  const partPages = perPart + Number(index <= remainder);
+  return { ...ranges[0], start: partStart, end: partStart + partPages - 1, pages: partPages, unitPages: pages };
 }
 
 export function resolveMathCalendarPlan(
@@ -77,13 +98,11 @@ export function resolveMathCalendarPlan(
     if (total !== matches.length) {
       const combinedBook = bookKey(task.title.split('｜')[0]);
       const combined = combinedBook.includes('+') ? matchingPlans({ ...task, book: combinedBook }, plans) : [];
-      if (combined.length === total && bookKey(combined[index - 1][1].book) === bookKey(task.book)) {
+      if (combinedBook.includes('+')) {
+        if (combined.length !== total || bookKey(combined[index - 1][1].book) !== bookKey(task.book)) return null;
         matches = combined;
       } else {
-        // A moved Calendar unit can have a revised part count. Its original date
-        // selects an existing range within the same material, volume and topic.
-        const sourceDate = sourceDateKey(task.sourceDate, task.date);
-        base = matches.find(([date]) => date === sourceDate)?.[1];
+        base = repartitionUnit(matches, index, total);
         if (!base) return null;
       }
     }

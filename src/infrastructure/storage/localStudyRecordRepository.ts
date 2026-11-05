@@ -6,6 +6,7 @@ import {
   type StudyRecordDecodeError,
 } from '../../storage/studyRecordCodec.ts';
 import { compactConfirmedRecordStorage, isStorageQuotaError } from './localRecordCompaction.ts';
+import { invalidateLocalRecordHistory } from './localRecordHistory.ts';
 
 export interface KeyValueStorage {
   readonly length: number;
@@ -122,6 +123,7 @@ export class LocalStudyRecordRepository implements LocalStudyRecordRepositoryPor
         this.storage.setItem(this.prefix + record.date, encoded);
       }
       this.lastSaveError = '';
+      invalidateLocalRecordHistory(this.storage, this.prefix + record.date);
       if (typeof window !== 'undefined') window.dispatchEvent(new Event('study-records-changed'));
       return true;
     } catch (cause) {
@@ -134,6 +136,7 @@ export class LocalStudyRecordRepository implements LocalStudyRecordRepositoryPor
 
   remove(date: string): void {
     this.storage.removeItem(this.prefix + date);
+    invalidateLocalRecordHistory(this.storage, this.prefix + date);
   }
 
   listDates(prefix = this.prefix): string[] {

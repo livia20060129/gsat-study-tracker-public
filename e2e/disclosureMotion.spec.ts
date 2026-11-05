@@ -71,7 +71,8 @@ async function seedTodo(page: Page): Promise<void> {
     }] }));
   });
   await page.reload();
-  await expect(page.locator('.todo-card')).toHaveCount(2);
+  await expect(page.locator('.todo-card')).toHaveCount(1);
+  await expect(page.locator('#todoLongTermCount')).toHaveText('1 項');
 }
 
 test('routine and completion explanations visibly expand and collapse without changing recorded input', async ({ page }) => {
@@ -133,7 +134,7 @@ test('todo cards and long-term overdue sections animate both ways and preserve p
     await card.locator('[data-todo-range="end"]').fill('18');
     await card.locator('[data-todo-range="end"]').blur();
     expectSmooth(await sampleMotion(page, selector, card.locator('.todo-expand')), false);
-    await expect(card.locator('.todo-range-summary')).toHaveText('p.10–18');
+    await expect(card.locator('.todo-range-summary')).toHaveText('新關鍵｜p.10–18');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   }
   expectSmooth(await sampleMotion(page, '#todoLongTerm', page.locator('#todoLongTerm > summary')), true);

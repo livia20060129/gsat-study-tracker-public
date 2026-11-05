@@ -1,6 +1,6 @@
 export type DictionaryProvider = 'ecdict';
-/** The retired provider is accepted only when reading attribution already stored in old records. */
-export type DictionarySourceProvider = DictionaryProvider | 'cambridge';
+/** Includes confirmed Google previews and the retired provider's historical attribution. */
+export type DictionarySourceProvider = DictionaryProvider | 'cambridge' | 'google';
 export type DictionaryPartOfSpeech = typeof DICTIONARY_PARTS[number];
 export interface DictionaryMeaning {
   partOfSpeech: DictionaryPartOfSpeech;
@@ -35,8 +35,9 @@ export function dictionarySource(value: unknown): DictionarySourceReference | nu
   if (!value || typeof value !== 'object') return null;
   const source = value as Partial<DictionarySourceReference>;
   const word = dictionaryQuery(source.word);
-  if (!word || (source.provider !== 'ecdict' && source.provider !== 'cambridge')) return null;
+  if (!word || (source.provider !== 'ecdict' && source.provider !== 'cambridge' && source.provider !== 'google')) return null;
   if (source.provider === 'ecdict') return { provider: 'ecdict', word, sourceUrl: ECDICT_SOURCE_URL };
+  if (source.provider === 'google') return { provider: 'google', word, sourceUrl: 'https://translate.google.com/' };
   if (typeof source.sourceUrl !== 'string') return null;
   try {
     const url = new URL(source.sourceUrl);

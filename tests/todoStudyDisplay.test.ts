@@ -27,7 +27,7 @@ test('todo numbered controls replace heading scopes but keep unrelated instructi
   assert.equal(display.title, '英文｜自訂教材');
   assert.equal(display.description, '先讀 p.99 的範例再作答');
   assert.equal(display.details.length, 4);
-  assert.equal(display.rangeSummary, '第 12–13 回');
+  assert.equal(display.rangeSummary, '另一份參考書｜第 12–13 回');
 });
 
 test('collapsed scope summaries distinguish page, book, Unit and round templates without assuming missing endpoints', () => {
@@ -45,4 +45,17 @@ test('read-only scope summaries retain nonnumeric ranges and do not mutate the s
   const before = structuredClone(details);
   assert.equal(todoRangeSummary(details), '單元 Lesson A–B｜頁碼 p.10–12 或 p.20–22');
   assert.deepEqual(details, before);
+});
+
+test('lecture versions remain visible in compact cards and 3A volumes keep their page scope', () => {
+  const details = [{ label: '講義版本', value: '教學講義' }, { label: '書名／冊別', value: '3A' },
+    { label: '起始頁', value: '1', editableRange: 'start' as const }, { label: '結束頁', value: '10', editableRange: 'end' as const }];
+  const source = { title: '數學講義：進度', description: '', details };
+  const before = structuredClone(source);
+  const display = todoStudyDisplay(source);
+  assert.equal(display.rangeSummary, '教學講義｜第 3A 冊｜p.1–10');
+  assert.ok(display.details.some(detail => detail.label === '講義版本' && detail.value === '教學講義'));
+  assert.equal(todoStudyDisplay({ ...source, title: '數學｜教學講義' }).rangeSummary, '第 3A 冊｜p.1–10');
+  assert.equal(todoStudyDisplay({ ...source, title: '數學｜新關鍵' }).rangeSummary, '教學講義｜第 3A 冊｜p.1–10');
+  assert.deepEqual(source, before);
 });

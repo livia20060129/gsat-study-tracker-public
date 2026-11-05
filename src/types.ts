@@ -55,6 +55,8 @@ export type VocabularyTranslations = Partial<Record<EnglishReviewPartOfSpeech | 
 export type VocabularyStars = Record<string, boolean>;
 
 export interface EnglishReviewWordEntry extends Record<string, unknown> {
+  /** Exact spelling of an explicitly edited word whose automatic lookup has not completed. */
+  vocabularyLookupPending?: string;
   /** Per-field manual choices also protect edits made while dictionary data is loading. */
   vocabularyManualFields?: Record<string, boolean>;
   id?: string;
