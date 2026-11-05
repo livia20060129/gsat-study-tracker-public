@@ -1,4 +1,4 @@
-import { cloudTranslationInput, cloudTranslationResult, type CloudTranslation } from './cloudTranslationProtocol.ts';
+import { CLOUD_TRANSLATION_QUOTA_MESSAGE, cloudTranslationInput, cloudTranslationResult, type CloudTranslation } from './cloudTranslationProtocol.ts';
 
 export interface CloudTranslationPorts {
   authenticate(token: string): Promise<string | null>;
@@ -48,7 +48,7 @@ export function createCloudTranslationHandler(ports: CloudTranslationPorts, time
     if (!text) return reply(400, 'invalid_input', '請輸入 1～2000 字元的英文內容。');
     if (!ports.configured()) return reply(503, 'translation_not_configured', 'Google 翻譯尚未啟用，請聯絡網站管理者。');
     try {
-      if (!await ports.reserve(userId, Array.from(text).length)) return reply(429, 'translation_quota_exceeded', '今日 Google 翻譯額度已用完；額度於台灣時間每天 08:00 重設。');
+      if (!await ports.reserve(userId, Array.from(text).length)) return reply(429, 'translation_quota_exceeded', CLOUD_TRANSLATION_QUOTA_MESSAGE);
     } catch { return reply(503, 'translation_quota_unavailable', '目前無法確認翻譯額度，請稍後再試。'); }
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMilliseconds);

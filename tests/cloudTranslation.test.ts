@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { cloudTranslationInput, cloudTranslationResult, cloudTranslationSources, type CloudTranslation } from '../src/study/cloudTranslation.ts';
+import { CLOUD_TRANSLATION_MONTHLY_CHARACTERS, cloudTranslationInput, cloudTranslationResult, cloudTranslationSources, type CloudTranslation } from '../src/study/cloudTranslation.ts';
 import { applyCloudTranslation } from '../src/study/cloudTranslationSelection.ts';
 import { createCloudTranslationClient } from '../src/application/cloudTranslationClient.ts';
 import { updateVocabularyWordEntries, vocabularyReviewEntries } from '../src/study/vocabularyReview.ts';
@@ -26,11 +26,21 @@ test('Cloud Translation accepts bounded English sentences and retains exact outp
   assert.equal(cloudTranslationSources([...Array(10).fill(result), { provider: 'evil' }]).length, 1);
 });
 
+test('the account cap is 5000 characters and reservations count Unicode characters including internal spaces and punctuation', async () => {
+  assert.equal(CLOUD_TRANSLATION_MONTHLY_CHARACTERS, 5000);
+  const text = 'a 😀中!';
+  let reserved = 0;
+  const response = await createCloudTranslationHandler(ports({ reserve: async (_user, characters) => { reserved = characters; return true; },
+    translate: async () => ({ ...result, text }) }))(request(text));
+  assert.equal(response.status, 200);
+  assert.equal(reserved, 5);
+});
+
 test('confirmation preserves manual meanings, POS, levels, stars and existing sources, and is idempotent', () => {
   const word: EnglishReviewWordEntry = { text: 'Cell', noun: true, gsatLevel: 3, translation: '原有人工翻譯',
     translationsByPartOfSpeech: { noun: ['原有人工翻譯'] }, vocabularyStars: { card: true }, dictionarySources: [{ provider: 'ecdict' }] };
   assert.equal(applyCloudTranslation(word, result), true);
-  assert.deepEqual(word.translationsByPartOfSpeech, { noun: ['原有人工翻譯'], unclassified: ['細胞'] });
+  assert.deepEqual(word.translationsByPartOfSpeech, { noun: ['原有人工翻譯', '細胞'] });
   assert.equal(word.gsatLevel, 3);
   assert.equal(word.noun, true);
   assert.deepEqual(word.vocabularyStars, { card: true });

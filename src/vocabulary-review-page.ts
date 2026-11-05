@@ -6,6 +6,7 @@ import { DictionaryPreview } from './ui/dictionaryPreview.ts';
 import { CloudTranslationPreview, googleTranslationAttribution } from './ui/cloudTranslationPreview.ts';
 import { VocabularySpeech, type VocabularyAccent } from './ui/vocabularySpeech.ts';
 import { activeStudyRecordPrefix, readMaterialProgressRecords } from './study/materialProgress.ts';
+import { vocabularyDictionaryLink, type VocabularyDictionary } from './study/vocabularyDictionaryLink.ts';
 import {
   normalizedGsatVocabularyLevel,
   updateVocabularyWordEntries,
@@ -41,8 +42,14 @@ let translationsVisible = true;
 const editingEntryKeys = new Set<string>();
 const annotatingEntryKeys = new Set<string>();
 const dictionaryPreviews = new Set<DictionaryPreview>();
-const cloudTranslationPreviews = new Map<string, CloudTranslationPreview>();
-const renderedCloudTranslationKeys = new Set<string>();
+let cloudTranslationPreview: CloudTranslationPreview | undefined;
+let cloudTranslationPreviewKey = '';
+let cloudTranslationEntryKey = '';
+let cloudTranslationChoices = '';
+const dictionaryPreferenceKey = 'study-v11:vocabulary:dictionary';
+let dictionary: VocabularyDictionary = 'oxford';
+try { if (localStorage.getItem(dictionaryPreferenceKey) === 'cambridge') dictionary = 'cambridge'; }
+catch { /* Dictionary links still work when preference storage is unavailable. */ }
 const speech = new VocabularySpeech(document.getElementById('vocabularySpeechStatus')!);
 let vocabularyPointerActive = false;
 let vocabularyRefreshPending = false;
@@ -133,12 +140,13 @@ function createWordLink(entry: VocabularyReviewEntry): HTMLElement {
   }
   const link = document.createElement('a');
   link.className = 'vocabulary-word-link';
-  link.href = entry.lookupUrl;
+  const destination = vocabularyDictionaryLink(entry.lookupQuery, dictionary);
+  link.href = destination.url;
   link.target = '_blank';
   link.rel = 'noopener noreferrer';
   appendWordText(link, entry, false);
-  link.title = `在 Oxford Learner's Dictionaries 查詢「${entry.lookupQuery}」`;
-  link.setAttribute('aria-label', `${entry.text}；在 Oxford Learner's Dictionaries 開啟查詢結果`);
+  link.title = `在 ${destination.label} 查詢「${entry.lookupQuery}」`;
+  link.setAttribute('aria-label', `${entry.text}；在 ${destination.label} 開啟查詢結果`);
   return link;
 }
 
@@ -331,7 +339,7 @@ function createTranslationGroup(field: keyof VocabularyTranslations, label: stri
     remove.type = 'button';
     remove.dataset.deleteTranslation = String(index);
     remove.textContent = '刪除';
-    remove.disabled = values.length <= 1;
+    remove.disabled = field !== 'unclassified' && values.length <= 1;
     remove.setAttribute('aria-label', `刪除 ${label} 第 ${index + 1} 個翻譯`);
     row.append(input, remove);
     group.append(row);
@@ -414,7 +422,7 @@ function updateTranslationVisibility(): void {
   }
 }
 
-function createVocabularyRow(entry: VocabularyReviewEntry, displayGroup = 'alphabetical'): HTMLElement {
+function createVocabularyRow(entry: VocabularyReviewEntry): HTMLElement {
   const article = document.createElement('article');
   article.className = 'vocabulary-row';
   article.dataset.entryKey = entry.key;
@@ -517,22 +525,6 @@ function createVocabularyRow(entry: VocabularyReviewEntry, displayGroup = 'alpha
       editors.classList.add('is-translation-only');
       editors.append(createTranslationEditor(entry));
     }
-    const translationScope = activeRecordPrefix;
-    const translationKey = JSON.stringify([translationScope, entry.key, entry.text, displayGroup]);
-    let cloudPreview = cloudTranslationPreviews.get(translationKey);
-    if (!cloudPreview) cloudPreview = new CloudTranslationPreview({ text: entry.text, scope: translationScope,
-      apply(result): 'saved' | 'unchanged' | 'failed' {
-        const current = allEntries.find(candidate => candidate.key === entry.key);
-        if (activeRecordPrefix !== translationScope || activeStudyRecordPrefix(localStorage) !== translationScope
-          || !current || current.text !== entry.text || !editingEntryKeys.has(current.key)) return 'failed';
-        const outcome = saveEntryEditsResult(current, { cloudTranslation: result });
-        if (outcome === 'saved') renderEntries();
-        return outcome;
-      },
-    });
-    cloudTranslationPreviews.set(translationKey, cloudPreview);
-    renderedCloudTranslationKeys.add(translationKey);
-    editors.append(cloudPreview.element);
     article.append(identity, editors);
   } else {
     article.append(identity, createReadonlyTranslations(entry));
@@ -552,7 +544,7 @@ function createVocabularyGroup(
   heading.textContent = label;
   const list = document.createElement('div');
   list.className = 'vocabulary-letter-list';
-  list.append(...entries.map(entry => createVocabularyRow(entry, key)));
+  list.append(...entries.map(createVocabularyRow));
   section.append(heading, list);
   return section;
 }
@@ -606,11 +598,61 @@ function renderContentKindSwitch(): void {
   }
 }
 
+function renderCloudTranslationSupport(): void {
+  const select = element<HTMLSelectElement>('cloudTranslationEntry');
+  const choices = JSON.stringify([activeRecordPrefix, allEntries.map(entry => [entry.key, entry.text, entry.contentKinds])]);
+  if (choices !== cloudTranslationChoices) {
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = '請選擇要翻譯的英文';
+    const options = allEntries.map(entry => {
+      const option = document.createElement('option');
+      option.value = entry.key;
+      option.textContent = `${entry.text}（${entry.contentKinds.join('／')}）`;
+      return option;
+    });
+    select.replaceChildren(placeholder, ...options);
+    cloudTranslationChoices = choices;
+  }
+  if (!allEntries.some(entry => entry.key === cloudTranslationEntryKey)) cloudTranslationEntryKey = '';
+  if (!cloudTranslationEntryKey && allEntries.length === 1) cloudTranslationEntryKey = allEntries[0].key;
+  select.value = cloudTranslationEntryKey;
+  const entry = allEntries.find(candidate => candidate.key === cloudTranslationEntryKey);
+  const container = element('cloudTranslationPreview');
+  if (!entry) {
+    cloudTranslationPreview?.dispose();
+    cloudTranslationPreview = undefined;
+    cloudTranslationPreviewKey = '';
+    container.textContent = allEntries.length ? '請先選擇要翻譯的英文。' : '先在 Tracker 新增英文單字、組合或句子，即可在此選擇翻譯。';
+    return;
+  }
+  const kind = entry.contentKinds.includes('單字') ? '單字' : entry.contentKinds[0];
+  const scope = activeRecordPrefix;
+  const key = JSON.stringify([scope, entry.key, entry.text, kind]);
+  const parts = kind === '單字'
+    ? VOCABULARY_PARTS_OF_SPEECH.filter(([, label]) => entry.tags.includes(label)).map(([field]) => field) : undefined;
+  if (key !== cloudTranslationPreviewKey) {
+    cloudTranslationPreview?.dispose();
+    cloudTranslationPreview = new CloudTranslationPreview({ text: entry.text, scope, partsOfSpeech: parts,
+      apply(result, target): 'saved' | 'unchanged' | 'failed' {
+        const current = allEntries.find(candidate => candidate.key === entry.key);
+        if (activeRecordPrefix !== scope || activeStudyRecordPrefix(localStorage) !== scope
+          || cloudTranslationEntryKey !== entry.key || !current || current.text !== entry.text) return 'failed';
+        const outcome = saveEntryEditsResult(current, { cloudTranslation: result, cloudTranslationTarget: target });
+        if (outcome === 'saved') renderEntries();
+        return outcome;
+      },
+    });
+    cloudTranslationPreviewKey = key;
+    container.replaceChildren(cloudTranslationPreview.element);
+  }
+  if (parts) cloudTranslationPreview?.updatePartsOfSpeech(parts);
+}
+
 function renderEntries(): void {
   element('vocabularyLegacySources').hidden = !allEntries.some(entry => entry.dictionarySources?.some(source => source.provider === 'cambridge'));
   speech.cancel();
   for (const preview of dictionaryPreviews) preview.dispose();
-  renderedCloudTranslationKeys.clear();
   dictionaryPreviews.clear();
   const entries = filteredEntries();
   const list = element<HTMLDivElement>('vocabularyList');
@@ -626,12 +668,10 @@ function renderEntries(): void {
       rows = vocabularyLevelGroups(entries).map(group => createVocabularyGroup(`level-${group.level}`, group.label, group.entries));
       break;
     default:
-      rows = entries.map(entry => createVocabularyRow(entry));
+      rows = entries.map(createVocabularyRow);
   }
   list.replaceChildren(...rows);
-  for (const [key, preview] of cloudTranslationPreviews) {
-    if (!renderedCloudTranslationKeys.has(key)) { preview.dispose(); cloudTranslationPreviews.delete(key); }
-  }
+  renderCloudTranslationSupport();
   empty.hidden = entries.length > 0;
   if (!allEntries.length) empty.textContent = '目前尚未在 Tracker 新增英文單字。';
   else if (groupingMode === 'gsatLevel' && !searchText) empty.textContent = '目前沒有勾選顯示學測級數的單字。';
@@ -900,10 +940,11 @@ element<HTMLDivElement>('vocabularyList').addEventListener('click', event => {
     const field = group.dataset.translationGroup as keyof VocabularyTranslations;
     const values = [...group.querySelectorAll<HTMLInputElement>('[data-vocabulary-pos-translation]')].map(input => input.value);
     if (action.hasAttribute('data-add-translation')) values.push('');
-    else if (values.length > 1) values.splice(Number(action.dataset.deleteTranslation), 1);
+    else if (values.length > 1 || field === 'unclassified') values.splice(Number(action.dataset.deleteTranslation), 1);
     else return;
     const groups = vocabularyTranslationGroups(entry.translation, entry.tags, entry.translationsByPartOfSpeech);
-    groups[field] = values;
+    if (field === 'unclassified' && !values.length) delete groups.unclassified;
+    else groups[field] = values;
     const translationRemoval = action.hasAttribute('data-delete-translation') ? { field, index: Number(action.dataset.deleteTranslation) } : undefined;
     if (saveEntryEdits(entry, { translationsByPartOfSpeech: groups, translationRemoval })) renderEntries();
     return;
@@ -950,6 +991,21 @@ function updateEntryStarUI(key: string, replaceWord = false): void {
   }
 }
 element<HTMLButtonElement>('refreshVocabulary').addEventListener('click', function refreshVocabulary(): void { load(); });
+element<HTMLSelectElement>('cloudTranslationEntry').addEventListener('change', event => {
+  cloudTranslationEntryKey = (event.target as HTMLSelectElement).value;
+  renderCloudTranslationSupport();
+});
+element<HTMLSelectElement>('vocabularyDictionary').value = dictionary;
+element<HTMLSelectElement>('vocabularyDictionary').addEventListener('change', event => {
+  dictionary = (event.target as HTMLSelectElement).value === 'cambridge' ? 'cambridge' : 'oxford';
+  try { localStorage.setItem(dictionaryPreferenceKey, dictionary); }
+  catch { /* Keep the selected dictionary for this page when storage is unavailable. */ }
+  const entries = new Map(allEntries.map(entry => [entry.key, entry]));
+  for (const row of element('vocabularyList').querySelectorAll<HTMLElement>('.vocabulary-row')) {
+    const entry = entries.get(row.dataset.entryKey ?? '');
+    if (entry) row.querySelector('.vocabulary-word-heading > .vocabulary-word-link')?.replaceWith(createWordLink(entry));
+  }
+});
 element<HTMLButtonElement>('toggleVocabularyTranslations').addEventListener('click', () => {
   translationsVisible = !translationsVisible;
   updateTranslationVisibility();

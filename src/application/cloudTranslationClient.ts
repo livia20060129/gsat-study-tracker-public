@@ -1,4 +1,4 @@
-import { cloudTranslationInput, cloudTranslationResult, type CloudTranslation } from '../study/cloudTranslation.ts';
+import { CLOUD_TRANSLATION_QUOTA_MESSAGE, cloudTranslationInput, cloudTranslationResult, type CloudTranslation } from '../study/cloudTranslation.ts';
 import { activeStudyRecordPrefix } from '../study/materialProgress.ts';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../config/supabase.ts';
 import { browserAuthPersistence, createPersistentAuthStorage } from '../infrastructure/storage/browserAuthStorage.ts';
@@ -35,7 +35,7 @@ export function createCloudTranslationClient(ports: TranslationClientPorts): {
         throw new CloudTranslationError('登入或資料空間已改變，翻譯結果不會填入。');
       if (!response.ok || !body.ok) {
         if (response.status === 401) throw new CloudTranslationError('登入已失效，請重新登入 Tracker。');
-        if (response.status === 429) throw new CloudTranslationError('今日 Google 翻譯額度已用完；額度於台灣時間每天 08:00 重設。');
+        if (response.status === 429) throw new CloudTranslationError(CLOUD_TRANSLATION_QUOTA_MESSAGE);
         if (body.code === 'translation_not_configured') throw new CloudTranslationError('Google 翻譯尚未啟用，請聯絡網站管理者。');
         throw new CloudTranslationError('Google 翻譯暫時無法使用；既有翻譯已保留。');
       }

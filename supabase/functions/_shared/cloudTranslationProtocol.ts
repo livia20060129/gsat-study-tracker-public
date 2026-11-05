@@ -1,4 +1,6 @@
 export const CLOUD_TRANSLATION_MAX_CHARACTERS = 2000;
+export const CLOUD_TRANSLATION_MONTHLY_CHARACTERS = 5000;
+export const CLOUD_TRANSLATION_QUOTA_MESSAGE = '翻譯額度已達上限。每帳號每月最多 5,000 字元，台灣時間每月 1 日重設；亦受全站每日用量限制。';
 export const GOOGLE_TRANSLATE_URL = 'https://translate.google.com/';
 export interface CloudTranslation {
   provider: 'google-cloud-translation';

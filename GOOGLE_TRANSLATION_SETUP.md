@@ -1,38 +1,44 @@
 # 公開版 Google Cloud Translation 設定
 
-適用：v171.6.0-public.53，Supabase 專案 `xcpnxkkixsxzgbqsiuud`。
+適用：v171.6.0-public.54。公開 Supabase 專案仍為 `xcpnxkkixsxzgbqsiuud`。
 
-## Google Cloud
+## Google Cloud 與 Secret
 
-1. 在要支付翻譯費用的 Google Cloud 專案啟用帳單。
-2. 啟用 Cloud Translation API（`translate.googleapis.com`）。本功能使用 Basic v2，英文翻成繁體中文，純文字 NMT。
-3. 建立 API key，API restrictions 只允許 Cloud Translation API。key 由 Supabase 伺服器呼叫，不使用瀏覽器 HTTP referrer 限制；沒有固定出口 IP 時不要填入臆測的 IP。
-4. 設定適當的 Google API 配額與帳單預算通知。通知本身不會停止扣款；本站用量表不能限制其他地方直接使用相同 key 的流量，因此不要與不受控服務共用 key。
+已有 public.53 翻譯服務者，沿用原本 `GOOGLE_TRANSLATION_API_KEY` 即可；本版沒有新增必填金鑰，也不改 Calendar OAuth。
+
+首次啟用者：
+
+1. 在 Google Cloud 專案啟用帳單與 Cloud Translation API（`translate.googleapis.com`）。使用 Basic v2、純文字 NMT，英文翻成繁體中文。
+2. 建立 API key，API restrictions 只允許 Cloud Translation API。由 Supabase 伺服器呼叫，不設定瀏覽器 HTTP referrer 限制；沒有固定出口 IP 時不要臆測 IP。
+3. 將 key 放在公開 Supabase 專案 **Edge Functions → Secrets → `GOOGLE_TRANSLATION_API_KEY`**，不放入 GitHub、追蹤的環境範本或任何 `VITE_` 變數。Calendar OAuth Client ID／Client Secret 不是翻譯 key。
+4. 在 Google Cloud 設定合適的 API 配額及帳單預算通知。通知本身不會停止扣款，本站限制也不能管控其他地方直接使用相同 key 的流量。
 
 官方資料：[啟用服務](https://docs.cloud.google.com/translate/docs/setup)、[Basic 驗證](https://docs.cloud.google.com/translate/docs/authentication)、[REST v2](https://docs.cloud.google.com/translate/docs/reference/rest/v2/translate)、[API key 限制](https://docs.cloud.google.com/api-keys/docs/add-restrictions-api-keys)。
 
-## Supabase Secrets
+## 登入與每月 5,000 字元上限
 
-在公開專案 **Edge Functions → Secrets** 新增 `GOOGLE_TRANSLATION_API_KEY`，值為上述 API key。
+- Google 翻譯必須登入 Tracker。伺服器再次驗證登入，拒絕未登入與匿名帳號；本機 ECDICT 與外部辭典連結仍可獨立使用。
+- 每帳號每月最多 **5,000 字元**，台灣時間每月 1 日 00:00 重設。以實際送出的英文 Unicode 字元計數，包含內部空格、標點及換行，並非單字數、UTF-8 位元組數或中文譯文字數。
+- 每次最多 2,000 字元。原本全站每天 200,000 字元與 2,000 次的保護仍保留；帳號不再以舊版每日 100 次限制；全站每日限制依 UTC 日期重設。
+- 月額度依帳號保存在資料庫。重新整理、登出、換裝置或重新部署不會重設；SQL 本身也禁止把每帳號上限提高到 5,000 以上。
+- 額度先以交易鎖原子預留；超額時不呼叫 Google，也不多扣額度。Google 服務失敗或逾時後不退預留額度，避免不明結果及重試造成超額。
 
-只放在 Supabase Secrets；不放進 GitHub、`.env.example` 或任何 `VITE_` 變數。本功能不需要新增 GitHub secret。`GOOGLE_CLIENT_ID`／`GOOGLE_CLIENT_SECRET` 是 Calendar OAuth 設定，不能當成翻譯 key。不修改既有 Calendar 的 `calendar.events.readonly` 權限。
+可選設定（同樣放在 Supabase Secrets）：
 
-可選限制（同樣放在 Supabase Secrets）：
+| 名稱 | 預設 | 可設定範圍 |
+| --- | ---: | --- |
+| `GOOGLE_TRANSLATION_USER_MONTHLY_CHAR_LIMIT` | 5000 | 0～5000，僅可降低／暫停 |
+| `GOOGLE_TRANSLATION_GLOBAL_DAILY_CHAR_LIMIT` | 200000 | 0～5000000 |
 
-| 名稱 | 預設 |
-| --- | ---: |
-| `GOOGLE_TRANSLATION_USER_DAILY_CHAR_LIMIT` | 20000 |
-| `GOOGLE_TRANSLATION_GLOBAL_DAILY_CHAR_LIMIT` | 200000 |
-
-接受 0～5000000 的整數；0 可暫停服務。每次最多 2000 字元；另固定限制每帳號每天 100 次、全站每天 2000 次。依 UTC 日期計算，台灣時間每天 08:00 重設。Google 實際費用仍依專案與 Google 計價設定。
+舊的 `GOOGLE_TRANSLATION_USER_DAILY_CHAR_LIMIT` 不再使用；無須為本版新增上述可選設定。既有必填 key 沿用。
 
 ## 覆蓋與部署
 
-必要檔案依原路徑覆蓋 public.52，執行 `npm ci`、`npm test`、`npm run build`。
+必要檔案依相同路徑覆蓋 public.53，執行 `npm ci`、`npm test`、`npm run build`。
 
-GitHub Actions 原有 release 流程已加入：資料庫遷移 → 部署 `cloud-translate` → 無 Google 呼叫的 GET 檢查 → 網站部署。沿用原有 `SUPABASE_ACCESS_TOKEN`、`SUPABASE_DB_PASSWORD` 與 Pages 設定。沒有升級已釘選的 Supabase CLI。
+本版新增 `20261105145700_cloud_translation_monthly_limit.sql`，必須先套用，再重新部署 `cloud-translate`，最後發布完整 `dist`。只換前端不會讓正式後端改成每月額度。原有 GitHub Actions 已按此順序部署，不需要修改工作流程或新增 GitHub secret。
 
-若手動部署，先安全設定既有 CLI 登入憑證及資料庫密碼，再於專案根目錄執行：
+手動部署時，先安全設定既有 Supabase CLI 登入憑證及資料庫密碼，再於專案根目錄執行：
 
 ```powershell
 npx --yes supabase@2.116.0 link --project-ref xcpnxkkixsxzgbqsiuud
@@ -41,22 +47,22 @@ npx --yes supabase@2.116.0 db push
 npx --yes supabase@2.116.0 functions deploy cloud-translate --project-ref xcpnxkkixsxzgbqsiuud
 ```
 
-先確認 dry-run 顯示的全部待套用遷移再 push。本次新增 `20261105130048_cloud_translation_usage.sql`，只建立翻譯用量表與限額函式，不修改讀書紀錄。前端須發布完整 `dist`，包括新模組及標示圖片。
+先確認 dry-run 列出的全部待套用遷移，再執行 push。沒有修改舊遷移或讀書紀錄；新增月額度表並替換原限額函式。升級時保留本月已預留用量。由於舊版只保存 UTC 每日彙總，升級採保守方式納入台灣月初前一個 UTC 日期，避免跨時區漏算；新用量直接按台灣月份記錄。
 
 ## 上線驗證
 
-1. 登入 Tracker → 英文單字複習 → 編輯單字 →「使用 Google 翻譯」。這一步真的呼叫 Google，可能計費。
-2. 確認出現繁體中文及 Google 標示；確認之前不應改寫紀錄。
-3. 按「填入 Google 翻譯」，確認保留原有中文；重新整理後翻譯與來源仍在。組合、句子也能翻譯。
-4. 有翻譯 PDF／Word 要有 Google 來源標示；無翻譯練習檔不含答案。
-5. 登出後，Google 按鈕只提示登入，不產生翻譯請求；原本 ECDICT 仍可使用。
+1. 登入 Tracker → 英文單字複習 → 最上方「Google 翻譯支援」→ 選擇英文項目及填入詞性 →「使用 Google 翻譯」。這會真的呼叫 Google，可能計費。
+2. 單一已勾選詞性自動帶入；有多個或尚未勾選時，由使用者指定。組合／句子不加詞性。Google 只翻譯，不推測詞性或學測級數。
+3. 確認之前不應改寫紀錄。按「填入 Google 翻譯」後保留舊中文、星號、級數及跨日來源；重新整理後仍存在。
+4. 已存到未分詞性的翻譯可在字卡編輯區刪除，最後一筆也能刪除；重新整理不應復原。
+5. 查詢辭典切換劍橋中英字典／牛津辭典，確認英文連結與選擇保存正確。只有點擊英文連結才開啟外部網站，不擷取其釋義。
+6. 登出後 Google 按鈕停用，不能產生付費翻譯請求。額度耗盡顯示每月限制；其餘手動編輯與 ECDICT 繼續可用。
+7. 有翻譯 PDF／Word／列印檔保留 Google 來源標示，無翻譯練習檔不含答案。
 
-「尚未啟用」請確認 secret 名稱與公開專案。服務失敗請查同一 Google 專案的帳單、API、key 限制與配額；前端刻意不顯示原始供應商錯誤或 key。Calendar OAuth Client Secret 不需更換。
+## 資料與驗證範圍
 
-## 保存與驗證範圍
+額度表只保存帳號、月份／UTC 日期、次數與字元數，不保存原文或譯文。後續請求清理過去月份的月額度，以及超過 35 天的每日紀錄；帳號刪除連帶刪除個別用量。只有伺服器角色能讀寫額度或呼叫限額函式。
 
-額度用 PostgreSQL 交易鎖原子預留；預留後即使 Google 失敗也不退額度，避免逾時或不明結果造成無限制重試。額度表只存帳號、UTC 日期、次數及字元數，不存原文或譯文；後續請求清理超過 35 天的資料。刪除帳號時連帶刪除其用量。RLS 與角色權限限制只有伺服器能預留額度。
+既有翻譯 key、安全邊界與 Google 官方來源圖沿用；本次更新的是 UI、分類保存與資料庫額度。[Google 標示規則](https://docs.cloud.google.com/translate/attribution)。
 
-翻譯及獨立來源欄位由使用者確認後才進入既有紀錄與同步。頁面、Word、PDF 與列印檔使用 Google 官方未修改的標示圖，並更新中英文隱私政策及支援頁：[Google 標示規則](https://docs.cloud.google.com/translate/attribution)。
-
-本次以替代 Google 回應驗證流程，另在本機 PostgreSQL 相容環境套用真實 SQL 檢查 RLS、權限、交易與限額。沒有使用真實 Google key、修改正式資料庫或部署；完成上述設定後仍須進行一次真實上線驗證。
+本次以替代 Google 回應及本機 PostgreSQL 相容環境驗證詞性、刪除、登入、每月上限、跨日不重設、台灣月界線與安全權限。未修改正式資料庫或部署 public.54；正式啟用須完成上述部署步驟。

@@ -1,6 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.114.0';
 import { createCloudTranslationHandler } from '../_shared/cloudTranslationHandler.ts';
-import type { CloudTranslation } from '../_shared/cloudTranslationProtocol.ts';
+import { CLOUD_TRANSLATION_MONTHLY_CHARACTERS, type CloudTranslation } from '../_shared/cloudTranslationProtocol.ts';
 import { requestGoogleTranslation } from '../_shared/googleCloudTranslation.ts';
 
 function requiredEnv(name: string): string {
@@ -14,10 +14,10 @@ function serviceKey(): string {
   const keys = JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') ?? '{}') as Record<string, string>;
   return keys.default ?? Object.values(keys)[0] ?? requiredEnv('SUPABASE_SERVICE_ROLE_KEY');
 }
-function dailyLimit(name: string, fallback: number): number {
+function configuredLimit(name: string, fallback: number, maximum = 5000000): number {
   const value = Deno.env.get(name);
   const limit = value === undefined ? fallback : Number(value);
-  if (!Number.isInteger(limit) || limit < 0 || limit > 5000000) throw new Error('Translation limit unavailable');
+  if (!Number.isInteger(limit) || limit < 0 || limit > maximum) throw new Error('Translation limit unavailable');
   return limit;
 }
 
@@ -31,8 +31,8 @@ const handler = createCloudTranslationHandler({
   async reserve(userId, characters): Promise<boolean> {
     const { data, error } = await admin.rpc('reserve_cloud_translation_usage', {
       p_user_id: userId, p_characters: characters,
-      p_user_limit: dailyLimit('GOOGLE_TRANSLATION_USER_DAILY_CHAR_LIMIT', 20000),
-      p_global_limit: dailyLimit('GOOGLE_TRANSLATION_GLOBAL_DAILY_CHAR_LIMIT', 200000),
+      p_user_limit: configuredLimit('GOOGLE_TRANSLATION_USER_MONTHLY_CHAR_LIMIT', CLOUD_TRANSLATION_MONTHLY_CHARACTERS, CLOUD_TRANSLATION_MONTHLY_CHARACTERS),
+      p_global_limit: configuredLimit('GOOGLE_TRANSLATION_GLOBAL_DAILY_CHAR_LIMIT', 200000),
     });
     if (error) throw new Error('Translation quota unavailable');
     return data === true;

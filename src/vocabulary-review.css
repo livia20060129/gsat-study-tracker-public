@@ -5,6 +5,9 @@
 .cloud-translation-preview button:disabled{opacity:.5;cursor:not-allowed}
 .cloud-translation-preview button:focus-visible{outline:3px solid rgba(49,94,251,.24);outline-offset:2px}
 .cloud-translation-status{margin:8px 0;color:#64748b;font-size:12px}
+.cloud-translation-target{display:grid;gap:6px;color:#526174;font-size:12px}
+.cloud-translation-target select{width:100%;min-width:0;min-height:40px;padding:8px;border:1px solid #bfd1e9;border-radius:9px;background:#fff;color:#244c83;font:inherit}
+.cloud-translation-target select:focus-visible{outline:3px solid rgba(49,94,251,.24);outline-offset:2px}
 .cloud-translation-result{white-space:pre-wrap;overflow-wrap:anywhere;color:#17233a}
 .cloud-translation-preview [data-cloud-translation-apply]{display:block;margin-top:10px}
 .google-translation-attribution{display:block;width:200px;max-width:100%;margin:8px 0}

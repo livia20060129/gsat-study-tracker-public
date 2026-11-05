@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="zh-Hant">
 <head>
-  <script src="./page-transitions.js?v=171.6.0-public.53"></script>
-  <link rel="stylesheet" href="./site-shell.css?v=171.6.0-public.53">
+  <script src="./page-transitions.js?v=171.6.0-public.54"></script>
+  <link rel="stylesheet" href="./site-shell.css?v=171.6.0-public.54">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="GSAT Study Tracker 隱私權政策與 Google Calendar 資料使用說明。">
@@ -58,8 +58,8 @@
       <p>分享內容由使用者自行決定。提交前應移除 OAuth 憑證、Google 帳號技術識別資訊、與升學成果無關的 Calendar 私人行程，以及其他不希望提供的個人資訊。資料提交至招生單位後，其保存及刪除方式依該單位規定辦理。</p>
 
       <h2>六、儲存、服務供應商與分享</h2>
-      <p>使用者登入後，可在英文單字複習的編輯區主動選擇「使用 Google 翻譯」。網站只將該段選定英文傳送給 Google Cloud Translation API，翻成繁體中文，不會自動傳送整份讀書紀錄、Calendar 行程或筆記。結果由使用者確認後才追加到本機及既有帳號同步資料；不提供詞性或學測級數判定。Google 依其服務條款處理翻譯請求，詳見 <a href="https://cloud.google.com/translate" target="_blank" rel="noopener noreferrer">Cloud Translation</a>。本功能使用 Google Translate 機器翻譯。</p>
-      <p>為限制用量，Supabase 另保存帳號識別、UTC 日期、請求次數及字元數，不在額度表保存查詢或翻譯文字。額度紀錄在後續請求時清理超過 35 天的資料；帳號刪除時刪除其個別用量資料。使用者自行保存的翻譯及來源標示，依一般讀書紀錄的保存與刪除方式處理。</p>
+      <p>使用者登入後，可在英文單字複習頁面上方的「Google 翻譯支援」主動選擇「使用 Google 翻譯」。網站只將該段選定英文傳送給 Google Cloud Translation API，翻成繁體中文，不會自動傳送整份讀書紀錄、Calendar 行程或筆記。結果由使用者確認後才追加到本機及既有帳號同步資料；詞性依原有勾選或使用者指定填入，不由翻譯服務推測，也不判定學測級數。Google 依其服務條款處理翻譯請求，詳見 <a href="https://cloud.google.com/translate" target="_blank" rel="noopener noreferrer">Cloud Translation</a>。本功能使用 Google Translate 機器翻譯。</p>
+      <p>為限制用量，Supabase 另保存帳號識別、台灣時區的月份、UTC 日期、請求次數及字元數，不在額度表保存查詢或翻譯文字。每帳號每月上限 5,000 字元，台灣時間每月 1 日重設。每日額度紀錄在後續請求時清理超過 35 天的資料，每月紀錄則清理過去月份；帳號刪除時刪除其個別用量資料。使用者自行保存的翻譯及來源標示，依一般讀書紀錄的保存與刪除方式處理。</p>
       <p>資料可能由使用者瀏覽器、Supabase、Google OAuth、Google Calendar API 與 Cloudflare 等維持網站所需的服務處理。部分服務供應商的伺服器可能位於臺灣以外地區。</p>
       <p>本網站不出售或出租個人資料。資料僅會在維持服務所必需、使用者主動要求或同意、法律依法要求，或保護使用者與系統安全所必要時提供。</p>
 
@@ -112,8 +112,8 @@
       <p>Users control what they share. Before submitting material, users should remove OAuth credentials, technical Google account identifiers, unrelated private Calendar events, and any other information they do not wish to disclose. Information submitted to an institution is retained and deleted according to that institution’s policies.</p>
 
       <h2>6. Storage, Service Providers, and Disclosure</h2>
-      <p>After signing in, users may explicitly choose Translate with Google in a vocabulary editor. Only the selected English text is sent to the Google Cloud Translation API to translate it into Traditional Chinese. Entire study records, Calendar events, and notes are not sent automatically. Results are appended to local records and existing account synchronization only after confirmation; they do not determine parts of speech or GSAT levels. Google processes translation requests under its service terms; see <a href="https://cloud.google.com/translate" target="_blank" rel="noopener noreferrer">Cloud Translation</a>. This feature uses Google Translate machine translation.</p>
-      <p>For usage limits, Supabase separately stores the account identifier, UTC date, request count, and character count, without query or translation text in the quota table. Later requests purge quota entries older than 35 days. Deleting an account deletes its individual usage entries. Translations and attribution saved by users follow the retention and deletion process for ordinary study records.</p>
+      <p>After signing in, users may explicitly choose Translate with Google in the support panel at the top of Vocabulary Review. Only the selected English text is sent to the Google Cloud Translation API to translate it into Traditional Chinese. Entire study records, Calendar events, and notes are not sent automatically. Results are appended to local records and existing account synchronization only after confirmation; parts of speech follow existing selections or an explicit user choice, rather than being inferred by Google, and no GSAT level is inferred. Google processes translation requests under its service terms; see <a href="https://cloud.google.com/translate" target="_blank" rel="noopener noreferrer">Cloud Translation</a>. This feature uses Google Translate machine translation.</p>
+      <p>For usage limits, Supabase separately stores the account identifier, Taiwan calendar month, UTC date, request count, and character count, without query or translation text in the quota table. Each account is limited to 5,000 characters per month, resetting at midnight Taiwan time on the first day. Later requests purge daily entries older than 35 days and monthly entries from earlier months. Deleting an account deletes its individual usage entries. Translations and attribution saved by users follow the retention and deletion process for ordinary study records.</p>
       <p>Information may be processed by the user’s browser, Supabase, Google OAuth, Google Calendar API, and Cloudflare as necessary to operate the Service. Some service-provider systems may be located outside Taiwan.</p>
       <p>The Service does not sell or rent personal information. Information is disclosed only when required to operate the Service, when requested or authorized by the user, when legally required, or when necessary to protect users and system security.</p>
 

@@ -2,7 +2,7 @@ import type { EnglishReviewWordEntry, GsatVocabularyLevel, StudyItem, StudyRecor
 import { isVocabularyStarKey, normalizedVocabularyStars, remapVocabularyMeaningStars } from './vocabularyStars.ts';
 import { applyVocabularyAutoFill, markVocabularyManualFields, vocabularyAutoFillSources } from './vocabularyAutoFill.ts';
 import { applyDictionarySelection, dictionarySources } from './dictionarySelection.ts';
-import { applyCloudTranslation } from './cloudTranslationSelection.ts';
+import { applyCloudTranslation, type CloudTranslationTarget } from './cloudTranslationSelection.ts';
 import { cloudTranslationSources, type CloudTranslation } from './cloudTranslation.ts';
 import type { DictionaryLookupResult, DictionarySourceReference } from './dictionaryEntries.ts';
 import {
@@ -35,6 +35,7 @@ export interface VocabularyWordEdits {
   autoFillTranslations?: VocabularyTranslations;
   dictionarySelection?: DictionaryLookupResult;
   cloudTranslation?: CloudTranslation;
+  cloudTranslationTarget?: CloudTranslationTarget;
   contentKind?: VocabularyContentKind;
   partsOfSpeech?: ReadonlySet<VocabularyPartOfSpeechField>;
   text?: string;
@@ -324,9 +325,12 @@ function updateItemWords(
         const current = normalizedVocabularyTranslations(word.translationsByPartOfSpeech);
         const updates = normalizedVocabularyTranslations(edits.translationsByPartOfSpeech);
         const next = { ...current, ...updates };
-        if (JSON.stringify(next) !== JSON.stringify(current)) {
+        if (edits.translationRemoval?.field === 'unclassified'
+          && !Object.hasOwn(edits.translationsByPartOfSpeech, 'unclassified')) delete next.unclassified;
+        const translation = vocabularyTranslationText(next);
+        if (JSON.stringify(next) !== JSON.stringify(current) || word.translation !== translation) {
           word.translationsByPartOfSpeech = next;
-          word.translation = vocabularyTranslationText(next);
+          word.translation = translation;
           changed = true;
         }
       }
@@ -344,7 +348,7 @@ function updateItemWords(
         changed = true;
       }
       if (edits.dictionarySelection && applyDictionarySelection(word, edits.dictionarySelection)) changed = true;
-      if (edits.cloudTranslation && applyCloudTranslation(word, edits.cloudTranslation)) changed = true;
+      if (edits.cloudTranslation && applyCloudTranslation(word, edits.cloudTranslation, edits.cloudTranslationTarget)) changed = true;
       if (word.vocabularyStars && (edits.translation !== undefined || edits.translationsByPartOfSpeech !== undefined)) {
         const removal = edits.translationRemoval;
         const partOfSpeech = VOCABULARY_PARTS_OF_SPEECH.find(([field]) => field === removal?.field)?.[1] ?? '未分詞性';
