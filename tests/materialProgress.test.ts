@@ -455,3 +455,16 @@ test('uses the Tracker active account prefix and ignores other account records',
   assert.equal(result.prefix, 'study-v11:user:user-a:');
   assert.deepEqual(result.records.map(value => value.date), ['2026-09-11']);
 });
+
+test('large repeated histories union pages once without bridging gaps or changing source records', () => {
+  const ranges = [[4, 9], [8, 12], [20, 21], [22, 23], [40, 45], [72, 75]];
+  const source = Array.from({ length: 32 }, (_, day) => record(ranges.map(([start, end], index) => item({
+    id: `bio-${day}-${index}`, type: 'scienceReview', done: true,
+    f: { subject: '生物', material: '新關鍵', start: String(start), end: String(end) },
+  })), new Date(Date.UTC(2026, 9, day + 1)).toISOString().slice(0, 10)));
+  const before = structuredClone(source);
+  const biology = materialProgressRows(source).find(row => row.id === 'natural:生物:新關鍵')!;
+  assert.deepEqual(biology.segments.map(segment => segment.completionPercent), [39, 13, 9, 0, 0, 0]);
+  assert.equal(biology.recorded, 3);
+  assert.deepEqual(source, before);
+});

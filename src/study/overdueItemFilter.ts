@@ -1,4 +1,5 @@
 import { isExcludedEnglishTodoTitle, OVERDUE_TASK_SUBJECTS, type OverdueItemSubject, type OverdueTaskSubject } from './overdueTasks.ts';
+import { compareNumberedChinese } from './textOrder.ts';
 
 interface FilterableEntry {
   subject: OverdueItemSubject;
@@ -69,7 +70,7 @@ export function overdueItemOptions(entries: readonly FilterableEntry[]): Overdue
   for (const entry of entries) distinct.set(overdueItemKey(entry), entry);
   const sorted = [...distinct.entries()].sort(function compareEntries([leftKey, left], [rightKey, right]): number {
     const subjectOrder = OVERDUE_TASK_SUBJECTS.indexOf(left.subject) - OVERDUE_TASK_SUBJECTS.indexOf(right.subject);
-    return subjectOrder || leftKey.localeCompare(rightKey, 'zh-TW', { numeric: true });
+    return subjectOrder || compareNumberedChinese(leftKey, rightKey);
   });
   return sorted.map(([value, entry]) => ({ value, label: `${entry.subjectLabel}｜${overdueItemTitle(entry.subject, entry.title)}` }));
 }

@@ -1,4 +1,5 @@
 import type { StudyItem, StudyRecord } from '../types.ts';
+import { compareTraditionalChinese } from './textOrder.ts';
 import { isConfirmedDeferred } from './deferDays.ts';
 import { activeEnglishTaskItems } from './englishTaskChoice.ts';
 import { effectiveTemplatePresetKey, specialItemTemplate } from './makeup.ts';
@@ -332,7 +333,7 @@ export function summarizeStudyItemTime(
     totals.set(entry.itemLabel, (totals.get(entry.itemLabel) ?? 0) + entry.minutes);
   });
   const sorted = [...totals.entries()].sort(function sortTotals(left, right): number {
-    return right[1] - left[1] || left[0].localeCompare(right[0], 'zh-Hant');
+    return right[1] - left[1] || compareTraditionalChinese(left[0], right[0]);
   });
   const totalMinutes = roundOne(sorted.reduce(function addMinutes(sum, entry): number {
     return sum + entry[1];
@@ -372,7 +373,7 @@ export function summarizeNaturalScienceTime(
     .sort(function sortNaturalScience(left, right): number {
       return subjectOrder.indexOf(left.subject) - subjectOrder.indexOf(right.subject)
         || right.minutes - left.minutes
-        || left.itemLabel.localeCompare(right.itemLabel, 'zh-Hant');
+        || compareTraditionalChinese(left.itemLabel, right.itemLabel);
     });
   const totalMinutes = roundOne(populated.reduce(function addMinutes(sum, entry): number {
     return sum + entry.minutes;

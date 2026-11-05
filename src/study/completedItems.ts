@@ -1,4 +1,5 @@
 import type { CalendarNaturalIntegrationEntry, StudyItem, StudyRecord } from '../types.ts';
+import { compareTraditionalChinese } from './textOrder.ts';
 import { numberedStudyScope } from '../data/numberedScopes.ts';
 import { numberedScopeText } from './numberedScopeProgress.ts';
 import { bookUnitText } from './unitBookProgress.ts';
@@ -168,8 +169,8 @@ export function completedItemsForPeriod(
     return entry.date >= period.start && entry.date <= period.end;
   }).sort(function newestFirst(left, right): number {
     return right.date.localeCompare(left.date)
-      || left.subject.localeCompare(right.subject, 'zh-Hant')
-      || left.title.localeCompare(right.title, 'zh-Hant')
+      || compareTraditionalChinese(left.subject, right.subject)
+      || compareTraditionalChinese(left.title, right.title)
       || left.key.localeCompare(right.key);
   });
 }

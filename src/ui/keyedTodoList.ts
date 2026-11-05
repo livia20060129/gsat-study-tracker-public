@@ -9,18 +9,25 @@ export function updateTodoList(
   const existing = new Map(Array.from(list.children).map(node => [
     (node as HTMLElement).dataset.todoKey, node as HTMLElement,
   ]));
-  const keep = new Set<HTMLElement>();
-  entries.forEach(function updateEntry(entry, index): void {
+  const initialBatch = existing.size === 0 ? document.createDocumentFragment() : null;
+  let position = list.firstElementChild;
+  for (const entry of entries) {
     const signature = JSON.stringify(entry);
     const previous = existing.get(entry.key);
     const card = previous?.dataset.todoSignature === signature ? previous : createCard(entry);
     card.dataset.todoKey = entry.key;
     card.dataset.todoSignature = signature;
-    keep.add(card);
-    const position = list.children[index];
-    if (position !== card) list.insertBefore(card, position ?? null);
-  });
-  Array.from(list.children).forEach(node => { if (!keep.has(node as HTMLElement)) node.remove(); });
+    existing.delete(entry.key);
+    if (initialBatch) initialBatch.append(card);
+    else {
+      if (position !== card) list.insertBefore(card, position);
+      // A changed card replaces the old position; unchanged controls retain their node and focus.
+      if (previous && previous !== card) previous.remove();
+      position = card.nextElementSibling;
+    }
+  }
+  if (initialBatch) list.append(initialBatch);
+  for (const obsolete of existing.values()) obsolete.remove();
   if (focusKey && focused && !focused.isConnected) {
     const replacement = Array.from(list.querySelectorAll<HTMLInputElement>('[data-todo-focus-key]'))
       .find(input => input.dataset.todoFocusKey === focusKey);

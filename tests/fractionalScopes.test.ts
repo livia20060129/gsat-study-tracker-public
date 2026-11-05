@@ -47,6 +47,17 @@ test('split annotation priority is shared by all subjects and retains stored Uni
   assert.equal(usesSharedPageTemplate(progressOnly), true);
 });
 
+test('repeated fraction detection keeps fullwidth input, later valid parts and date exclusions independent', () => {
+  for (let repeat = 0; repeat < 3; repeat += 1) {
+    assert.equal(hasStudyPartAnnotation('物理｜新關鍵 第 12 單元'), false);
+    assert.equal(hasStudyPartAnnotation('Unit 1（０／２）（２／３）'), true);
+    assert.equal(hasStudyPartAnnotation('日期：(10/25)｜Part 2/3'), true);
+    assert.equal(hasStudyPartAnnotation('Unit 1（原10/25）'), false);
+    assert.equal(hasStudyPartAnnotation('Unit 1（1/200）｜Test 2/3'), true);
+    assert.equal(hasStudyPartAnnotation('Unit 1（1/200）'), false);
+  }
+});
+
 test('Calendar split Unit and round scopes prefer explicit pages across native and unknown books', () => {
   for (const title of ['英文｜Unlock 3｜Unit 1（1/2）', '英文｜Prism Reading 3｜Unit 4（1/2）',
     '英文｜ACE Reading 第 3 回（1/2）', '英文｜大考英聽A攻略 Test 2（1/2）',

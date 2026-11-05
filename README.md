@@ -1,8 +1,13 @@
 # GSAT Study Tracker
 
-目前版本：**公開版 v171.6.0-public.56**
+目前版本：**公開版 v171.6.0-public.57**
 
 公開版學測讀書追蹤器，整合 Google Calendar 唯讀排程、手動新增項目、Supabase 跨裝置同步、計時、完成率、教材進度與學習總結。
+
+public.57 修正 public.56 必要覆蓋包遺漏的 `src/study/textOrder.ts`，補回繁體中文與數字排序共用模組、排序測試及 `scripts/benchmark_runtime.ts`，並補齊同批遺漏的共用效能檔案與對應測試。缺少排序模組會讓 13 個測試檔案連帶出現 `ERR_MODULE_NOT_FOUND`；不是 Node 版本或 Supabase 設定錯誤。本次以 GitHub `main` 的乾淨快照重現後修正，依實際遠端檔案核對交付內容，不再只比較本機版本資料夾。
+
+本版沒有新增功能或資料庫 migration，沿用 public.56 的介面、公開版設定與部署流程。覆蓋必要檔案後 commit／push，再讓 GitHub Actions 執行；原本 public.56 若尚未部署，其待套用的 migration 與函式仍由既有 release 流程處理。
+
 
 > 此資料夾是與自用版完全分開的公開版本。公開版不建立星期別、固定日期或內建教材行程；Tracker 只加入實際從 Google Calendar 讀到且能辨識科目／教材，或帶有有效 GSAT／GAST 學習識別碼的排程，使用者仍可手動新增項目。
 

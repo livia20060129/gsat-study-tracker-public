@@ -1,5 +1,6 @@
 import { overdueTasks, updateOverdueTaskSkip, type OverdueTaskEntry } from './overdueTasks.ts';
 import type { StudyRecord } from '../types.ts';
+import { compareNumberedChinese } from './textOrder.ts';
 
 export type OverdueSort = 'oldest' | 'newest';
 export function normalizedOverdueSort(value: unknown): OverdueSort { return value === 'newest' ? 'newest' : 'oldest'; }
@@ -9,7 +10,7 @@ export function organizedOverdueEntries(entries: readonly OverdueTaskEntry[], or
 } {
   const sorted = [...entries].sort(function compare(left, right): number {
     const dates = left.recordDate.localeCompare(right.recordDate);
-    return (order === 'newest' ? -dates : dates) || left.key.localeCompare(right.key, 'zh-TW', { numeric: true });
+    return (order === 'newest' ? -dates : dates) || compareNumberedChinese(left.key, right.key);
   });
   return { recent: sorted.filter(entry => entry.daysOverdue <= 30), longTerm: sorted.filter(entry => entry.daysOverdue > 30) };
 }

@@ -153,3 +153,35 @@ test('todo uses single book labels and editable numbered ranges and still saves 
   await selectStudyDate(page, date);
   await expect(page.locator('[data-item="display-round"] [data-field="roundEnd"]')).toHaveValue('6');
 });
+
+test('opening a card inside an animating long-term section waits for its visible geometry and saves the intended range', async ({ page }) => {
+  await seed(page);
+  await page.goto('/todo.html');
+  await page.evaluate(() => {
+    const animate = Element.prototype.animate;
+    Element.prototype.animate = function slowOuterDisclosure(keyframes, options): Animation {
+      const animation = animate.call(this, keyframes, options);
+      if (this.id === 'todoLongTerm' && animation.id === 'study-disclosure-height') animation.playbackRate = 0.12;
+      return animation;
+    };
+    document.addEventListener('click', function observeHeadingClick(event): void {
+      const heading = (event.target as Element).closest('.todo-card h3');
+      if (heading) document.documentElement.dataset.todoHeadingClickedDuringMotion = String(Boolean(heading.closest('[data-disclosure-motion]')));
+    }, true);
+  });
+  const section = page.locator('#todoLongTerm');
+  await section.locator(':scope > summary').click();
+  await expect(section).toHaveAttribute('data-disclosure-motion', 'opening');
+  const card = page.locator('.todo-card').filter({ has: page.locator('[data-item-id="display-round"]') });
+  await expandTodoCard(card);
+  await expect(page.locator('html')).toHaveAttribute('data-todo-heading-clicked-during-motion', 'false');
+  await expect(card).not.toHaveAttribute('data-disclosure-motion');
+  await expect(card.locator('[data-todo-range="start"]')).toHaveValue('4');
+  await card.locator('[data-todo-range="end"]').fill('6');
+  await card.locator('[data-todo-range="end"]').blur();
+  const saved = await page.evaluate(({ prefix, date }) => JSON.parse(localStorage.getItem(prefix + date)!).items
+    .find((item: StudyItem) => item.id === 'display-round'), { prefix, date });
+  expect(saved.f.round).toBe('4');
+  expect(saved.f.roundEnd).toBe('6');
+  expect(saved.done).toBe(false);
+});

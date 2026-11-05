@@ -1,5 +1,32 @@
 # 最新更新
 
+版本：v171.6.0-public.57
+
+日期：2026-11-06（公開版）
+
+## 修正必要覆蓋包缺檔與同批遺漏
+
+- 補回 `src/study/textOrder.ts`，提供 `compareTraditionalChinese` 與 `compareNumberedChinese`；保留原本繁體中文、數字與相同值的排序行為。
+- 補回 `tests/textOrder.test.ts`，檢查中文、Unit 2／Unit 10、大小寫、重音及排序相同的情形。
+- 補回 package script 已引用但遠端缺少的 `scripts/benchmark_runtime.ts`，使用合成資料驗證待辦建立、排序及教材範圍統計，不讀取帳號或真實紀錄。
+- 以 GitHub main 的 `225e7b073936f3e088bd677441737885e030e67a` 乾淨快照重現相同的 13 項模組載入失敗；逐一核對來源檔與相對匯入，修正後沒有未滿足的本地匯入。
+- 補齊同批漏附的排序快取、分段辨識與待辦批次更新檔案。實際 GitHub 版本在補回模組後另重現了首次清單 120 次掛載、超過測試上限 2 次的效能失敗；恢復 DocumentFragment 首次批次掛載及節點重用，保留原有順序、輸入焦點與草稿。
+- 補回既有分段辨識、教材範圍及動畫中展開卡片的回歸測試，使交付檔案與原先共用更新完整一致。
+- 本次維持介面、教材、Google 翻譯、Calendar、帳號設定與資料庫；沒有新的 Secrets／migration，未 commit、push 或部署。
+
+## 驗證
+
+- 從實際 GitHub 乾淨快照重現 13 項缺模組失敗，修正後 871 項完整單元測試與 6 項公開專案綁定 pretest 通過。
+- 28 項待辦排序、批次跳過、效能、焦點／草稿保存與跨頁顯示 Chromium／WebKit E2E 通過。
+- TypeScript 型別檢查、正式建置、benchmark 指令與 935 個本地匯入的檔案存在／大小寫核對通過。
+- 必要覆蓋包依實際 GitHub commit 的檔案樹核對，確認可重建驗證過的來源；不是只對本機前版資料夾作差異比較。
+
+Suggested commit: `fix: include missing shared runtime files`
+
+---
+
+# 最新更新
+
 版本：v171.6.0-public.56
 
 日期：2026-11-06（公開版）
