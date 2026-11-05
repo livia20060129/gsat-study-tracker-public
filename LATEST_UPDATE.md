@@ -1,5 +1,36 @@
 # 最新更新
 
+版本：公開版 v171.6.0-public.55
+
+日期：2026-11-05
+
+## 修正 CI 安裝 Deno 遇到 HTTP 504
+
+- 核對 public.54 的 GitHub Actions 失敗流程：停在 Setup Deno，當時仍未執行專案測試、Supabase 部署或 GitHub Pages 部署。錯誤發生於 GitHub release ZIP 的下載路徑，不是已執行的應用程式檢查失敗。
+- 移除 denoland/setup-deno@v2 的 release ZIP 安裝步驟，改由 registry.npmjs.org 的官方 deno 套件及對應平台套件安裝，固定為已驗證的 2.9.6，避免此次 GitHub ZIP 下載路徑。
+- 安裝後核對實際 Deno 版本；安裝失敗、版本不符或後端檢查失敗都會停止流程。沒有設定 continue-on-error 或略過型別檢查。
+- 原有三個 Edge Functions 的凍結 lockfile 檢查、完整測試、建置、資料庫遷移、函式部署、煙霧檢查與最後 Pages 發布順序保留。Supabase CLI 仍固定 2.116.0，專案與 Secret 設定沿用。
+- 保留 public.54 的頂端 Google 翻譯、指定詞性、未分類刪除、辭典切換，以及登入與每帳號每月 5,000 字元設定。
+
+## 驗證
+
+- 在專案內的隔離工具目錄，以 Git Bash 執行從工作流程擷取的實際安裝腳本，成功透過 npm 安裝並核對 Deno 2.9.6；未更動系統全域安裝。
+- 使用該次安裝的 Deno 執行 npm run typecheck:edge，三個實際入口與凍結 lockfile 檢查通過。
+- 使用相同腳本模擬 npm 安裝失敗及 Deno 版本不符，分別回傳 37 與 1，確認不會以成功狀態繼續部署。
+- 6 項公開版專案檢查、817 項完整單元／回歸測試與正式建置通過。網站程式與版面未改動，沒有重跑已通過的瀏覽器情境。
+- 保留既有業務程式、月額度遷移、所有頁碼地圖及 Calendar／OAuth 設定；無新增 npm 依賴，必要覆蓋檔案以 SHA256 核對。
+
+## 覆蓋與發佈
+
+- 必要檔案依相同路徑覆蓋 public.54，commit 並 push 至 main 以觸發使用新版流程的執行。原 public.54 的功能與月額度會隨既有 release 順序部署；沒有新增 Secret 或遷移。
+- 本次未建立 commit、push、重跑 GitHub workflow 或部署，仍需在 GitHub 執行新 commit 才能確認線上流程完成。只交付必要覆蓋檔案，不提供 ZIP。
+
+參考：[Deno 官方 npm 安裝方式](https://docs.deno.com/runtime/getting_started/installation/)、[public.54 失敗的部署流程](https://github.com/livia20060129/gsat-study-tracker-public/actions/runs/42057084847)。
+
+建議 commit：fix(ci): install pinned Deno from npm to avoid release download timeouts
+
+---
+
 版本：公開版 v171.6.0-public.54
 
 日期：2026-11-05

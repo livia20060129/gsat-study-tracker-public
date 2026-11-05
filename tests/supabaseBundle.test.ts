@@ -22,7 +22,7 @@ test('Edge Functions use the same exact Supabase SDK and committed Deno locks', 
   assert.match(shared, /npm:@supabase\/supabase-js@2\.114\.0/);
   assert.doesNotMatch(shared, /npm:@supabase\/supabase-js@2(?:['"])/);
 
-  for (const name of ['google-calendar', 'google-calendar-callback']) {
+  for (const name of ['google-calendar', 'google-calendar-callback', 'cloud-translate']) {
     const config = JSON.parse(readFileSync(new URL(`supabase/functions/${name}/deno.json`, projectUrl), 'utf8')) as {
       lock?: { frozen?: boolean };
     };
@@ -34,16 +34,19 @@ test('Edge Functions use the same exact Supabase SDK and committed Deno locks', 
   }
 });
 
-test('deployment CI type-checks both Supabase Edge Function entrypoints', () => {
+test('deployment CI pins npm-installed Deno, verifies the version and type-checks every Edge Function entrypoint', () => {
   const workflow = readFileSync(new URL('.github/workflows/deploy.yml', projectUrl), 'utf8');
   const packageJson = JSON.parse(readFileSync(new URL('package.json', projectUrl), 'utf8')) as {
     scripts?: Record<string, string>;
   };
-  assert.match(workflow, /denoland\/setup-deno@v2/);
-  assert.match(workflow, /deno-version:\s*v2\.9\.5/);
+  assert.match(workflow, /DENO_VERSION:\s*2\.9\.6/);
+  assert.match(workflow, /npm install --global --include=optional --registry=https:\/\/registry\.npmjs\.org "deno@\$\{DENO_VERSION\}"/);
+  assert.doesNotMatch(workflow, /denoland\/setup-deno|deno-version:\s*latest|continue-on-error/);
+  assert.match(workflow, /if \[\[ "\$\{actual_version\}" != "\$\{DENO_VERSION\}" \]\]; then[\s\S]*?exit 1/);
   assert.match(workflow, /npm run typecheck:edge/);
   assert.match(packageJson.scripts?.['typecheck:edge'] ?? '', /google-calendar\/index\.ts/);
   assert.match(packageJson.scripts?.['typecheck:edge'] ?? '', /google-calendar-callback\/index\.ts/);
+  assert.match(packageJson.scripts?.['typecheck:edge'] ?? '', /cloud-translate\/index\.ts/);
   assert.match(packageJson.scripts?.['typecheck:edge'] ?? '', /--frozen/);
 });
 

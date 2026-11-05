@@ -20,6 +20,7 @@ concurrency:
 
 env:
   SUPABASE_CLI_VERSION: 2.116.0
+  DENO_VERSION: 2.9.6
 
 jobs:
   build:
@@ -37,10 +38,16 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Setup Deno
-        uses: denoland/setup-deno@v2
-        with:
-          deno-version: v2.9.5
+      - name: Setup Deno from npm
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global --include=optional --registry=https://registry.npmjs.org "deno@${DENO_VERSION}"
+          actual_version="$(deno --version | awk 'NR == 1 { print $2 }')"
+          if [[ "${actual_version}" != "${DENO_VERSION}" ]]; then
+            echo "::error::Expected Deno ${DENO_VERSION}, received ${actual_version}."
+            exit 1
+          fi
 
       - name: Install dependencies
         run: npm ci
