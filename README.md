@@ -1,12 +1,12 @@
 # GSAT Study Tracker
 
-目前版本：**公開版 v171.6.0-public.51**
+目前版本：**公開版 v171.6.0-public.53**
 
 公開版學測讀書追蹤器，整合 Google Calendar 唯讀排程、手動新增項目、Supabase 跨裝置同步、計時、完成率、教材進度與學習總結。
 
 > 此資料夾是與自用版完全分開的公開版本。公開版不建立星期別、固定日期或內建教材行程；Tracker 只加入實際從 Google Calendar 讀到且能辨識科目／教材，或帶有有效 GSAT／GAST 學習識別碼的排程，使用者仍可手動新增項目。
 
-本版同步個人版截至 **v171.6.139** 的共用更新：保留先前的登入、同步、待辦、教材及字典功能，補齊手機三區左右手勢、功能選單跨頁方向與打斷清理、Prompt 樣式隔離、完成率進度條、最小 OAuth 授權及字典／錨點測試時序修正。
+本版新增 Google Cloud Translation 按需翻譯：登入後在英文單字複習編輯單字、組合或句子，按「使用 Google 翻譯」取得繁體中文預覽，確認後才追加。原有 ECDICT、人工翻譯、詞性、級數與星號保留。Google 金鑰只在伺服器；已加入帳號與全站每日額度、獨立來源標示、中英文隱私說明及匯出標示。設定步驟見 [GOOGLE_TRANSLATION_SETUP.md](./GOOGLE_TRANSLATION_SETUP.md)。沿用 public.52 的共用執行效能優化。
 
 公開版繼續使用獨立 Supabase 與 OAuth 設定、`calendar.events.readonly`、通用 GSAT／GAST 識別碼、1050px 內容上限與灰字頁尾。教材頁保留「我的教材／教材進度」兩卡片、卡片外的科目切換及已勾選教材才顯示於手動新增的規則；自然／社會科使用原本的細科分類。每日統計只保留完成時間圓環及兩種完成率。Calendar 失敗或逾時時保留已儲存紀錄，不以舊快照重建排程。
 
@@ -14,9 +14,9 @@
 
 完成率樣式參照個人版 v171.6.137：兩條進度條為欄位內容寬度的 80%，水平置中；標題、百分比與項目數靠左，整組統計維持垂直置中。覆蓋後需重新建置並部署完整 `dist`，才會載入新的樣式雜湊檔。
 
-覆蓋更新後先執行 `npm ci`，再執行 `npm test`、`npm run build` 或原有部署流程。需部署完整 `dist`，讓所有頁面使用 public.51 的共用轉場入口。Word／PDF 依賴、詞庫分片及字型沿用既有版本；本版沒有新依賴、金鑰或資料庫遷移。
+覆蓋更新後執行 `npm ci`、`npm test`、`npm run build`，並發布完整 `dist`。本版無新增 npm 依賴，但必須套用翻譯用量遷移、部署 `cloud-translate`，並在 Supabase Secrets 設定 `GOOGLE_TRANSLATION_API_KEY` 才能啟用 Google 翻譯。GitHub release 已加入函式部署及 GET 檢查；既有 Calendar OAuth 設定與 scope 沿用。未設定翻譯 key 時顯示尚未啟用，ECDICT 與其他功能可繼續使用。本次未操作線上部署。
 
-本版包含共用 OAuth 修正：公開版原本就使用 `calendar.events.readonly`，現在另明確設定 `include_granted_scopes=false`，避免新授權合併先前權限。請透過既有 GitHub Actions release 流程重新部署公開版的 `google-calendar` 與 `google-calendar-callback`，使兩個入口都帶入 `_shared/calendarAuthorization.ts`。公開 Supabase 專案、Client ID、callback 及環境變數沿用原設定；部署後須從網站重新發起 Calendar 連線才會使用新授權網址。[Edge Functions 部署會一起封裝相依模組](https://supabase.com/docs/guides/functions/architecture)。
+public.51 已包含共用 OAuth 修正：公開版原本就使用 `calendar.events.readonly`，並明確設定 `include_granted_scopes=false`，避免新授權合併先前權限。若尚未部署 public.51，請透過既有 GitHub Actions release 流程部署公開版的 `google-calendar` 與 `google-calendar-callback`，使兩個入口都帶入 `_shared/calendarAuthorization.ts`。公開 Supabase 專案、Client ID、callback 及環境變數沿用原設定；部署後須從網站重新發起 Calendar 連線才會使用新授權網址。[Edge Functions 部署會一起封裝相依模組](https://supabase.com/docs/guides/functions/architecture)。
 
 ## I. 使用方式
 

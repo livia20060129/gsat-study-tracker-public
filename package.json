@@ -1,7 +1,7 @@
 {
   "name": "gsat-study-tracker-public",
   "private": true,
-  "version": "171.6.0-public.51",
+  "version": "171.6.0-public.53",
   "type": "module",
   "scripts": {
     "validate:env": "node scripts/validate-public-env.mjs",
@@ -14,9 +14,10 @@
     "preview:e2e": "vite preview --configLoader runner --host=127.0.0.1 --port=4174 --strictPort",
     "deploy:cloudflare": "npm run build && wrangler deploy",
     "typecheck": "tsc --noEmit",
-    "typecheck:edge": "deno check --config supabase/functions/google-calendar/deno.json --frozen supabase/functions/google-calendar/index.ts && deno check --config supabase/functions/google-calendar-callback/deno.json --frozen supabase/functions/google-calendar-callback/index.ts",
+    "typecheck:edge": "deno check --config supabase/functions/google-calendar/deno.json --frozen supabase/functions/google-calendar/index.ts && deno check --config supabase/functions/google-calendar-callback/deno.json --frozen supabase/functions/google-calendar-callback/index.ts && deno check --config supabase/functions/cloud-translate/deno.json --frozen supabase/functions/cloud-translate/index.ts",
     "pretest": "npm run validate:env && node --experimental-strip-types --test tests/publicProjectBinding.test.ts",
     "test": "node --experimental-strip-types --test \"tests/*.test.ts\"",
+    "benchmark:runtime": "node --experimental-strip-types scripts/benchmark_runtime.ts",
     "test:e2e": "npm run build && playwright test"
   },
   "devDependencies": {

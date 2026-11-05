@@ -1,4 +1,14 @@
 @import "./header-action-link.css";
+
+.cloud-translation-preview{grid-column:1/-1;min-width:0;padding:12px;border:1px solid #d4deed;border-radius:12px;background:#f7faff}
+.cloud-translation-preview button{min-height:40px;max-width:100%;padding:8px 11px;border:1px solid #bfd1e9;border-radius:9px;background:#fff;color:#244c83;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
+.cloud-translation-preview button:disabled{opacity:.5;cursor:not-allowed}
+.cloud-translation-preview button:focus-visible{outline:3px solid rgba(49,94,251,.24);outline-offset:2px}
+.cloud-translation-status{margin:8px 0;color:#64748b;font-size:12px}
+.cloud-translation-result{white-space:pre-wrap;overflow-wrap:anywhere;color:#17233a}
+.cloud-translation-preview [data-cloud-translation-apply]{display:block;margin-top:10px}
+.google-translation-attribution{display:block;width:200px;max-width:100%;margin:8px 0}
+.google-translation-attribution img{display:block;width:100%;height:auto}
 :root{font-family:Inter,"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;color:#17233a;font-synthesis:none;text-rendering:optimizeLegibility}
 *{box-sizing:border-box}body{margin:0;min-width:320px;}button,input,a{font:inherit}
 .vocabulary-page{max-width:1050px;margin:0 auto;padding:24px 14px 64px}.vocabulary-page-header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px}.vocabulary-page-header h1{margin:0;font-size:28px}.vocabulary-page-header p{margin:5px 0 0;color:#64748b;font-size:13px}

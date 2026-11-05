@@ -1,6 +1,7 @@
 import type { VocabularyContentKind, VocabularyReviewEntry } from './vocabularyReview.ts';
 import { vocabularyMeaningGroups } from './vocabularyMeaningGroups.ts';
 import { ECDICT_MIT_LICENSE } from '../data/vocabularyLicenses.ts';
+import { GOOGLE_TRANSLATION_BADGE_BASE64 } from '../data/googleTranslationBadge.ts';
 
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, character => ({
@@ -15,6 +16,8 @@ export function vocabularyPrintDocument(
   withTranslations: boolean,
 ): string {
   const title = `英文${kind === '單字' ? '單字' : kind}表（${withTranslations ? '有' : '無'}翻譯）`;
+  const googleAttribution = withTranslations && entries.some(entry => entry.cloudTranslationSources?.length)
+    ? `<tr><th colspan="3"><a href="https://translate.google.com/"><img src="data:image/png;base64,${GOOGLE_TRANSLATION_BADGE_BASE64}" alt="powered by Google Translate" style="width:200px;height:auto"></a></th></tr>` : '';
   const notices = [];
   if (entries.some(entry => entry.referenceSources?.ceec)) {
     notices.push('<p>學測級數參考：大學入學考試中心《高中英文參考詞彙表》（111 學年度起適用，109 年 7 月）。著作權屬財團法人大學入學考試中心基金會，僅供非營利目的使用。</p>');
@@ -26,6 +29,7 @@ export function vocabularyPrintDocument(
   if (withTranslations && entries.some(entry => entry.dictionarySources?.some(source => source.provider === 'cambridge'))) {
     notices.push('<p>歷史保存釋義來源：Cambridge Dictionary（線上服務已停用）。只保留既有資料的出處，不將舊內容改標為 ECDICT；內容使用與匯出範圍仍依原字典授權辦理。</p>');
   }
+  if (googleAttribution) notices.push('<p>部分翻譯由 Google Translate 透過 Cloud Translation API 提供，可能包含手動修改。機器翻譯可能有誤，請自行確認。</p>');
   const tables = entries.map(function entryRows(entry): string {
     const groups = vocabularyMeaningGroups(entry, kind);
     const rowCount = groups.reduce((total, group) => total + group.meanings.length, 0);
@@ -49,7 +53,7 @@ h1{margin:0 0 12px;font-size:16pt;font-weight:600}table{width:100%;table-layout:
 @media print{body{margin:0}.print-actions{display:none}}
 </style></head><body>
 <div class="print-actions"><button id="printVocabulary" type="button">列印／儲存為 PDF</button><p>目的地選擇「儲存為 PDF」。建議關閉瀏覽器的頁首及頁尾，避免加入網址與日期。</p></div>
-<h1>${title}</h1><table aria-label="${title}"><colgroup><col><col><col></colgroup><thead><tr><th scope="col">英文</th><th scope="col">詞性</th><th scope="col">中文翻譯</th></tr></thead>${tables.join('')}</table>
+<h1>${title}</h1><table aria-label="${title}"><colgroup><col><col><col></colgroup><thead>${googleAttribution}<tr><th scope="col">英文</th><th scope="col">詞性</th><th scope="col">中文翻譯</th></tr></thead>${tables.join('')}</table>
 ${notices.length ? `<footer class="source-notices">${notices.join('')}</footer>` : ''}
 <script>document.getElementById('printVocabulary').addEventListener('click',function(){window.print()});</script>
 </body></html>`;

@@ -3,8 +3,9 @@ import { animateDisclosureReplacement, captureDisclosure } from './ui/disclosure
 import { saveLocalRecordEdit } from './application/records/localRecordEdits.ts';
 import { ACTIVE_RECORD_PREFIX_KEY } from './storage/local.ts';
 import { DictionaryPreview } from './ui/dictionaryPreview.ts';
+import { CloudTranslationPreview, googleTranslationAttribution } from './ui/cloudTranslationPreview.ts';
 import { VocabularySpeech, type VocabularyAccent } from './ui/vocabularySpeech.ts';
-import { readMaterialProgressRecords } from './study/materialProgress.ts';
+import { activeStudyRecordPrefix, readMaterialProgressRecords } from './study/materialProgress.ts';
 import {
   normalizedGsatVocabularyLevel,
   updateVocabularyWordEntries,
@@ -40,6 +41,8 @@ let translationsVisible = true;
 const editingEntryKeys = new Set<string>();
 const annotatingEntryKeys = new Set<string>();
 const dictionaryPreviews = new Set<DictionaryPreview>();
+const cloudTranslationPreviews = new Map<string, CloudTranslationPreview>();
+const renderedCloudTranslationKeys = new Set<string>();
 const speech = new VocabularySpeech(document.getElementById('vocabularySpeechStatus')!);
 let vocabularyPointerActive = false;
 let vocabularyRefreshPending = false;
@@ -141,8 +144,10 @@ function createWordLink(entry: VocabularyReviewEntry): HTMLElement {
 
 function saveEntryEditsResult(entry: VocabularyReviewEntry, edits: VocabularyWordEdits): 'saved' | 'unchanged' | 'failed' {
   let changed = false;
+  const sourceDates = new Set(entry.sourceDates);
   try {
     for (const [index, base] of loadedRecords.entries()) {
+      if (!sourceDates.has(base.date)) continue;
       const draft = cloneRecord(base);
       if (!updateVocabularyWordEntries(draft, entry.key, edits)) continue;
       const edited = saveLocalRecordEdit(localStorage, activeRecordPrefix, base, function applyWordEdit(): StudyRecord {
@@ -347,7 +352,7 @@ function createWordTranslationEditor(entry: VocabularyReviewEntry): HTMLElement 
   for (const [field, label] of VOCABULARY_PARTS_OF_SPEECH) {
     if (entry.tags.includes(label)) editor.append(createTranslationGroup(field, label, groups[field] ?? ['']));
   }
-  if (groups.unclassified) editor.append(createTranslationGroup('unclassified', entry.dictionarySources?.length ? '未分詞性' : '未分詞性（舊翻譯）', groups.unclassified));
+  if (groups.unclassified) editor.append(createTranslationGroup('unclassified', entry.dictionarySources?.length || entry.cloudTranslationSources?.length ? '未分詞性' : '未分詞性（舊翻譯）', groups.unclassified));
   if (!editor.childElementCount) {
     const hint = document.createElement('p');
     hint.className = 'vocabulary-translation-hint';
@@ -384,6 +389,7 @@ function createReadonlyTranslations(entry: VocabularyReviewEntry): HTMLElement {
     container.append(group);
   }
   setTranslationVisibility(container);
+  if (entry.cloudTranslationSources?.length) container.append(googleTranslationAttribution());
   return container;
 }
 
@@ -408,7 +414,7 @@ function updateTranslationVisibility(): void {
   }
 }
 
-function createVocabularyRow(entry: VocabularyReviewEntry): HTMLElement {
+function createVocabularyRow(entry: VocabularyReviewEntry, displayGroup = 'alphabetical'): HTMLElement {
   const article = document.createElement('article');
   article.className = 'vocabulary-row';
   article.dataset.entryKey = entry.key;
@@ -511,6 +517,22 @@ function createVocabularyRow(entry: VocabularyReviewEntry): HTMLElement {
       editors.classList.add('is-translation-only');
       editors.append(createTranslationEditor(entry));
     }
+    const translationScope = activeRecordPrefix;
+    const translationKey = JSON.stringify([translationScope, entry.key, entry.text, displayGroup]);
+    let cloudPreview = cloudTranslationPreviews.get(translationKey);
+    if (!cloudPreview) cloudPreview = new CloudTranslationPreview({ text: entry.text, scope: translationScope,
+      apply(result): 'saved' | 'unchanged' | 'failed' {
+        const current = allEntries.find(candidate => candidate.key === entry.key);
+        if (activeRecordPrefix !== translationScope || activeStudyRecordPrefix(localStorage) !== translationScope
+          || !current || current.text !== entry.text || !editingEntryKeys.has(current.key)) return 'failed';
+        const outcome = saveEntryEditsResult(current, { cloudTranslation: result });
+        if (outcome === 'saved') renderEntries();
+        return outcome;
+      },
+    });
+    cloudTranslationPreviews.set(translationKey, cloudPreview);
+    renderedCloudTranslationKeys.add(translationKey);
+    editors.append(cloudPreview.element);
     article.append(identity, editors);
   } else {
     article.append(identity, createReadonlyTranslations(entry));
@@ -530,7 +552,7 @@ function createVocabularyGroup(
   heading.textContent = label;
   const list = document.createElement('div');
   list.className = 'vocabulary-letter-list';
-  list.append(...entries.map(createVocabularyRow));
+  list.append(...entries.map(entry => createVocabularyRow(entry, key)));
   section.append(heading, list);
   return section;
 }
@@ -588,6 +610,7 @@ function renderEntries(): void {
   element('vocabularyLegacySources').hidden = !allEntries.some(entry => entry.dictionarySources?.some(source => source.provider === 'cambridge'));
   speech.cancel();
   for (const preview of dictionaryPreviews) preview.dispose();
+  renderedCloudTranslationKeys.clear();
   dictionaryPreviews.clear();
   const entries = filteredEntries();
   const list = element<HTMLDivElement>('vocabularyList');
@@ -603,9 +626,12 @@ function renderEntries(): void {
       rows = vocabularyLevelGroups(entries).map(group => createVocabularyGroup(`level-${group.level}`, group.label, group.entries));
       break;
     default:
-      rows = entries.map(createVocabularyRow);
+      rows = entries.map(entry => createVocabularyRow(entry));
   }
   list.replaceChildren(...rows);
+  for (const [key, preview] of cloudTranslationPreviews) {
+    if (!renderedCloudTranslationKeys.has(key)) { preview.dispose(); cloudTranslationPreviews.delete(key); }
+  }
   empty.hidden = entries.length > 0;
   if (!allEntries.length) empty.textContent = '目前尚未在 Tracker 新增英文單字。';
   else if (groupingMode === 'gsatLevel' && !searchText) empty.textContent = '目前沒有勾選顯示學測級數的單字。';

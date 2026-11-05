@@ -2,6 +2,8 @@ import { AlignmentType, BorderStyle, Document, HeadingLevel, HeightRule, Packer,
 import { vocabularyExportNotices, vocabularyExportTitle } from './vocabularyExportContent.ts';
 import { vocabularyMeaningGroups } from './vocabularyMeaningGroups.ts';
 import type { VocabularyContentKind, VocabularyReviewEntry } from './vocabularyReview.ts';
+import { Header, ImageRun } from 'docx';
+import { googleTranslationBadgeBytes, GOOGLE_TRANSLATION_BADGE_HEIGHT, GOOGLE_TRANSLATION_BADGE_WIDTH } from '../data/googleTranslationBadge.ts';
 const COLUMN_WIDTHS = [3400, 1800, 4438];
 const BORDER = { style: BorderStyle.SINGLE, size: 6, color: 'D9D9D9' } as const;
 function cell(text: string, column: number, merge?: 'restart' | 'continue', header = false, lastRowInMerge = true): TableCell {
@@ -38,9 +40,13 @@ export async function vocabularyDocxDocument(entries: VocabularyReviewEntry[], k
         }
     }
     const title = vocabularyExportTitle(kind, withTranslations);
+    const googleAttribution = withTranslations && entries.some(entry => entry.cloudTranslationSources?.length);
     const document = new Document({ creator: 'GSAT Study Tracker', title,
         styles: { default: { document: { run: { font: 'Microsoft JhengHei', size: 22, color: '000000' } } } },
-        sections: [{ properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1134, bottom: 1134, left: 1134, right: 1134 } } }, children: [
+        sections: [{ headers: googleAttribution ? { default: new Header({ children: [new Paragraph({ children: [
+                    new ImageRun({ type: 'png', data: googleTranslationBadgeBytes(), transformation: { width: 200, height: 200 * GOOGLE_TRANSLATION_BADGE_HEIGHT / GOOGLE_TRANSLATION_BADGE_WIDTH } }),
+                ] })] }) } : undefined,
+            properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1134, bottom: 1134, left: 1134, right: 1134, ...(googleAttribution ? { header: 280 } : {}) } } }, children: [
                     new Paragraph({ heading: HeadingLevel.TITLE, spacing: { after: 220 }, children: [new TextRun({ text: title, size: 32, bold: true, color: '000000' })] }),
                     new Table({ rows, columnWidths: COLUMN_WIDTHS, layout: TableLayoutType.FIXED, width: { size: 9638, type: WidthType.DXA },
                         borders: { top: BORDER, bottom: BORDER, left: BORDER, right: BORDER, insideHorizontal: BORDER, insideVertical: BORDER } }),

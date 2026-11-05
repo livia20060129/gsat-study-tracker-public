@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>單字資料來源與授權｜GSAT Study Tracker</title>
-<script src="./page-transitions.js?v=171.6.0-public.51"></script>
-<link rel="stylesheet" href="./navigation.css?v=171.6.0-public.51">
-<link rel="stylesheet" href="./site-shell.css?v=171.6.0-public.51">
+<script src="./page-transitions.js?v=171.6.0-public.53"></script>
+<link rel="stylesheet" href="./navigation.css?v=171.6.0-public.53">
+<link rel="stylesheet" href="./site-shell.css?v=171.6.0-public.53">
 <style>
 body{max-width:800px;margin:40px auto;padding:0 20px;font:16px/1.8 system-ui,"Microsoft JhengHei",sans-serif;color:#24364b}
 h1{margin:0;font-size:26px}h2{font-size:20px}a{color:#315b91;overflow-wrap:anywhere}
@@ -27,5 +27,8 @@ section{margin:20px 0;padding:18px;border:1px solid #d7e0ec;border-radius:14px;b
 <section><h2>本機 ECDICT 預覽與確認填入</h2>
 <p>輸入單字後離開英文欄位，即自動帶入查到的 ECDICT 中文翻譯與詞性，不必先按「取得翻譯」。後續仍可修改詞性、新增或刪除各個中文意思；手動內容不會被自動查詢覆蓋。在編輯模式也可按「取得翻譯」查看候選意思，再選擇要追加的內容。未收錄或暫時無法載入時保留英文與手動編輯功能。</p>
 <p>參考來源集中於「英文單字複習」頁面標題下方。</p></section>
+<section><h2>Google Cloud Translation 按需翻譯</h2>
+<p>登入 Tracker 後，可在單字、組合或句子的編輯區按「使用 Google 翻譯」，以 <a href="https://cloud.google.com/translate" target="_blank" rel="noopener noreferrer">Cloud Translation API</a> 將選定英文翻成繁體中文。只送出該段英文；不會自動傳送筆記或整份紀錄，也不會在本機字典查不到時自動轉送。Google 機器翻譯可能有誤，確認預覽後才追加填入，不推測詞性或學測級數。</p>
+<p>已保存的 Google 翻譯保留獨立來源標示；有翻譯 PDF、Word 與列印檔包含 Google 標示，無翻譯練習檔不含中文答案。Google 來源不會改標成 ECDICT。資料處理見 <a href="./privacy.html">隱私權政策</a>，服務及免責說明見 <a href="./support.html">使用者支援</a>。</p></section>
 <section><h2>使用者資料</h2><p>自動帶入只在完整單字輸入完成、離開英文欄位時執行，組合與句子不套用。手動修改優先，既有紀錄不會在開啟頁面時被批次重寫。自動帶入及使用者修改皆沿用原本的本機保存、匯出／匯入與帳號同步流程。</p></section>
 </body></html>

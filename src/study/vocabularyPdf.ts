@@ -3,6 +3,7 @@ import { PDFDocument, PageSizes, rgb, type PDFFont, type PDFPage } from 'pdf-lib
 import { vocabularyExportNotices, vocabularyExportTitle } from './vocabularyExportContent.ts';
 import { vocabularyMeaningGroups } from './vocabularyMeaningGroups.ts';
 import type { VocabularyContentKind, VocabularyReviewEntry } from './vocabularyReview.ts';
+import { googleTranslationBadgeBytes } from '../data/googleTranslationBadge.ts';
 
 const MARGIN = 20 * 72 / 25.4;
 const [PAGE_WIDTH, PAGE_HEIGHT] = PageSizes.A4;
@@ -73,6 +74,10 @@ export async function vocabularyPdfDocument(entries: VocabularyReviewEntry[], ki
     // Keep copyable Unicode glyphs; automatic fraction/ligature substitutions lose mappings.
     features: { frac: false, numr: false, dnom: false, liga: false, clig: false, calt: false, locl: false, ccmp: false },
   });
+  const googleBadge = withTranslations && entries.some(entry => entry.cloudTranslationSources?.length)
+    ? await document.embedPng(googleTranslationBadgeBytes()) : undefined;
+  const googleBadgeHeight = googleBadge ? googleBadge.height * 160 / googleBadge.width : 0;
+  const attributionSpace = googleBadge ? googleBadgeHeight + 8 : 0;
   const title = vocabularyExportTitle(kind, withTranslations);
   document.setTitle(title);
   document.setCreator('GSAT Study Tracker');
@@ -88,6 +93,10 @@ export async function vocabularyPdfDocument(entries: VocabularyReviewEntry[], ki
       top -= 38;
     }
     if (table) {
+      if (googleBadge) {
+        page.drawImage(googleBadge, { x: MARGIN, y: top - googleBadgeHeight, width: 160, height: googleBadgeHeight });
+        top -= attributionSpace;
+      }
       let x = MARGIN;
       ['英文', '詞性', '中文翻譯'].forEach(function heading(label, column): void {
         drawCell(page, font, [label], x, top, COLUMN_WIDTHS[column], HEADER_HEIGHT, true);
@@ -102,7 +111,7 @@ export async function vocabularyPdfDocument(entries: VocabularyReviewEntry[], ki
     const english = wrappedLines(entry.text, font, FONT_SIZE, COLUMN_WIDTHS[0] - PADDING * 2);
     const rows = entryRows(entry, kind, withTranslations, font);
     const englishHeight = english.length * LINE_HEIGHT + PADDING * 2;
-    const freshPageSpace = PAGE_HEIGHT - MARGIN * 2 - HEADER_HEIGHT;
+    const freshPageSpace = PAGE_HEIGHT - MARGIN * 2 - HEADER_HEIGHT - attributionSpace;
     if (englishHeight > freshPageSpace) throw new Error('The English text is too long for one PDF page.');
     const blockHeight = rows.reduce((sum, row) => sum + row.height, 0);
     if (englishHeight > blockHeight) rows[rows.length - 1].height += englishHeight - blockHeight;

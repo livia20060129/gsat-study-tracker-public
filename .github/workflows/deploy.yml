@@ -159,6 +159,11 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: supabase functions deploy google-calendar-callback --project-ref "$SUPABASE_PROJECT_ID"
 
+      - name: Deploy cloud-translate function
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase functions deploy cloud-translate --project-ref "$SUPABASE_PROJECT_ID"
+
       - name: Smoke-test deployed functions
         shell: bash
         run: |
@@ -190,6 +195,7 @@ jobs:
           base_url="https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1"
           smoke_check "google-calendar" "${base_url}/google-calendar" 405 'POST required'
           smoke_check "google-calendar-callback" "${base_url}/google-calendar-callback" 400 '<!doctype html>'
+          smoke_check "cloud-translate" "${base_url}/cloud-translate" 405 'method_not_allowed'
 
   deploy:
     name: Deploy GitHub Pages

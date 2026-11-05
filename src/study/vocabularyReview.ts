@@ -2,6 +2,8 @@ import type { EnglishReviewWordEntry, GsatVocabularyLevel, StudyItem, StudyRecor
 import { isVocabularyStarKey, normalizedVocabularyStars, remapVocabularyMeaningStars } from './vocabularyStars.ts';
 import { applyVocabularyAutoFill, markVocabularyManualFields, vocabularyAutoFillSources } from './vocabularyAutoFill.ts';
 import { applyDictionarySelection, dictionarySources } from './dictionarySelection.ts';
+import { applyCloudTranslation } from './cloudTranslationSelection.ts';
+import { cloudTranslationSources, type CloudTranslation } from './cloudTranslation.ts';
 import type { DictionaryLookupResult, DictionarySourceReference } from './dictionaryEntries.ts';
 import {
   normalizedVocabularyTranslations,
@@ -32,6 +34,7 @@ export interface VocabularyWordEdits {
   autoFill?: boolean;
   autoFillTranslations?: VocabularyTranslations;
   dictionarySelection?: DictionaryLookupResult;
+  cloudTranslation?: CloudTranslation;
   contentKind?: VocabularyContentKind;
   partsOfSpeech?: ReadonlySet<VocabularyPartOfSpeechField>;
   text?: string;
@@ -58,6 +61,7 @@ export interface VocabularyReviewEntry {
   occurrenceCount: number;
   referenceSources?: { ceec: boolean; ecdict: boolean };
   dictionarySources?: DictionarySourceReference[];
+  cloudTranslationSources?: CloudTranslation[];
 }
 
 interface MutableVocabularyReviewEntry extends Omit<VocabularyReviewEntry, 'tags' | 'contentKinds' | 'sourceDates'> {
@@ -178,6 +182,8 @@ function collectItemWords(
       if (word.vocabularyStars) entry.vocabularyStars = { ...entry.vocabularyStars, ...normalizedVocabularyStars(word.vocabularyStars) };
       const sources = dictionarySources(word.dictionarySources);
       if (sources.length) entry.dictionarySources = dictionarySources([...(entry.dictionarySources ?? []), ...sources]);
+      const cloudSources = cloudTranslationSources(word.cloudTranslationSources);
+      if (cloudSources.length) entry.cloudTranslationSources = cloudTranslationSources([...(entry.cloudTranslationSources ?? []), ...cloudSources]);
       const referenceSources = vocabularyAutoFillSources(word);
       if (referenceSources) entry.referenceSources = {
         ceec: entry.referenceSources?.ceec === true || referenceSources.ceec,
@@ -338,6 +344,7 @@ function updateItemWords(
         changed = true;
       }
       if (edits.dictionarySelection && applyDictionarySelection(word, edits.dictionarySelection)) changed = true;
+      if (edits.cloudTranslation && applyCloudTranslation(word, edits.cloudTranslation)) changed = true;
       if (word.vocabularyStars && (edits.translation !== undefined || edits.translationsByPartOfSpeech !== undefined)) {
         const removal = edits.translationRemoval;
         const partOfSpeech = VOCABULARY_PARTS_OF_SPEECH.find(([field]) => field === removal?.field)?.[1] ?? '未分詞性';

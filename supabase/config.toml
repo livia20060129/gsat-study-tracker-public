@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.google-calendar-callback]
 verify_jwt = false
+
+[functions.cloud-translate]
+verify_jwt = false
