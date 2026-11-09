@@ -456,7 +456,7 @@ test('date switching saves the current date before loading the requested date', 
     'state:local',
   ]);
   assert.equal(nodes.studyDate.value, '2026-09-11');
-  assert.match(nodes.status.textContent, /已存本機 2026-09-10.*切換至 2026-09-11.*背景同步/);
+  assert.match(nodes.status.textContent, /已存本機 2026-09-10.*切換至 2026-09-11.*儲存紀錄或重新載入/);
 });
 
 test('date switching stays on the current date when saving fails', () => {
@@ -563,32 +563,43 @@ test('Calendar grouped math refresh repairs blank ranges, retains manual ranges 
   assert.deepEqual([merge(unresolved, repaired).f.start, merge(unresolved, repaired).f.end], ['237', '245']);
 });
 
-test('ten-minute cloud save uploads the current record without interrupting its timer', async () => {
+test('passive save requests do not upload a record or interrupt its timer', () => {
   const timeTracking = { mode: 'timer', accumulatedSeconds: 42, startedAt: 1_788_000_000_000 };
   const currentRecord = { date: '2026-09-10', localDirty: true, syncConflict: false, items: [{ f: { timeTracking } }] };
   const calls: string[] = [];
-  const savePeriodically = runtimeFunction<() => Promise<boolean>>('periodicCloudSave', {
-    periodicCloudSaveBusy: false,
+  const queue = runtimeFunction<(record: unknown, bootstrap?: boolean, trigger?: string) => void>('queueCloudSave', {
     data: currentRecord,
     cloudUser: { id: 'user-1' },
     cloudClient: {},
     cloudLoading: false,
     cloudBootstrapPending: false,
     currentStorageIsUserScoped: () => true,
-    persist: () => { calls.push('persist'); return true; },
-    readStoredRecord: () => currentRecord,
-    queueCloudSave: () => { calls.push('queue'); },
-    cloudSaveQueue: { flush: async (date: string) => { calls.push(`flush:${date}`); currentRecord.localDirty = false; } },
+    schedulePendingCloudSync: () => { calls.push('local-status'); },
+    cloudSaveQueue: { enqueue: () => { calls.push('upload'); } },
   });
 
-  assert.equal(await savePeriodically(), true);
-  assert.deepEqual(calls, ['persist', 'queue', 'flush:2026-09-10']);
+  queue(currentRecord);
+  assert.deepEqual(calls, ['local-status']);
+  assert.equal(currentRecord.localDirty, true);
   assert.deepEqual(timeTracking, { mode: 'timer', accumulatedSeconds: 42, startedAt: 1_788_000_000_000 });
 });
 
-test('periodic cloud save interval is exactly ten minutes', () => {
-  assert.match(runtime, /PERIODIC_CLOUD_SAVE_MS\s*=\s*10\s*\*\s*60\s*\*\s*1000/);
-  assert.match(runtime, /setInterval\(periodicCloudSave,PERIODIC_CLOUD_SAVE_MS\)/);
+test('cloud synchronization has no periodic or focus-triggered upload scanner', () => {
+  assert.doesNotMatch(runtime, /setInterval\((periodicCloudSave|schedulePendingCloudSync|refreshBackgroundCalendarSchedule)/);
+  assert.doesNotMatch(runtime, /addEventListener\('focus',(?:schedulePendingCloudSync|refreshBackgroundCalendarSchedule)/);
+});
+
+test('switching a cached account date before login confirmation cannot replace saved Calendar work with built-ins', () => {
+  const saved = { date: '2026-11-02', items: [item({ id: 'saved-calendar', source: 'preset', done: true,
+    minutes: '25', presetKey: 'cal_ace_3', f: { calendarEventKey: 'primary:a', title: 'ACE Reading', round: '3' } })] };
+  for (const cloudUser of [null, { id: 'a' }]) {
+    const record = structuredClone(saved);
+    const ensure = runtimeFunction<(record: unknown, date: string) => boolean>('ensureDailyPresets', {
+      DAILY_PRESET_START: '2026-08-10', STORE_PREFIX: 'study-v11:user:a:', cloudSessionRestoring: true, cloudUser,
+    });
+    assert.equal(ensure(record, record.date), false);
+    assert.deepEqual(record, saved);
+  }
 });
 
 const renderingDependencies = {

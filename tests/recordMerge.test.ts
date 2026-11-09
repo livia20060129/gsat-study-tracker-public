@@ -361,6 +361,25 @@ test('dirty record with a common base can merge a newer cloud revision', () => {
   assert.equal(decideRevisionSync(local, cloud), 'push-local');
 });
 
+test('a delayed older cloud response cannot roll back an already confirmed local revision',()=>{
+  const local=markRecordSynced({date:'2026-09-12',serverRevision:8,notes:'已同步的新筆記',items:[]});
+  const older=markRecordSynced({date:local.date,serverRevision:7,notes:'舊筆記',items:[]});
+  assert.equal(decideRevisionSync(local,older),'keep-local');
+});
+
+test('equal payloads cannot downgrade the confirmed local revision',()=>{
+  const local=markRecordSynced({date:'2026-09-12',serverRevision:8,notes:'相同內容',items:[]});
+  assert.equal(decideRevisionSync(local,{...local,serverRevision:7}),'keep-local');
+});
+
+test('a stale cloud read still preserves newer unsent local edits and unresolved conflicts',()=>{
+  const base=markRecordSynced({date:'2026-09-12',serverRevision:8,notes:'已確認',items:[]});
+  const local=markRecordLocallyEdited({...base,notes:'後續修改'},base);
+  const old=markRecordSynced({...base,serverRevision:7});
+  assert.equal(decideRevisionSync(local,old),'push-local');
+  assert.equal(decideRevisionSync({...local,syncConflict:true},old),'conflict');
+});
+
 test('records from different dates are never combined', () => {
   assert.throws(
     () => mergeStudyRecordsForUpload(

@@ -88,18 +88,30 @@ export async function loadAllCalendarTaskRows(
   client: SupabaseCalendarTaskClient,
   userId: string,
 ): Promise<CalendarTaskRow[]> {
+  return loadCalendarTaskPages(async function readPage(cursor) {
+    let query = client.from('calendar_tasks').select(CALENDAR_TASK_COLUMNS).eq('user_id', userId);
+    if (cursor) query = query.or(afterCalendarTaskCursor(cursor));
+    return query.order('event_date', { ascending: true }).order('event_key', { ascending: true }).limit(CALENDAR_TASK_PAGE_SIZE);
+  });
+}
+
+export async function fetchAllCalendarTaskRows(url: string, userId: string, headers: HeadersInit, fetcher: typeof fetch = fetch): Promise<CalendarTaskRow[]> {
+  return loadCalendarTaskPages(async function readPage(cursor) {
+    const query = new URLSearchParams({ select: CALENDAR_TASK_COLUMNS, user_id: `eq.${userId}`,
+      order: 'event_date.asc,event_key.asc', limit: String(CALENDAR_TASK_PAGE_SIZE) });
+    if (cursor) query.set('or', `(${afterCalendarTaskCursor(cursor)})`);
+    const response = await fetcher(`${url}/rest/v1/calendar_tasks?${query}`, { headers, signal: AbortSignal.timeout(15000), cache: 'no-store' });
+    if (!response.ok) throw new Error('Calendar 排程暫時無法讀取。');
+    return { data: await response.json(), error: null };
+  });
+}
+
+async function loadCalendarTaskPages(readPage: (cursor: CalendarTaskCursor | null) => Promise<SupabaseResult<unknown>>): Promise<CalendarTaskRow[]> {
   const rows: CalendarTaskRow[] = [];
   let cursor: CalendarTaskCursor | null = null;
 
   while (true) {
-    let query = client.from('calendar_tasks').select(CALENDAR_TASK_COLUMNS).eq('user_id', userId);
-    if (cursor) query = query.or(afterCalendarTaskCursor(cursor));
-    query = query
-      .order('event_date', { ascending: true })
-      .order('event_key', { ascending: true })
-      .limit(CALENDAR_TASK_PAGE_SIZE);
-
-    const result = await query;
+    const result = await readPage(cursor);
     if (result.error) throw new Error(errorMessage(result.error));
     if (!Array.isArray(result.data)) throw new Error('Calendar 回應格式不完整，已停止更新以保留上一次排程。');
     const page = result.data;

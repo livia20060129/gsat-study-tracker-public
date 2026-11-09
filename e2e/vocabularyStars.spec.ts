@@ -125,8 +125,8 @@ test('a deleted unrelated record cannot block any of the three star controls', a
   expect(await page.evaluate(() => localStorage.getItem('study-v11:guest:2026-10-30'))).toBeNull();
 });
 
-test('touching the icon center or button edge toggles every star type', async ({ browser }) => {
-  const context = await browser.newContext({ baseURL: 'http://127.0.0.1:4174', viewport: { width: 375, height: 812 }, hasTouch: true });
+test('touching the icon center or button edge toggles every star type', async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, viewport: { width: 375, height: 812 }, hasTouch: true });
   try {
     const page = await context.newPage();
     await seed(page);

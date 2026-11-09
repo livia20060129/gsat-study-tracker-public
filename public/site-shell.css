@@ -1,3 +1,22 @@
+.ui-icon { display:inline-block; width:20px; height:20px; vertical-align:middle; flex:none; pointer-events:none; }
+.ui-sr-only { position:absolute!important; width:1px!important; height:1px!important; padding:0!important; margin:-1px!important; overflow:hidden!important; clip-path:inset(50%)!important; white-space:nowrap!important; border:0!important; }
+button.ui-icon-only { display:inline-flex; align-items:center; justify-content:center; min-width:36px; min-height:36px; padding:6px; }
+button.ui-icon-only.delete { color:#718096; background:transparent; border-color:transparent; }
+button.ui-icon-only.delete:hover, button.ui-icon-only.delete:focus-visible { color:#bc3c48; background:#fff1f2; }
+.ui-disclosure-summary { list-style:none; }
+.ui-disclosure-summary::-webkit-details-marker { display:none; }
+.ui-disclosure-chevron { width:15px; height:15px; margin-left:8px; color:#778394; transition:transform .24s ease; }
+details[open]>.ui-disclosure-summary>.ui-disclosure-chevron { transform:rotate(180deg); }
+details[data-disclosure-motion=closing]>.ui-disclosure-summary>.ui-disclosure-chevron { transform:none; }
+.routine-disclosure-toggle i { display:none!important; }
+.connection-symbol::before { content:none!important; }
+.connection-symbol .ui-icon { width:15px; height:15px; transition:transform .24s ease; }
+.connection-dock[open] .connection-symbol .ui-icon { transform:rotate(180deg); }
+.routine-disclosure>.ui-disclosure-summary>.ui-disclosure-chevron { margin-left:auto; }
+.site-mobile-bar button [data-ui-icon] { line-height:1; }
+@media(pointer:coarse) { button.ui-icon-only { min-width:44px; min-height:44px; } }
+@media(prefers-reduced-motion:reduce) { .ui-disclosure-chevron { transition:none; } }
+
 html.site-shell-ready {
   scrollbar-gutter: stable;
   --rail-left: 240px;
@@ -521,6 +540,17 @@ body.has-site-shell {
 }
 
 @media (max-width:1199px) {
+  /* Android WebView can pan the layout viewport to an animated offscreen
+     descendant, even when only the root element clips horizontal overflow. */
+  html.site-shell-ready, body.has-site-shell { overflow-x: clip; }
+  .site-mobile-motion-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    overflow: clip;
+    pointer-events: none;
+    contain: layout paint;
+  }
   html[data-menu-page-entry], html[data-menu-page-departure] { overflow-x: clip; }
   html[data-menu-page-entry=pending] body > :is(main,header,footer,section) { visibility: hidden; }
   html[data-mobile-slide-direction] { overflow-x: clip; }

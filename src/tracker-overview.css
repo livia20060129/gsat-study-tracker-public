@@ -231,11 +231,11 @@
 }
 
 .overview-metric-stat[data-metric-view=completion] .metric-segment-indicator {
-  transform: translateX(100%);
+  transform: translateX(0);
 }
 
-.overview-metric-stat[data-metric-view=pages] .metric-segment-indicator {
-  transform: translateX(0);
+.overview-metric-stat[data-metric-view=reminder] .metric-segment-indicator {
+  transform: translateX(100%);
 }
 
 .overview-metric-stat .metric-panel-stage {

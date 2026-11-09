@@ -57,7 +57,7 @@ test('production release deploys Supabase before publishing the prepared Pages a
   const calendarDeploy = workflow.indexOf('supabase functions deploy google-calendar --project-ref');
   const callbackDeploy = workflow.indexOf('supabase functions deploy google-calendar-callback --project-ref');
   const smokeTest = workflow.indexOf('Smoke-test deployed functions');
-  const pagesDeploy = workflow.indexOf('uses: actions/deploy-pages@v4');
+  const pagesDeploy = workflow.indexOf('uses: actions/deploy-pages@');
 
   assert.match(workflow, /pull_request:\s*[\s\S]*branches:\s*[\s\S]*- main/);
   assert.match(workflow, /cancel-in-progress:\s*false/);

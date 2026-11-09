@@ -60,7 +60,7 @@ function isWeekly(item: StudyItem): boolean {
 
 /** Manual cards own their range and completion state, even when they count as required work. */
 function canGroupScheduledWork(item: StudyItem): boolean {
-  return Boolean(item.source) && item.source !== 'custom';
+  return Boolean(item.source) && item.source !== 'custom' && item.f?.calendarScheduleArchived !== true;
 }
 
 function sourceItems(item: StudyItem): StudyItem[] {

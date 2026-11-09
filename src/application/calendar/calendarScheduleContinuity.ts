@@ -109,6 +109,24 @@ export class CalendarScheduleContinuity {
       && token.sequence === this.requestSequence);
   }
 
+  /** A peer publishes the complete snapshot before writing its revised records. Never echo it back. */
+  adoptStoredSnapshot(): boolean {
+    if (!this.userId) return false;
+    try {
+      const value = JSON.parse(this.storage.getItem(calendarSnapshotKey(this.userId)) || 'null') as CalendarScheduleSnapshot | null;
+      if (!value || value.version !== 1 || value.userId !== this.userId || typeof value.savedAt !== 'string' || !Number.isFinite(Date.parse(value.savedAt))) return false;
+      const rows = snapshotRows(value.rows);
+      if (!rows || (this.saved && Date.parse(value.savedAt) < Date.parse(this.saved.savedAt))) return false;
+      if (this.saved?.savedAt === value.savedAt && JSON.stringify(this.saved.rows) === JSON.stringify(rows)) return false;
+      this.generation++;
+      this.requestSequence++;
+      this.saved = { version: 1, userId: this.userId, savedAt: value.savedAt, rows };
+      this.source = 'fresh';
+      this.persisted = true;
+      return true;
+    } catch { return false; }
+  }
+
   accept(token: CalendarRequestToken, value: unknown): boolean {
     if (!this.isCurrent(token)) return false;
     const rows = snapshotRows(value);

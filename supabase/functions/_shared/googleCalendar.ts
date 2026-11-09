@@ -1,9 +1,10 @@
+import { fetchCompleteCalendarEvents } from './calendarFetch.ts';
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.114.0';
 import { classifyCalendarEvent } from './calendarClassification.ts';
 import { staleCalendarEventKeys } from './calendarSyncDiff.ts';
-import { readableErrorMessage } from './functionResponse.ts';
 import { chunksOf, collectStringKeysetPages } from './keysetPagination.ts';
 import { buildCalendarAuthorizationUrl } from './calendarAuthorization.ts';
+import { CalendarRequestError, calendarPublicError } from './calendarSecurity.ts';
 
 export { CALENDAR_SCOPE } from './calendarAuthorization.ts';
 export const CORS_HEADERS = {
@@ -108,6 +109,8 @@ function serviceRoleKey(): string {
 export function adminClient(): SupabaseClient {
   return createClient(requiredEnv('SUPABASE_URL'), serviceRoleKey(), {
     auth: { persistSession: false, autoRefreshToken: false },
+    global: { fetch: (input, init) => fetch(input, { ...init, signal: init?.signal
+      ? AbortSignal.any([init.signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(15000) }) },
   });
 }
 
@@ -140,8 +143,10 @@ export function normalizeGoogleClientId(value: unknown): string {
     || /\s/.test(clientId)
     || !/^[A-Za-z0-9._-]+\.apps\.googleusercontent\.com$/.test(clientId)
   ) {
-    throw new Error('Invalid Google OAuth client ID supplied by the application');
+    throw new CalendarRequestError('Invalid Google OAuth client ID', 400, 'invalid_client_id');
   }
+  const configured = Deno.env.get('GOOGLE_CLIENT_ID')?.trim();
+  if (configured && configured !== clientId) throw new CalendarRequestError('Google OAuth client ID does not match server configuration', 400, 'invalid_client_id');
   return clientId;
 }
 
@@ -151,7 +156,7 @@ function base64Url(bytes: Uint8Array): string {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
 }
 
-function decodeBase64Url(value: string): Uint8Array {
+function decodeBase64Url(value: string): Uint8Array<ArrayBuffer> {
   const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
   const padded = normalized + '='.repeat((4 - normalized.length % 4) % 4);
   const binary = atob(padded);
@@ -167,31 +172,42 @@ async function hmac(value: string, secret: string): Promise<string> {
   return base64Url(new Uint8Array(signature));
 }
 
-export async function createOAuthState(userId: string, clientId: string): Promise<string> {
+export async function createOAuthState(userId: string, clientId: string, admin = adminClient()): Promise<string> {
   const cfg = googleConfig();
+  const nonce = crypto.randomUUID(), expiresAt = Date.now() + 15 * 60 * 1000;
+  clientId = normalizeGoogleClientId(clientId);
+  const { error } = await admin.rpc('calendar_oauth_nonce_issue', {
+    p_user_id: userId, p_nonce: nonce, p_client_id: clientId, p_expires_at: new Date(expiresAt).toISOString(),
+  });
+  if (error) throw error;
   const payload = base64Url(new TextEncoder().encode(JSON.stringify({
     userId,
-    clientId: normalizeGoogleClientId(clientId),
-    expiresAt: Date.now() + 15 * 60 * 1000,
-    nonce: crypto.randomUUID(),
+    clientId, expiresAt, nonce,
   })));
   return `${payload}.${await hmac(payload, cfg.stateSecret)}`;
 }
 
-export async function verifyOAuthState(state: string): Promise<{ userId: string; clientId: string }> {
+export async function verifyOAuthState(state: string, admin = adminClient()): Promise<{ userId: string; clientId: string }> {
   const cfg = googleConfig();
-  const [payload, signature] = state.split('.');
-  if (!payload || !signature) throw new Error('Invalid OAuth state');
-  if (signature !== await hmac(payload, cfg.stateSecret)) throw new Error('Invalid OAuth state signature');
-  const decoded = JSON.parse(new TextDecoder().decode(decodeBase64Url(payload))) as {
-    userId?: string;
-    clientId?: string;
-    expiresAt?: number;
-  };
-  if (!decoded.userId || !decoded.clientId || !decoded.expiresAt || decoded.expiresAt < Date.now()) {
-    throw new Error('Expired OAuth state');
+  try {
+    if (state.length > 4096) throw new Error('oversized');
+    const parts = state.split('.');
+    if (parts.length !== 2 || parts.some(part => !/^[A-Za-z0-9_-]+$/.test(part))) throw new Error('format');
+    const [payload, signature] = parts;
+    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(cfg.stateSecret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
+    if (!await crypto.subtle.verify('HMAC', key, decodeBase64Url(signature), new TextEncoder().encode(payload))) throw new Error('signature');
+    const decoded = JSON.parse(new TextDecoder().decode(decodeBase64Url(payload)));
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuid.test(decoded.userId) || !uuid.test(decoded.nonce) || !Number.isFinite(decoded.expiresAt)
+      || decoded.expiresAt <= Date.now() || decoded.expiresAt > Date.now() + 16 * 60_000) throw new Error('claims');
+    const clientId = normalizeGoogleClientId(decoded.clientId);
+    const { data, error } = await admin.rpc('calendar_oauth_nonce_consume', { p_user_id: decoded.userId, p_nonce: decoded.nonce, p_client_id: clientId });
+    if (error) throw error;
+    if (data !== true) throw new Error('replayed');
+    return { userId: decoded.userId, clientId };
+  } catch {
+    throw new CalendarRequestError('授權連結已失效或已使用，請重新連接 Google Calendar。', 400, 'invalid_oauth_state');
   }
-  return { userId: decoded.userId, clientId: normalizeGoogleClientId(decoded.clientId) };
 }
 
 export function buildGoogleAuthorizationUrl(state: string, clientId: string): string {
@@ -215,10 +231,11 @@ export async function exchangeAuthorizationCode(code: string, clientId: string):
       redirect_uri: cfg.redirectUri,
       grant_type: 'authorization_code',
     }),
+    signal: AbortSignal.timeout(15000),
   });
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(readableErrorMessage(data.error_description ?? data.error ?? data, 'Google token exchange failed'));
+    throw new Error(`Google token exchange failed (HTTP ${response.status})`);
   }
   return data as GoogleTokenResponse;
 }
@@ -234,10 +251,11 @@ async function refreshGoogleAccessToken(refreshToken: string, clientId: string):
       client_secret: cfg.clientSecret,
       grant_type: 'refresh_token',
     }),
+    signal: AbortSignal.timeout(15000),
   });
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(readableErrorMessage(data.error_description ?? data.error ?? data, 'Google token refresh failed'));
+    throw new Error(`Google token refresh failed (HTTP ${response.status})`);
   }
   return data as GoogleTokenResponse;
 }
@@ -250,12 +268,8 @@ async function validAccessToken(admin: SupabaseClient, connection: CalendarConne
   }
   const refreshed = await refreshGoogleAccessToken(connection.refresh_token, connection.client_id);
   const expiresAt = new Date(Date.now() + refreshed.expires_in * 1000).toISOString();
-  const { error } = await admin.from('google_calendar_connections').update({
-    access_token: refreshed.access_token,
-    access_token_expires_at: expiresAt,
-    updated_at: new Date().toISOString(),
-    sync_error: null,
-  }).eq('user_id', connection.user_id);
+  const { error } = await admin.rpc('calendar_connection_write', { p_user_id: connection.user_id,
+    p_tokens: { access_token: refreshed.access_token, access_token_expires_at: expiresAt } });
   if (error) throw error;
   return refreshed.access_token;
 }
@@ -299,52 +313,29 @@ function plainCalendarDescription(value: string): string {
     .trim();
 }
 
-async function fetchCalendarEvents(accessToken: string, calendarId: string): Promise<CalendarEventWindow> {
-  const timeMin = new Date(Date.now() - 60 * 86_400_000);
-  const timeMax = new Date(Date.now() + 240 * 86_400_000);
-  const events: GoogleEvent[] = [];
-  let pageToken = '';
-  do {
-    const params = new URLSearchParams({
-      timeMin: timeMin.toISOString(),
-      timeMax: timeMax.toISOString(),
-      singleEvents: 'true',
-      showDeleted: 'true',
-      maxResults: '2500',
-      timeZone: 'Asia/Taipei',
-    });
-    if (pageToken) params.set('pageToken', pageToken);
-    const response = await fetch(
-      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${params}`,
-      { headers: { Authorization: `Bearer ${accessToken}` } },
-    );
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(readableErrorMessage(data.error ?? data, 'Google Calendar events.list failed'));
-    }
-    events.push(...(data.items ?? []));
-    pageToken = data.nextPageToken ?? '';
-  } while (pageToken);
-  return {
-    events,
-    timeMinDate: dateInTimezone(timeMin.toISOString()),
-    timeMaxDate: dateInTimezone(timeMax.toISOString()),
-  };
-}
 
-export async function syncCalendarForUser(
-  admin: SupabaseClient,
-  userId: string,
-): Promise<CalendarSyncResult> {
-  const { data: connection, error: connectionError } = await admin
-    .from('google_calendar_connections').select('*').eq('user_id', userId).maybeSingle();
-  if (connectionError) throw connectionError;
-  if (!connection) return { connected: false, synced: 0, removed: 0 };
-
+export async function syncCalendarForUser(admin: SupabaseClient, userId: string) {
+  const owner = crypto.randomUUID();
+  const { data: acquired, error: leaseError } = await admin.rpc('calendar_sync_begin', { p_user_id: userId, p_owner: owner });
+  if (leaseError) throw leaseError;
+  if (acquired !== true) throw new CalendarRequestError('同步正在進行或剛完成，請稍後再試。', 429, 'calendar_sync_busy');
+  const deadline = Date.now() + 240000;
+  function checkDeadline(): void { if (Date.now() >= deadline) throw new Error('Calendar sync deadline exceeded'); }
   try {
+    const { data: connection, error: connectionError } = await admin.rpc('calendar_connection_read', { p_user_id: userId });
+    if (connectionError) throw connectionError;
+    if (!connection) return { connected: false, synced: 0, removed: 0 };
+    const { error: startedError } = await admin.from('google_calendar_connections').update({
+      sync_error: 'Calendar sync in progress', updated_at: new Date().toISOString(),
+    }).eq('user_id', userId);
+    if (startedError) throw startedError;
     const accessToken = await validAccessToken(admin, connection as CalendarConnection);
     const calendarId = connection.calendar_id || 'primary';
-    const { events, timeMinDate, timeMaxDate } = await fetchCalendarEvents(accessToken, calendarId);
+    const { data: earliest, error: earliestError } = await admin.from('calendar_tasks').select('event_date')
+      .eq('user_id', userId).eq('calendar_id', calendarId).order('event_date', { ascending: true }).limit(1);
+    if (earliestError) throw earliestError;
+    const { events, timeMinDate, timeMaxDate } = await fetchCompleteCalendarEvents<GoogleEvent>(accessToken, calendarId, earliest?.[0]?.event_date || null, fetch, Date.now(), deadline);
+    checkDeadline();
     const fetchedKeys = new Set<string>();
     const rows: Record<string, unknown>[] = [];
 
@@ -381,16 +372,18 @@ export async function syncCalendarForUser(
     }
 
     for (const chunk of chunksOf(rows)) {
+      checkDeadline();
       const { error } = await admin.from('calendar_tasks').upsert(chunk, { onConflict: 'user_id,event_key' });
       if (error) throw error;
     }
 
     const existing = await collectStringKeysetPages(
       async (after, pageSize) => {
+        checkDeadline();
         let query = admin
           .from('calendar_tasks').select('event_key')
           .eq('user_id', userId).eq('calendar_id', calendarId)
-          .gte('event_date', timeMinDate).lte('event_date', timeMaxDate);
+          .gte('event_date', timeMinDate).lt('event_date', timeMaxDate);
         if (after) query = query.gt('event_key', after);
         const { data, error } = await query.order('event_key', { ascending: true }).limit(pageSize);
         if (error) throw error;
@@ -404,11 +397,13 @@ export async function syncCalendarForUser(
       fetchedKeys,
     );
     for (const staleChunk of chunksOf(stale, 200)) {
+      checkDeadline();
       const { error } = await admin.from('calendar_tasks')
         .delete().eq('user_id', userId).in('event_key', staleChunk);
       if (error) throw error;
     }
 
+    checkDeadline();
     const { error: statusError } = await admin.from('google_calendar_connections').update({
       last_synced_at: new Date().toISOString(),
       sync_error: null,
@@ -419,25 +414,30 @@ export async function syncCalendarForUser(
     return { connected: true, synced: rows.length, removed: stale.length };
   } catch (error) {
     await admin.from('google_calendar_connections').update({
-      sync_error: readableErrorMessage(error),
+      sync_error: calendarPublicError(error).error,
       updated_at: new Date().toISOString(),
     }).eq('user_id', userId);
     throw error;
+  } finally {
+    try {
+      const { error } = await admin.rpc('calendar_sync_end', { p_user_id: userId, p_owner: owner });
+      if (error) console.error('Calendar lease release failed');
+    } catch { console.error('Calendar lease release failed'); }
   }
 }
 
 export async function authenticatedUser(req: Request, admin: SupabaseClient): Promise<string> {
   const authorization = req.headers.get('Authorization') ?? '';
   const token = authorization.replace(/^Bearer\s+/i, '');
-  if (!token) throw new Error('Missing Authorization header');
+  if (!token) throw new CalendarRequestError('Sign in required', 401, 'sign_in_required');
   const { data, error } = await admin.auth.getUser(token);
-  if (error || !data.user) throw new Error('Invalid user session');
+  if (error || !data.user || data.user.is_anonymous === true) throw new CalendarRequestError('Invalid user session', 401, 'invalid_session');
   return data.user.id;
 }
 
 export function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json; charset=utf-8' },
+    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer' },
   });
 }

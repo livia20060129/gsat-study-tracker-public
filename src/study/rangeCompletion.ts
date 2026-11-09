@@ -106,7 +106,7 @@ export function completedRangeIndex(records: readonly StudyRecord[]): Map<string
 }
 
 function desiredCompletion(item: StudyItem, index: ReturnType<typeof completedRangeIndex>): AutomaticCompletion | null | undefined {
-  if (!item.f) return undefined;
+  if (!item.f || item.f.calendarScheduleArchived === true) return undefined;
   const previous = item.f.rangeCompletion as AutomaticCompletion | undefined;
   if (item.f.rangeCompletionOptOut === true || (!previous && item.done)) return undefined;
   if (item.f.calendarCompletionSetByUser === true && item.f.calendarCompletionUserValue === false) return undefined;

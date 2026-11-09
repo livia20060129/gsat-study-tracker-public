@@ -32,7 +32,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('both pages slide left or right without fading and the full menu icon and navigation stay fixed', async ({ page }, testInfo) => {
-  await expect(page.locator('button[data-mobile-section="tools"] [aria-hidden]')).toHaveText('☰');
+  await expect(page.locator('button[data-mobile-section="tools"] [data-ui-icon="menu"] svg path')).toHaveCount(3);
   const header = await page.locator('#siteMobileBar').boundingBox();
   const travel = await page.locator('body').evaluate(node => node.getBoundingClientRect().width);
   for (const section of ['tools', 'date', 'content'] as const) {

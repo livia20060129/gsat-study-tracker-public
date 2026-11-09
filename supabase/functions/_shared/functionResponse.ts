@@ -52,6 +52,14 @@ export function calendarHtmlResponse(message: string, status = 200): Response {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'no-store',
       'X-Content-Type-Options': 'nosniff',
+      'Content-Security-Policy': "default-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'",
+      'X-Frame-Options': 'DENY',
+      'Referrer-Policy': 'no-referrer',
     },
   });
+}
+
+export function calendarRedirectResponse(target: string): Response {
+  return new Response(null, { status:302, headers: { Location:target, 'Cache-Control':'no-store',
+    'Referrer-Policy':'no-referrer', 'X-Content-Type-Options':'nosniff' } });
 }

@@ -4,6 +4,7 @@ import { completedRangeIndex, markRangeCompletionByUser, reconcileRangeCompletio
 import { synchronizeRangeCompletion } from '../src/application/records/synchronizeRangeCompletion.ts';
 import { LocalStudyRecordRepository } from '../src/infrastructure/storage/localStudyRecordRepository.ts';
 import { decodeStudyRecord, encodeStudyRecord } from '../src/storage/studyRecordCodec.ts';
+import { readBrowserRecordHistory } from '../src/infrastructure/storage/localRecordHistory.ts';
 import type { StudyItem, StudyRecord } from '../src/types.ts';
 
 function item(id: string, start = '1', end = '10', done = false): StudyItem {
@@ -164,5 +165,43 @@ test('secondary storage failure leaves the original target untouched and reports
     getItem(k: string) { return values.get(k) ?? null; }, setItem() { throw new Error('unavailable'); }, removeItem() {} };
   const result = synchronizeRangeCompletion(storage, 'test:');
   assert.deepEqual(result.failedDates, ['2026-11-10']);
+  assert.match(result.failures[0].reason,/無法寫入本機/);
   assert.equal(JSON.parse(values.get('test:2026-11-10')!).items[0].done, false);
+});
+
+test('quota failures report local capacity rather than a cloud or network error', () => {
+  const rows=[record('2026-11-04',item('source','1','10',true)),record('2026-11-10',item('plan'))];
+  const values=new Map(rows.map(row=>[`study-v11:guest:${row.date}`,JSON.stringify(row)]));
+  const storage={get length(){return values.size;},key(i:number){return [...values.keys()][i]??null;},
+    getItem(key:string){return values.get(key)??null;},setItem(){throw new DOMException('full','QuotaExceededError');},removeItem(){}};
+  const result=synchronizeRangeCompletion(storage,'study-v11:guest:');
+  assert.deepEqual(result.failures,[{date:'2026-11-10',reason:'瀏覽器本機儲存空間不足；原有紀錄仍保留。'}]);
+  assert.equal(JSON.parse(values.get('study-v11:guest:2026-11-10')!).items[0].done,false);
+});
+
+test('a stale history snapshot cannot repeatedly block range completion after another tab saves', () => {
+  const rows = [record('2026-11-04', item('source', '1', '10', true)), record('2026-11-10', item('plan'))];
+  const values = new Map(rows.map(row => [`test:${row.date}`, JSON.stringify(row)]));
+  const storage = { get length() { return values.size; }, key(i: number) { return [...values.keys()][i] ?? null; },
+    getItem(k: string) { return values.get(k) ?? null; }, setItem(k: string, v: string) { values.set(k,v); }, removeItem(k:string) { values.delete(k); } };
+  readBrowserRecordHistory(storage,'test:');
+  // The shared storage changes before the delayed cross-tab storage event arrives.
+  values.set('test:2026-11-10',JSON.stringify({...rows[1],notes:'另一頁剛儲存的筆記'}));
+  const result=synchronizeRangeCompletion(storage,'test:');
+  assert.deepEqual(result.failedDates,[]);
+  assert.equal(result.saved.length,1);
+  assert.equal(result.saved[0].notes,'另一頁剛儲存的筆記');
+  assert.equal(result.saved[0].items[0].done,true);
+  assert.deepEqual(synchronizeRangeCompletion(storage,'test:').saved,[]);
+});
+
+test('range transactions do not use a stale completed source after it was unchecked in another tab', () => {
+  const rows = [record('2026-11-04', item('source', '1', '10', true)), record('2026-11-10', item('plan'))];
+  const values = new Map(rows.map(row => [`test:${row.date}`, JSON.stringify(row)]));
+  const storage = { get length() { return values.size; }, key(i: number) { return [...values.keys()][i] ?? null; },
+    getItem(k: string) { return values.get(k) ?? null; }, setItem(k: string, v: string) { values.set(k,v); }, removeItem(k:string) { values.delete(k); } };
+  readBrowserRecordHistory(storage,'test:');
+  values.set('test:2026-11-04',JSON.stringify(record('2026-11-04',item('source'))));
+  assert.deepEqual(synchronizeRangeCompletion(storage,'test:').saved,[]);
+  assert.equal(JSON.parse(values.get('test:2026-11-10')!).items[0].done,false);
 });

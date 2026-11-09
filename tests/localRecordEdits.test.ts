@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { saveLocalRecordEdit } from '../src/application/records/localRecordEdits.ts';
+import { reconcileLocalRecordEdit, saveLocalRecordEdit } from '../src/application/records/localRecordEdits.ts';
 import { updateOverdueTaskMinutes } from '../src/study/overdueTasks.ts';
 import type { StudyRecord } from '../src/types.ts';
 
@@ -18,6 +18,51 @@ function storageFixture(initial: StudyRecord) {
     removeItem(key: string) { values.delete(key); },
   };
 }
+
+test('a stale untouched Calendar projection cannot revive a cleared schedule conflict', () => {
+  const base = fixture();
+  base.items[0].f = { calendarEventKey: 'primary:task', calendarPlanTitle: 'old' };
+  const draft = structuredClone(base);
+  draft.items[0].f.calendarPlanTitle = 'rendered';
+  draft.syncConflict = true;
+  draft.syncConflictLocal = structuredClone(base);
+  draft.syncConflictCloud = structuredClone(base);
+  const latest = structuredClone(base);
+  latest.items[0].f.calendarPlanTitle = 'latest Actions';
+  latest.syncConflict = false;
+  latest.localDirty = false;
+  const result = reconcileLocalRecordEdit(draft, latest, base);
+  assert.equal(result.record, latest);
+  assert.deepEqual(result.conflicts, []);
+  assert.equal(result.record.syncConflict, false);
+  assert.equal(result.record.localDirty, false);
+});
+
+test('Calendar cache preference never discards actual input or a deliberately cleared prior input', () => {
+  for (const protectedVersion of ['draft', 'latest', 'base'] as const) {
+    const base = fixture();
+    base.items[0].f = { calendarEventKey: 'primary:task', calendarPlanTitle: 'old' };
+    const draft = structuredClone(base), latest = structuredClone(base);
+    draft.items[0].f.calendarPlanTitle = 'rendered';
+    latest.items[0].f.calendarPlanTitle = 'Actions';
+    ({ draft, latest, base })[protectedVersion].notes = 'real input';
+    const result = reconcileLocalRecordEdit(draft, latest, base);
+    assert.equal(result.usedThreeWayMerge, true);
+    assert.notEqual(result.record, latest);
+  }
+});
+
+test('unrelated cache normalization still merges newly initialized natural-subject children', () => {
+  const base = fixture();
+  base.items[0].presetKey = 'cal_natural';
+  const draft = structuredClone(base), latest = structuredClone(base);
+  draft.items[0].f.calendarIntegrationEntries = [{ id: 'biology', type: 'scienceReview', subject: '生物', done: false, minutes: '', source: 'preset', f: { subject: '生物' } }];
+  latest.mood = '';
+  latest.notes = '';
+  const result = reconcileLocalRecordEdit(draft, latest, base);
+  assert.deepEqual(result.conflicts, []);
+  assert.equal((result.record.items[0].f.calendarIntegrationEntries as { id: string }[])[0].id, 'biology');
+});
 
 test('standalone edits merge a newer unrelated field instead of overwriting another tab', () => {
   const base = fixture();

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   calendarHtmlResponse,
   readableErrorMessage,
+  calendarRedirectResponse,
 } from '../supabase/functions/_shared/functionResponse.ts';
 
 test('formats Supabase object errors instead of object Object', () => {
@@ -15,6 +16,14 @@ test('formats Supabase object errors instead of object Object', () => {
 
   assert.equal(message, "Could not find the 'client_id' column（PGRST204）");
   assert.doesNotMatch(message, /\[object Object\]/);
+});
+
+test('OAuth redirects never cache authorization codes or forward their referrer', () => {
+  const response=calendarRedirectResponse('https://app.invalid/?calendar=connected');
+  assert.equal(response.status,302);
+  assert.equal(response.headers.get('Location'),'https://app.invalid/?calendar=connected');
+  assert.equal(response.headers.get('Cache-Control'),'no-store');
+  assert.equal(response.headers.get('Referrer-Policy'),'no-referrer');
 });
 
 test('extracts nested Google API object errors', () => {

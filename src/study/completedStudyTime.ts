@@ -46,7 +46,7 @@ function isWeeklyCalendarItem(item: StudyItem): boolean {
 
 function visibleItems(record: StudyRecord): StudyItem[] {
   const items = Array.isArray(record.items) ? record.items : [];
-  return activeEnglishTaskItems(record, items);
+  return [...activeEnglishTaskItems(record, items), ...items.filter(item => item.f?.calendarScheduleArchived === true)];
 }
 
 function isSaturdayMakeup(item: StudyItem): boolean {

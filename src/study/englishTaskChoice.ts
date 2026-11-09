@@ -39,7 +39,7 @@ export function resolvedEnglishTaskChoice(record: StudyRecord): EnglishTaskChoic
 
 /** Inactive work remains stored and recoverable, but never affects visible metrics. */
 export function activeEnglishTaskItems(record: StudyRecord, items: StudyItem[]): StudyItem[] {
-  const available = items.filter(item => item.f?.englishMockCorrectionInactive !== true);
+  const available = items.filter(item => item.f?.englishMockCorrectionInactive !== true && item.f?.calendarScheduleArchived !== true);
   if (!hasEnglishTaskCollision(record.items || [])) return available;
   const choice = resolvedEnglishTaskChoice(record);
   return available.filter(item => {

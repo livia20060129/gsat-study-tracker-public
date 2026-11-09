@@ -236,7 +236,7 @@ test('Chinese is shown by default and one page toggle controls every view withou
   await expect(word.locator('.vocabulary-meaning-answer')).toHaveText(['新奇', '獨創性']);
   const container = await word.locator('.vocabulary-readonly-translations').elementHandle();
   const before = await word.boundingBox();
-  await expect(page.locator('#toggleVocabularyTranslations')).toHaveText('隱藏中文');
+  await expect(page.locator('#toggleVocabularyTranslations')).toHaveAccessibleName('隱藏中文');
   await page.getByRole('button', { name: '隱藏中文', exact: true }).click();
   await expect(word.locator('.vocabulary-readonly-translations')).toHaveCount(1);
   await expect(word.locator('.vocabulary-meaning-mask')).toHaveText(['－', '－']);
@@ -270,5 +270,5 @@ test('Chinese is shown by default and one page toggle controls every view withou
   await expect(page.locator('.vocabulary-meaning-answer')).toHaveText('熟能生巧');
   await page.reload();
   await expect(word.locator('.vocabulary-meaning-answer')).toHaveText(['新意', '獨創性']);
-  await expect(page.locator('#toggleVocabularyTranslations')).toHaveText('隱藏中文');
+  await expect(page.locator('#toggleVocabularyTranslations')).toHaveAccessibleName('隱藏中文');
 });

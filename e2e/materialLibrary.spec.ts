@@ -57,7 +57,7 @@ test('toolbar edit reveals material creation and finishing edit preserves a draf
   const toggle = page.locator('#toggleMaterialEditing');
   const create = page.locator('#newMaterial');
   const before = await page.evaluate(() => JSON.stringify(Object.entries(localStorage).sort()));
-  await expect(toggle).toHaveText('編輯');
+  await expect(toggle).toHaveAccessibleName('編輯');
   await expect(toggle).toHaveAttribute('aria-pressed', 'false');
   await expect(create).toBeHidden();
   await expect(page.locator('.material-row').getByRole('button', { name: '編輯', exact: true })).toHaveCount(0);
@@ -81,7 +81,7 @@ test('toolbar edit reveals material creation and finishing edit preserves a draf
   await page.getByRole('button', { name: '儲存教材', exact: true }).click();
   await expect(page.locator('#catalogEditor')).toBeHidden();
   await page.reload();
-  await expect(toggle).toHaveText('編輯');
+  await expect(toggle).toHaveAccessibleName('編輯');
   await expect(create).toBeHidden();
   await page.getByLabel('搜尋教材', { exact: true }).fill('Preserved Draft');
   await expect(page.locator('.material-row')).toHaveCount(1);

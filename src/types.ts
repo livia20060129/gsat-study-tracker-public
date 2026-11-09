@@ -27,6 +27,12 @@ export interface PageRange {
 
 export interface StudyItemFields {
   [key: string]: unknown;
+  /** Actual work retained after its Calendar schedule is removed or replaced; excluded from planned completion. */
+  calendarScheduleArchived?: boolean;
+  calendarScheduleOriginalId?: string;
+  calendarScheduleOriginalPreset?: string;
+  /** Workload identity from the last complete successful Calendar snapshot. */
+  calendarScheduleWorkSignature?: string;
   /** Local date when an overdue reminder was intentionally skipped. */
   overdueSkippedOn?: string;
   /** Recent action shown in the overdue-task undo list for at most 72 hours. */

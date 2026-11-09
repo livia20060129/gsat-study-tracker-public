@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { CalendarScheduleContinuity, calendarSnapshotKey } from '../src/application/calendar/calendarScheduleContinuity.ts';
+import { CalendarScheduleContinuity, calendarSnapshotKey, type CalendarScheduleSnapshot } from '../src/application/calendar/calendarScheduleContinuity.ts';
 
 function row(key = 'one') {
   return { event_key: key, source_event_id: key, calendar_id: 'primary', event_date: '2026-10-29',
@@ -11,6 +11,25 @@ function storage() {
   return { values, getItem: (key: string) => values.get(key) ?? null,
     setItem: (key: string, value: string) => { values.set(key, value); }, removeItem: (key: string) => { values.delete(key); } };
 }
+
+test('a peer snapshot is adopted before its records without echoing writes or accepting an old request', () => {
+  const store = storage();
+  const state = new CalendarScheduleContinuity(store, () => '2026-11-07T01:00:00Z');
+  state.activate('a'); state.accept(state.begin(), [row('old')]);
+  const pending = state.begin();
+  const peer = new CalendarScheduleContinuity(store, () => '2026-11-07T02:00:00Z');
+  peer.activate('a'); peer.accept(peer.begin(), [row('new')]);
+  const published = store.getItem(calendarSnapshotKey('a'));
+  assert.equal(state.adoptStoredSnapshot(), true);
+  assert.equal(state.isCurrent(pending), false);
+  assert.equal(state.source, 'fresh');
+  assert.equal(state.snapshot?.rows[0].event_key, 'new');
+  assert.equal(store.getItem(calendarSnapshotKey('a')), published);
+  assert.equal(state.adoptStoredSnapshot(), false);
+  store.setItem(calendarSnapshotKey('a'), JSON.stringify({ ...state.snapshot, userId: 'b' }));
+  assert.equal(state.adoptStoredSnapshot(), false);
+  assert.equal(state.snapshot?.rows[0].event_key, 'new');
+});
 
 test('successful schedules persist only scheduling fields and survive a same-account restart', () => {
   const store = storage();
@@ -45,7 +64,7 @@ test('accounts and guests never share or overwrite their prior schedule', () => 
   assert.equal(state.snapshot, null);
   assert.equal(state.preservesRecords, false);
   state.activate('a');
-  assert.equal(state.snapshot?.rows[0].event_key, 'a');
+  assert.equal((state.snapshot as CalendarScheduleSnapshot | null)?.rows[0].event_key, 'a');
 });
 
 test('late requests cannot replace a newer request or an account after it signs out and back in', () => {

@@ -1,4 +1,5 @@
 import './learning-summary.css';
+import { CALENDAR_SCHEDULE_UPDATED, initializeBrowserCalendarSchedule } from './application/calendar/browserCalendarSchedule.ts';
 import {
   completedItemSummarySubject, completedItemsForPeriod, completedItemsForSubject,
 } from './study/completedItems.ts';
@@ -664,3 +665,5 @@ window.addEventListener('storage', function updateChangedHistory(event): void {
     || (event.key.startsWith(recordPrefix) && /^\d{4}-\d{2}-\d{2}$/.test(event.key.slice(recordPrefix.length)))) loadRecords();
 });
 loadRecords();
+window.addEventListener(CALENDAR_SCHEDULE_UPDATED, loadRecords);
+initializeBrowserCalendarSchedule();

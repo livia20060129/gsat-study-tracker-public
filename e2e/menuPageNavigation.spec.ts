@@ -63,8 +63,8 @@ for (const destination of ['todo.html', 'material.progress.html', 'vocabulary.re
   });
 }
 
-test('clean URL redirects still consume the one-time menu entry and use the same tab', async ({ page, context }) => {
-  const server = await cleanUrlServer();
+test('clean URL redirects still consume the one-time menu entry and use the same tab', async ({ page, context, baseURL }) => {
+  const server = await cleanUrlServer(baseURL!);
   try {
     await page.setViewportSize({ width: 375, height: 812 });
     await installMenuProbe(page, false);

@@ -68,7 +68,8 @@ test('cloud status distinguishes local, pending, synced and failed states', () =
   assert.match(runtime, /'已存本機 ✓'/);
   assert.match(runtime, /'Cloud 已同步 ✓'/);
   assert.match(runtime, /'待同步 '\+pending\+' 天'/);
-  assert.match(runtime, /retryDirtyCloudRecordsOnReconnect/);
+  assert.match(runtime, /網路已恢復；本機紀錄保留，可按儲存紀錄或重新讀取雲端/);
+  assert.doesNotMatch(runtime, /retryDirtyCloudRecordsOnReconnect/);
   assert.match(html, /id="cloudRefreshNotice"/);
 });
 

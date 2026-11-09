@@ -6,6 +6,8 @@ import { SupabaseStudyRecordRepository, type SupabaseStudyRecordClient } from '.
 import { mergeStudyRecordsThreeWay } from '../src/storage/recordSync.ts';
 import { decodeStudyRecord, encodeStudyRecord } from '../src/storage/studyRecordCodec.ts';
 import { normalizedGsatVocabularyLevel, updateVocabularyWordEntries, vocabularyLevelGroups, vocabularyReviewEntries } from '../src/study/vocabularyReview.ts';
+import { applyVocabularyAutoFill } from '../src/study/vocabularyAutoFill.ts';
+import { vocabularyMeaningStarKeys } from '../src/study/vocabularyStars.ts';
 import {
   normalizedVocabularyTranslations,
   vocabularyTranslationCounts,
@@ -70,6 +72,45 @@ test('POS row updates preserve unrelated words, IDs, flags, time and other POS t
   assert.equal(word(source).verb, true);
   assert.equal(source.items[0].minutes, '15');
   assert.equal((source.items[0].f.words![1] as EnglishReviewWordEntry).translation, '新奇');
+});
+
+test('deleting the last legacy unclassified meaning clears its fallback and survives automatic lookup and storage', () => {
+  const source=record([{id:'legacy',text:'novelty',translation:'待刪除的舊翻譯',gsatLevel:4,showGsatLevel:false}]);
+  assert.equal(updateVocabularyWordEntries(source,'novelty',{
+    translationsByPartOfSpeech:{},translationRemoval:{field:'unclassified',index:0},
+  }),true);
+  assert.equal(word(source).translation,'');
+  assert.deepEqual(word(source).translationsByPartOfSpeech,{});
+  applyVocabularyAutoFill(word(source),{noun:['不應補回的翻譯']});
+  assert.equal(word(source).translation,'');
+  assert.deepEqual(word(source).translationsByPartOfSpeech,{});
+  const decoded=decodeStudyRecord(encodeStudyRecord(source),source.date);
+  assert.equal(decoded.ok,true);
+  if(!decoded.ok)throw new Error('Expected a saved record.');
+  assert.equal(vocabularyReviewEntries([decoded.record])[0].translation,'');
+  assert.deepEqual(vocabularyReviewEntries([decoded.record])[0].translationsByPartOfSpeech,{});
+  assert.equal(word(source).id,'legacy');
+  assert.equal(word(source).gsatLevel,4);
+  assert.equal(source.items[0].minutes,'15');
+});
+
+test('deleting the last structured unclassified meaning keeps POS meanings and independent stars', () => {
+  const removed=vocabularyMeaningStarKeys('未分詞性',['舊備註'])[0];
+  const noun=vocabularyMeaningStarKeys('Noun',['影響力'])[0];
+  const source=record([{id:'saved',text:'leverage',noun:true,translation:'Noun：影響力；舊備註',
+    translationsByPartOfSpeech:{noun:['影響力'],unclassified:['舊備註']},
+    vocabularyStars:{card:true,'word:leverage:0':true,[noun]:true,[removed]:true}},
+    {id:'other',text:'other',translation:'其他'}]);
+  updateVocabularyWordEntries(source,'leverage',{
+    translationsByPartOfSpeech:{noun:['影響力']},translationRemoval:{field:'unclassified',index:0},
+  });
+  assert.deepEqual(word(source).translationsByPartOfSpeech,{noun:['影響力']});
+  assert.equal(word(source).translation,'Noun：影響力');
+  assert.equal(word(source).vocabularyStars?.[removed],false);
+  assert.equal(word(source).vocabularyStars?.[noun],true);
+  assert.equal(word(source).vocabularyStars?.card,true);
+  assert.equal(word(source).vocabularyStars?.['word:leverage:0'],true);
+  assert.equal((source.items[0].f.words![1] as EnglishReviewWordEntry).translation,'其他');
 });
 
 test('unchecking a POS or hiding the GSAT level does not delete saved meanings or the selected level', () => {

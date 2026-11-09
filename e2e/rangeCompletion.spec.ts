@@ -72,3 +72,31 @@ test('completing a Unit from todo checks covered scheduled Units with their own 
   await expect(page.locator('[data-item="unit-plan"] [data-done]')).toBeChecked();
   expect((await stored(page, '2026-11-08', 'unit-plan')).f.unitStart).toBe('4');
 });
+
+test('local range failure dates stay inside View details and a manual range retry retains the original record', async ({ page }) => {
+  await page.addInitScript(()=>{
+    const set=Storage.prototype.setItem;
+    Storage.prototype.setItem=function(key,value){
+      if(this===localStorage && key==='study-v11:guest:2026-11-08' && localStorage.getItem('test:range-quota')==='yes'
+        && JSON.parse(value).items.some((item:StudyItem)=>item.id==='plan'&&item.done)) throw new DOMException('full','QuotaExceededError');
+      set.call(this,key,value);
+    };
+  });
+  await seed(page,[{date:'2026-11-05',items:[task('source','1','10')]},{date:'2026-11-08',notes:'保留原筆記',items:[task('plan','1','10')]}]);
+  await page.evaluate(()=>localStorage.setItem('test:range-quota','yes'));
+  await page.goto('/');await selectStudyDate(page,'2026-11-05');
+  await page.locator('[data-item="source"] [data-done]').check();
+  await expect(page.locator('#status')).toContainText('本機儲存空間不足');
+  await expect(page.locator('#status')).not.toContainText('2026-11-08');
+  await expect(page.locator('#cloudPendingDialog')).toBeHidden();
+  expect((await stored(page,'2026-11-08','plan')).done).toBe(false);
+  await page.getByRole('button',{name:'查看詳細',exact:true}).click();
+  await expect(page.locator('[data-range-failures]')).toContainText('2026-11-08');
+  await expect(page.locator('[data-range-failures]')).toContainText('本機儲存空間不足');
+  await page.evaluate(()=>localStorage.removeItem('test:range-quota'));
+  await page.locator('[data-retry-ranges]').click();
+  await expect(page.locator('[data-pending-message]')).toContainText('本機完成範圍對照已更新');
+  await expect(page.locator('[data-range-failures]')).toBeHidden();
+  expect((await stored(page,'2026-11-08','plan')).done).toBe(true);
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('study-v11:guest:2026-11-08')!).notes)).toBe('保留原筆記');
+});

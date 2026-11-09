@@ -11,6 +11,7 @@ import {
   syncCalendarForUser,
 } from '../_shared/googleCalendar.ts';
 import { chunksOf, collectStringKeysetPages } from '../_shared/keysetPagination.ts';
+import { CalendarRequestError, calendarPublicError, calendarRequestBody, logCalendarFailure, secretMatches } from '../_shared/calendarSecurity.ts';
 
 const SYNC_ALL_CONCURRENCY = 4;
 
@@ -19,14 +20,14 @@ Deno.serve(async (req) => {
     if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
     if (req.method !== 'POST') return json({ error: 'POST required' }, 405);
 
-    const body = await req.json().catch(() => ({}));
+    const body = await calendarRequestBody(req);
     const action = String(body.action ?? 'status');
     const admin = adminClient();
 
     if (action === 'sync-all') {
       const expected = Deno.env.get('CALENDAR_CRON_SECRET') ?? '';
       const provided = req.headers.get('x-cron-secret') ?? '';
-      if (!expected || provided !== expected) return json({ error: 'Unauthorized cron request' }, 401);
+      if (!secretMatches(expected, provided)) return json({ error: 'Unauthorized cron request' }, 401);
       const connections = await collectStringKeysetPages(
         async (after, pageSize) => {
           let query = admin.from('google_calendar_connections').select('user_id');
@@ -43,7 +44,9 @@ Deno.serve(async (req) => {
           try {
             return { userId: connection.user_id, ...(await syncCalendarForUser(admin, connection.user_id)) };
           } catch (error) {
-            return { userId: connection.user_id, error: error instanceof Error ? error.message : String(error) };
+            if (error instanceof CalendarRequestError && error.code === 'calendar_sync_busy') return { userId: connection.user_id, skipped: true };
+            logCalendarFailure('scheduled-sync', error);
+            return { userId: connection.user_id, error: calendarPublicError(error).error };
           }
         }));
         results.push(...batchResults);
@@ -55,7 +58,7 @@ Deno.serve(async (req) => {
     if (action === 'auth-url') {
       assertGoogleOAuthServerConfigured();
       const clientId = normalizeGoogleClientId(body.clientId);
-      const state = await createOAuthState(userId, clientId);
+      const state = await createOAuthState(userId, clientId, admin);
       return json({ url: buildGoogleAuthorizationUrl(state, clientId) });
     }
     if (action === 'status') {
@@ -65,7 +68,9 @@ Deno.serve(async (req) => {
         .eq('user_id', userId)
         .maybeSingle();
       if (error) throw error;
-      return json({ connected: Boolean(data), ...(data ?? {}) });
+      const safeError = data?.sync_error === 'Calendar sync in progress' ? data.sync_error
+        : data?.sync_error ? 'Google Calendar 上一次同步尚未成功，請稍後手動重試。' : null;
+      return json({ userId, connected: Boolean(data), ...(data ?? {}), sync_error: safeError });
     }
     if (action === 'sync') return json(await syncCalendarForUser(admin, userId));
     if (action === 'disconnect') {
@@ -75,9 +80,9 @@ Deno.serve(async (req) => {
       if (error) throw error;
       return json({ disconnected: true });
     }
-    return json({ error: `Unknown action: ${action}` }, 400);
+    return json({ error: 'Unknown action' }, 400);
   } catch (error) {
-    console.error('google-calendar error', error);
+    logCalendarFailure('request', error);
     if (error instanceof CalendarConfigurationError) {
       return json({
         error: error.message,
@@ -85,6 +90,7 @@ Deno.serve(async (req) => {
         missing: error.missing,
       }, 503);
     }
-    return json({ error: error instanceof Error ? error.message : String(error) }, 500);
+    const safe = calendarPublicError(error);
+    return json({ error: safe.error, code: safe.code }, safe.status);
   }
 });

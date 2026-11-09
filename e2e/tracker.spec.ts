@@ -46,7 +46,7 @@ test.beforeEach(async ({ page }) => {
   pageErrors.set(page, errors);
   page.on('pageerror', error => { errors.push(error.message); });
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: '每日讀書完成度紀錄卡' })).toBeVisible();
+  await expect(page.locator('main h1')).toHaveText('每日讀書完成度紀錄卡');
 });
 
 test.afterEach(async ({ page }) => {
@@ -114,10 +114,18 @@ test('overdue task page filters subjects and persists skip without marking compl
   await page.getByRole('tab', { name: '英文' }).click();
   await expect(page.locator('.todo-card')).toHaveCount(1);
   await expect(page.locator('.todo-card')).toContainText('英文閱讀');
-  await page.locator('.todo-card h3').click();
+  const englishCard = page.locator('.todo-card');
+  await expandTodoCard(englishCard);
   await expect(page.locator('.todo-record-grid')).toContainText('ACE Reading');
   await expect(page.locator('.todo-record-grid')).toContainText('閱讀測驗');
   await page.setViewportSize({ width: 393, height: 852 });
+  await expect(englishCard).not.toHaveAttribute('data-disclosure-motion');
+  await expect.poll(() => page.evaluate(() => innerWidth)).toBe(393);
+  await expect.poll(async () => englishCard.evaluate(node => {
+    const date = node.querySelector('[data-todo-completion-date]')!.getBoundingClientRect();
+    const actions = node.querySelector('.todo-actions')!.getBoundingClientRect();
+    return actions.top >= date.bottom;
+  })).toBe(true);
   const mobileControlBounds = await page.locator('.todo-card').evaluate(node => {
     const date = node.querySelector<HTMLInputElement>('[data-todo-completion-date]')?.getBoundingClientRect();
     const actions = node.querySelector<HTMLElement>('.todo-actions')?.getBoundingClientRect();
@@ -624,39 +632,36 @@ test.skip('mixed writing and timed mock on one date require a persisted exclusiv
   await expect(correction.locator('[data-minutes]')).toHaveValue('25');
 });
 
-test.skip('math periods stack equally and share a centered panel with completion while the donut remains visible', async ({ page }) => {
-  await page.setViewportSize({ width: 760, height: 900 });
-  await selectStudyDate(page, '2026-09-20');
-  for (const view of ['pages', 'completion']) {
-    await page.locator(`[data-overview-metric="${view}"]`).click();
-    const panel = page.locator(`[data-metric-panel="${view}"]`);
-    await expect(panel).toHaveClass(/is-active/);
-    await page.waitForTimeout(480);
-    const position = await panel.evaluate(node => {
-      const panelRect = node.getBoundingClientRect();
-      const children = Array.from(node.children).map(child => child.getBoundingClientRect());
-      const contentTop = Math.min(...children.map(rect => rect.top));
-      const contentBottom = Math.max(...children.map(rect => rect.bottom));
-      return {
-        centerDifference: Math.abs((contentTop + contentBottom) / 2 - (panelRect.top + panelRect.bottom) / 2),
-        horizontalDifference: Math.abs((children[0].left + children[0].right) / 2 - (panelRect.left + panelRect.right) / 2),
-      };
-    });
-    expect(position.centerDifference).toBeLessThan(3);
-    expect(position.horizontalDifference).toBeLessThan(3);
-    await expect(page.locator('#subjectTimeDonut')).toBeVisible();
-  }
-  await expect(page.locator('#settlementMetrics')).toBeVisible();
-  await expect(page.locator('.completion-notes')).not.toHaveAttribute('open');
-  await page.locator('.completion-notes > summary').click();
-  await expect(page.locator('.completion-notes p').first()).toBeVisible();
-  await page.locator('[data-overview-metric="pages"]').click();
-  const today = (await page.locator('#metricMathTodayPanel').boundingBox())!;
-  const week = (await page.locator('#metricMathWeekPanel').boundingBox())!;
-  expect(week.y).toBeGreaterThan(today.y + today.height);
-  expect(await page.locator('#metricMathTodayPanel > strong').evaluate(node => getComputedStyle(node).fontSize))
-    .toBe(await page.locator('#metricMathWeekPanel > strong').evaluate(node => getComputedStyle(node).fontSize));
-});
+for (const width of [375, 760, 1440]) {
+  test(`public metric tabs switch and wrap between completion and yesterday reminders (${width}px)`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const tabs = page.locator('#overviewMetricTabs');
+    const completion = tabs.locator('[data-overview-metric="completion"]');
+    const reminder = tabs.locator('[data-overview-metric="reminder"]');
+    await expect(tabs.getByRole('tab')).toHaveText(['完成率', '昨日提醒']);
+    for (const button of [completion, reminder]) {
+      await button.click();
+      await expect.poll(() => tabs.evaluate(node => {
+        const selected = node.querySelector('[aria-selected="true"]')!.getBoundingClientRect();
+        const indicator = node.querySelector('.metric-segment-indicator')!.getBoundingClientRect();
+        return Math.abs(indicator.left - selected.left);
+      })).toBeLessThan(1);
+    }
+    await reminder.click();
+    await expect(page.locator('#yesterdayReminderPanel')).toHaveClass(/is-active/);
+    await expect(tabs).toHaveAttribute('data-active', '1');
+    await reminder.focus();
+    await page.keyboard.press('Home');
+    await expect(completion).toBeFocused();
+    await page.keyboard.press('End');
+    await expect(reminder).toBeFocused();
+    await page.keyboard.press('ArrowRight');
+    await expect(completion).toBeFocused();
+    await page.reload();
+    await expect(completion).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('#mathPagesPanel')).toHaveCount(0);
+  });
+}
 
 test.skip('outside status keeps the daily schedule visible', async ({ page }) => {
   await selectStudyDate(page, '2026-09-16');
@@ -886,24 +891,22 @@ test('routine switch preserves drafts, saves on blur, and stays fixed-height on 
   }, { date });
   await page.goto('/');
   await expect(page.locator('#wakeHour')).toHaveValue(/0?7/);
-  await expect(page.locator('#routineDisclosure')).not.toHaveAttribute('open');
-  await page.locator('#routineDisclosure > summary').click();
+  await expect(page.locator('#routineDisclosure')).toBeHidden();
+  await page.locator('#todayStatusToggle').click();
   await expect(page.locator('#wakeMinute')).toHaveValue('20');
   await expect(page.locator('#routineTimeSummary')).toHaveCount(0);
   await expect(page.locator('#wakeHour')).not.toHaveAttribute('placeholder');
   await expect(page.locator('#wakeMinute')).not.toHaveAttribute('placeholder');
 
-  const centeredFieldOffsets = await page.locator('.today-info-centered-field').evaluateAll(nodes => nodes.map(node => {
-    const field = node.getBoundingClientRect();
-    const label = node.querySelector('label')?.getBoundingClientRect();
-    const control = node.querySelector('input, .mood-segments')?.getBoundingClientRect();
-    if (!label || !control) return Number.POSITIVE_INFINITY;
-    const contentCenter = (label.top + control.bottom) / 2;
-    const fieldCenter = (field.top + field.bottom) / 2;
-    return Math.abs(contentCenter - fieldCenter);
+  const statusLayout=await page.locator('.today-info-centered-field').evaluateAll(nodes=>nodes.map(node=>{
+    const heading=node.querySelector('#todayStatusToggle')!.getBoundingClientRect();
+    const slider=node.querySelector('.mood-segments')!.getBoundingClientRect();
+    const routine=node.querySelector('#routineDisclosure')!.getBoundingClientRect();
+    return {headingBottom:heading.bottom,sliderTop:slider.top,sliderBottom:slider.bottom,routineTop:routine.top};
   }));
-  expect(centeredFieldOffsets).toHaveLength(1);
-  expect(centeredFieldOffsets.every(offset => offset < 3)).toBe(true);
+  expect(statusLayout).toHaveLength(1);
+  expect(statusLayout[0].headingBottom).toBeLessThanOrEqual(statusLayout[0].sliderTop);
+  expect(statusLayout[0].sliderBottom).toBeLessThanOrEqual(statusLayout[0].routineTop);
 
   const inputStageBounds = await page.locator('#routineTimeField').evaluate(node => {
     const stage = node.querySelector('.routine-time-input-stage')?.getBoundingClientRect();
@@ -1128,7 +1131,7 @@ test('ordinary completion is written immediately and survives reload', async ({ 
   const card = page.locator('#dailyItemList [data-item]').first();
   const itemId = await card.getAttribute('data-item');
   const checkbox = card.locator('[data-done]').first();
-  await page.locator('#routineDisclosure > summary').click();
+  await page.locator('#todayStatusToggle').click();
   await page.locator('#wakeMinute').fill('');
   await checkbox.check();
   await expect(checkbox).toBeChecked();
@@ -1603,7 +1606,7 @@ test(`daily overview keeps centered 80-percent completion bars and no math page 
   await expect(page.locator('#subjectTimeDonut')).toBeVisible();
   await expect(page.locator('#overviewStats')).not.toContainText('今日數學頁數');
   await expect(page.locator('#overviewStats')).not.toContainText('本週數學頁數');
-  await expect(page.locator('#overviewMetricTabs')).toHaveCount(0);
+  await expect(page.locator('#overviewMetricTabs [role=tab]')).toHaveCount(2);
   await expect(page.locator('#metricMathTodayPanel')).toHaveCount(0);
   await expect(page.locator('#metricMathWeekPanel')).toHaveCount(0);
   await expect(page.locator('#completionRatePanel .progress')).toHaveCount(2);

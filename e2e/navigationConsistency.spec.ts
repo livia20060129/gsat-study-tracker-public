@@ -15,9 +15,10 @@ test('all pages share desktop rails and three full-width mobile sections without
       if (width >= 1200) await expect(page.locator('[data-rail-date]')).toHaveCSS('color', 'rgb(237, 243, 252)');
       await expect(page.locator('#siteMobileBar [data-mobile-section]')).toHaveCount(3);
       const home = page.locator('.site-workspace-home');
-      const title = page.locator('h1:not(.site-mobile-section-heading):visible').first();
+      const compactHome = path === '/' && width < 1200;
+      const title = compactHome ? page.locator('.site-mobile-home') : page.locator('h1:not(.site-mobile-section-heading):visible').first();
       await expect(title).toBeVisible();
-      await expect(title).toHaveCSS('font-size', '28px');
+      await expect(title).toHaveCSS('font-size', compactHome ? '16px' : '28px');
       await expect(width >= 1200 ? home : page.locator('.site-mobile-home')).toHaveCSS('color', path === '/' ? 'rgb(57, 103, 233)' : 'rgb(23, 42, 57)');
       const selectedTool = page.locator(`.site-tools a[href=".${path}"]`);
       if (width >= 1200 && await selectedTool.count()) {
@@ -40,7 +41,8 @@ test('all pages share desktop rails and three full-width mobile sections without
         await expect(page.locator('.site-rail-right')).toBeHidden();
         await showMobileSection(page, 'tools');
         await expect(page.locator('.site-rail-right')).toBeVisible();
-        await expect(title).toBeHidden();
+        if (compactHome) { await expect(page.locator('main')).toBeHidden(); await expect(title).toBeVisible(); }
+        else await expect(title).toBeHidden();
         expect(Math.abs((await page.locator('.site-rail-right').boundingBox())!.width - width)).toBeLessThanOrEqual(16);
         await expect(page.locator('.site-rail-backdrop')).toHaveCount(0);
         await expect(page.locator('.site-tools a')).toHaveCount(4);
@@ -61,9 +63,9 @@ test('all pages share desktop rails and three full-width mobile sections without
   expect(errors).toEqual([]);
 });
 
-test('real navigation stays highlighted when deployment redirects HTML links to clean URLs', async ({ page, context }) => {
+test('real navigation stays highlighted when deployment redirects HTML links to clean URLs', async ({ page, context, baseURL }) => {
   test.setTimeout(60_000);
-  const server = await cleanUrlServer();
+  const server = await cleanUrlServer(baseURL!);
   try {
   for (const width of [1440, 375]) {
     await page.setViewportSize({ width, height: 900 });
@@ -119,7 +121,7 @@ test('mood slider preserves date-specific values and updates the weekly rail aft
   });
   await page.goto('/');
   await expect(page.locator('[data-rail-days]')).toHaveText('0');
-  await expect(page.locator('#routineDisclosure')).not.toHaveAttribute('open');
+  await expect(page.locator('#routineDisclosure')).toBeHidden();
   await page.getByRole('button', { name: '較疲累', exact: true }).click();
   await expect(page.locator('#mood')).toHaveValue('較疲累');
   await expect(page.locator('[data-rail-days]')).toHaveText('1');
@@ -149,8 +151,8 @@ test('sidebar date editing preserves drafts and routine replaces the upper date 
     await page.goto('/');
     await expect(page.locator('.site-rail-left #studyDate')).toHaveCount(1);
     await expect(page.locator('.today-info-grid #studyDate')).toHaveCount(0);
-    await expect(page.locator('.today-info-grid > :first-child')).toHaveAttribute('id', 'routineDisclosure');
-    await expect(page.locator('#routineDisclosure')).not.toHaveAttribute('open');
+    await expect(page.locator('.today-info-grid > :first-child #todayStatusToggle')).toBeVisible();
+    await expect(page.locator('#routineDisclosure')).toBeHidden();
     await page.locator('#notes').fill('切換前尚未離開欄位的筆記');
     await selectStudyDate(page, '2026-11-04');
     await expect(page.locator('[data-rail-date]')).toHaveText('11.04');

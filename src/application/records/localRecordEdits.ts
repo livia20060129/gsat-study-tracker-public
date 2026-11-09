@@ -7,13 +7,22 @@ import type { StudyRecord } from '../../types.ts';
 import { studyRecordConflictLocations } from '../../storage/conflictPresentation.ts';
 import { rangeCompletionSignature } from '../../study/rangeCompletion.ts';
 import { synchronizeRangeCompletion } from './synchronizeRangeCompletion.ts';
+import { isUnrecordedCalendarCache } from '../../study/recordedActivity.ts';
 
 /** Shares the editor's loaded-base merge with standalone pages. */
 export function reconcileLocalRecordEdit(draft: StudyRecord, latest: StudyRecord | null, base: StudyRecord): StudyRecordMergeResult {
   if (!latest || sameStudyContent(latest, base)) {
     return { record: draft, conflicts: [], usedThreeWayMerge: false };
   }
-  return mergeStudyRecordsThreeWay(draft, latest, base);
+  const merged = mergeStudyRecordsThreeWay(draft, latest, base);
+  // A delayed render may still hold an older projection of the same schedule.
+  // Only actual input needs merging; never resurrect generated cache fields or
+  // a cleared conflict by treating that stale projection as a user's edit.
+  if (merged.conflicts.length
+    && isUnrecordedCalendarCache(draft, latest) && isUnrecordedCalendarCache(base)) {
+    return { record: latest, conflicts: [], usedThreeWayMerge: false };
+  }
+  return merged;
 }
 
 export function saveLocalRecordEdit(

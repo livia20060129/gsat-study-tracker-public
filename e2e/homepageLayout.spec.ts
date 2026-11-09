@@ -1,0 +1,86 @@
+import { expect, test } from '@playwright/test';
+import { selectStudyDate } from './helpers/siteNavigation.ts';
+
+for (const width of [360, 1440]) test(`home information and reflection retain data and controls at ${width}px`, async ({ page }, testInfo) => {
+  await page.clock.setFixedTime(new Date('2026-11-08T12:00:00+08:00'));
+  await page.setViewportSize({ width, height: 900 });
+  await page.goto('/');
+  await expect(page.locator('.home-brand h1')).toHaveText('每日讀書完成度紀錄卡');
+  await expect(page.locator('[data-home-date-label]').first()).toHaveText('11.08 星期日');
+  await expect(page.locator('#routineDisclosure')).toBeHidden();
+  await expect(page.locator('#todayStatusToggle')).toHaveAttribute('aria-expanded','false');
+  await expect(page.locator('.mood-segments')).toBeVisible();
+  await expect(page.locator('.routine-disclosure')).toHaveCount(1);
+  await page.locator('.mood-segments button').filter({ hasText: '精神良好' }).click();
+  await expect(page.locator('#mood')).toHaveValue('精神良好');
+  await expect(page.locator('#todayStatusToggle')).toHaveAttribute('aria-expanded','false');
+  await page.locator('#todayStatusToggle').click();
+  await expect(page.locator('#wakeHour')).toBeVisible();
+  await page.locator('#wakeHour').fill('7');
+  await page.locator('#wakeMinute').fill('20');
+  await page.locator('#wakeMinute').blur();
+  await page.locator('#routineDisclosure').evaluate(async node=>{
+    await Promise.all(node.getAnimations({subtree:true}).filter(animation=>animation.id.startsWith('study-disclosure-'))
+      .map(animation=>animation.finished.catch(()=>undefined)));
+  });
+  await page.screenshot({path:testInfo.outputPath(`status-expanded-${width}.png`)});
+  await page.locator('#todayStatusToggle').click();
+  await expect(page.locator('#routineDisclosure')).toBeHidden();
+  await expect(page.locator('.mood-segments')).toBeVisible();
+  expect(await page.locator('#firstThingTomorrow').evaluate(node=>{
+    const css=getComputedStyle(node);
+    return node.clientHeight-parseFloat(css.paddingTop)-parseFloat(css.paddingBottom)>=3*parseFloat(css.lineHeight)-1;
+  })).toBe(true);
+  await expect(page.locator('#completionRatePanel')).toBeVisible();
+  await page.locator('[data-overview-metric="reminder"]').click();
+  await expect(page.locator('#yesterdayReminderPanel')).toHaveAttribute('aria-hidden', 'false');
+  await page.locator('[data-overview-metric="completion"]').click();
+  await expect(page.locator('#completionRatePanel')).toHaveCSS('opacity', '1');
+  await expect(page.locator('#yesterdayReminderPanel')).toHaveCSS('opacity', '0');
+  await page.screenshot({ path: testInfo.outputPath(`home-${width}.png`), fullPage: false });
+  await page.locator('#firstThingTomorrow').fill('先訂正數學\n複習英文單字\n整理錯題');
+  await page.locator('#notes').fill('今日心得');
+  await page.locator('#biggestBlock').fill('三角比');
+  await page.locator('[data-home-save]').click();
+  await expect(page.locator('#saveBtn')).toHaveAttribute('data-state','local');
+  await expect(page.locator('#saveBtn,[data-home-save]')).toHaveText(['儲存','儲存']);
+  await expect(page.locator('#saveBtn [data-ui-icon="save-check"] svg')).toBeVisible();
+  await expect(page.locator('[data-home-save] [data-ui-icon="save-check"] svg')).toBeVisible();
+  await expect(page.locator('#saveBtn')).toHaveCSS('background-color','rgb(4, 120, 87)');
+  await expect(page.locator('[data-home-save]')).toHaveCSS('background-color','rgb(4, 120, 87)');
+  await page.screenshot({path:testInfo.outputPath(`saved-controls-${width}.png`)});
+  await page.reload();
+  await expect(page.locator('#notes')).toHaveValue('今日心得');
+  await expect(page.locator('#biggestBlock')).toHaveValue('三角比');
+  await expect(page.locator('#firstThingTomorrow')).toHaveValue('先訂正數學\n複習英文單字\n整理錯題');
+  await expect(page.locator('#routineDisclosure')).toBeHidden();
+  await expect(page.locator('#wakeHour')).toHaveValue(/0?7/);
+  await expect(page.locator('#wakeMinute')).toHaveValue('20');
+  await page.evaluate(()=>{
+    const set=Storage.prototype.setItem;
+    Storage.prototype.setItem=function(key,value){
+      if(this===localStorage&&key==='study-v11:guest:2026-11-08'&&localStorage.getItem('test:block-save')==='yes') throw new DOMException('full','QuotaExceededError');
+      set.call(this,key,value);
+    };
+    localStorage.setItem('test:block-save','yes');
+  });
+  await page.locator('#notes').fill('等待重試的草稿');
+  await page.locator('#notes').blur();
+  await page.locator('[data-home-save]').click();
+  await expect(page.locator('#saveBtn')).toHaveAttribute('data-state','error');
+  await expect(page.locator('#saveBtn [data-ui-icon="triangle-exclamation-point"] svg')).toBeVisible();
+  await expect(page.locator('[data-home-save] [data-ui-icon="triangle-exclamation-point"] svg')).toBeVisible();
+  await expect(page.locator('#saveBtn')).toHaveCSS('background-color','rgb(185, 28, 28)');
+  await expect(page.locator('#saveBtn,[data-home-save]')).toHaveText(['儲存','儲存']);
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('study-v11:guest:2026-11-08')!).notes)).toBe('今日心得');
+  await page.screenshot({path:testInfo.outputPath(`failed-controls-${width}.png`)});
+  await page.evaluate(()=>localStorage.removeItem('test:block-save'));
+  await page.locator('[data-home-save]').click();
+  await expect(page.locator('#saveBtn')).toHaveAttribute('data-state','local');
+  await expect(page.locator('#saveBtn [data-ui-icon="save-check"] svg')).toBeVisible();
+  await expect(page.locator('#saveBtn')).toHaveCSS('background-color','rgb(4, 120, 87)');
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('study-v11:guest:2026-11-08')!).notes)).toBe('等待重試的草稿');
+  await selectStudyDate(page, '2026-11-07');
+  await expect(page.locator('[data-home-date-label]').first()).toHaveText('11.07 星期六');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});

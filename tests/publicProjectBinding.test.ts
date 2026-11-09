@@ -41,8 +41,8 @@ test('release workflow derives the project only from tested config.toml', () => 
 });
 
 test('Pages artifact keeps the official stable name across failed-job reruns', () => {
-  assert.match(deployWorkflow, /uses: actions\/upload-pages-artifact@v4/);
-  assert.match(deployWorkflow, /uses: actions\/deploy-pages@v4/);
+  assert.match(deployWorkflow, /uses: actions\/upload-pages-artifact@[a-f0-9]{40} # v4/);
+  assert.match(deployWorkflow, /uses: actions\/deploy-pages@[a-f0-9]{40} # v4/);
   assert.doesNotMatch(deployWorkflow, /github-pages-\$\{\{\s*github\.run_attempt\s*\}\}/);
   assert.doesNotMatch(deployWorkflow, /artifact_name:/);
 });
@@ -74,4 +74,11 @@ test('OAuth configuration stays on the correct side of the browser and server bo
   assert.match(calendarRuntime, /Deno\.env\.get\(name\)/);
   assert.match(calendarRuntime, /'GOOGLE_CLIENT_SECRET'/);
   assert.match(calendarRuntime, /'GOOGLE_STATE_SECRET'/);
+});
+
+
+test('the shared homepage retains the verified public application name', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /<title>每日讀書完成度紀錄卡<\/title>/);
+  assert.match(html, /<h1>每日讀書完成度紀錄卡<\/h1>/);
 });

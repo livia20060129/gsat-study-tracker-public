@@ -2,11 +2,11 @@ import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 
 /** Real HTTP redirects also work in WebKit, which cannot mock a 307 with route.fulfill. */
-export async function cleanUrlServer(): Promise<{ origin: string; close: () => Promise<void> }> {
+export async function cleanUrlServer(upstreamOrigin: string): Promise<{ origin: string; close: () => Promise<void> }> {
   const names = new Set(['index', 'todo', 'summary', 'material.progress', 'vocabulary.review', 'gpt.prompt']);
   const server = createServer(async (request, response) => {
     try {
-      const url = new URL(request.url ?? '/', 'http://127.0.0.1:4174');
+      const url = new URL(request.url ?? '/', upstreamOrigin);
       const name = url.pathname.slice(1).replace(/\.html$/, '');
       if (names.has(name) && url.pathname.endsWith('.html')) {
         response.writeHead(307, { location: `/${name}${url.search}` });

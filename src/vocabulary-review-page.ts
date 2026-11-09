@@ -108,7 +108,7 @@ function createStarButton(entry: VocabularyReviewEntry, key: string, label: stri
   button.setAttribute('aria-label', label);
   button.setAttribute('aria-pressed', String(entry.vocabularyStars?.[key] === true));
   button.title = label;
-  button.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9Z"/></svg>';
+  button.innerHTML = '<svg data-ui-icon="star" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"></svg>';
   return button;
 }
 
@@ -428,6 +428,7 @@ function setTranslationVisibility(container: HTMLElement): void {
 
 function updateTranslationVisibility(): void {
   element<HTMLButtonElement>('toggleVocabularyTranslations').textContent = translationsVisible ? '隱藏中文' : '顯示中文';
+  element<HTMLButtonElement>('toggleVocabularyTranslations').setAttribute('aria-label', translationsVisible ? '隱藏中文' : '顯示中文');
   element<HTMLButtonElement>('toggleVocabularyTranslations').setAttribute('aria-pressed', String(!translationsVisible));
   const entries = new Map(allEntries.map(entry => [entry.key, entry]));
   for (const row of element<HTMLDivElement>('vocabularyList').querySelectorAll<HTMLElement>('.vocabulary-row')) {
@@ -455,7 +456,7 @@ function createVocabularyRow(entry: VocabularyReviewEntry): HTMLElement {
     const speaker = document.createElement('button');
     speaker.type = 'button';
     speaker.className = 'vocabulary-speaker';
-    speaker.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m11 5-6 4H2v6h3l6 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>';
+    speaker.innerHTML = '<svg data-ui-icon="volume-2" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"></svg>';
     speaker.setAttribute('aria-label', `朗讀「${entry.text}」`);
     speaker.setAttribute('aria-pressed', 'false');
     speaker.addEventListener('click', function pronounce(): void {

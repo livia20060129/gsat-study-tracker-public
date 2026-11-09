@@ -30,6 +30,8 @@ export function initializeMobileSections(left: HTMLElement, right: HTMLElement, 
   let selectionRevision = 0;
   let slideAnimations: Animation[] = [];
   let restorePositions: (() => void)[] = [];
+  let outgoingLayer: HTMLElement | null = null;
+  let restoreRoots: (() => void)[] = [];
   let swipe: SectionSwipe | null = null;
 
   function cancelSectionMotion(): void {
@@ -37,6 +39,10 @@ export function initializeMobileSections(left: HTMLElement, right: HTMLElement, 
     slideAnimations = [];
     for (const restore of restorePositions.reverse()) restore();
     restorePositions = [];
+    for (const restore of restoreRoots.reverse()) restore();
+    restoreRoots = [];
+    outgoingLayer?.remove();
+    outgoingLayer = null;
     delete document.documentElement.dataset.mobileSlideDirection;
   }
 
@@ -54,7 +60,7 @@ export function initializeMobileSections(left: HTMLElement, right: HTMLElement, 
 
   function contentNodes(): HTMLElement[] {
     return [...document.body.children].filter((node): node is HTMLElement =>
-      node instanceof HTMLElement && !node.matches('.site-rail,.site-mobile-bar,script,style,link'));
+      node instanceof HTMLElement && !node.matches('.site-rail,.site-mobile-bar,.site-mobile-motion-layer,script,style,link'));
   }
 
   function sectionRoots(active: MobileSection): HTMLElement[] {
@@ -134,7 +140,17 @@ export function initializeMobileSections(left: HTMLElement, right: HTMLElement, 
     // Save and restore scroll while the original layout is still present.
     applySection(next);
     document.documentElement.dataset.mobileSlideDirection = direction > 0 ? 'forward' : 'backward';
+    // Clip outgoing originals in their own viewport. No clones, duplicate IDs,
+    // or offscreen layout overflow that Android can scroll into view.
+    outgoingLayer = document.createElement('div');
+    outgoingLayer.className = 'site-mobile-motion-layer';
+    outgoingLayer.inert = true;
+    document.body.append(outgoingLayer);
     for (const panel of outgoing) {
+      const placeholder = document.createComment('mobile-section-position');
+      panel.node.before(placeholder);
+      outgoingLayer.append(panel.node);
+      restoreRoots.push(() => { placeholder.replaceWith(panel.node); });
       temporaryStyles(panel.node, {
         display: panel.display, visibility: 'visible', position: 'fixed',
         top: `${panel.rect.top}px`, left: `${panel.rect.left}px`, right: 'auto', bottom: 'auto',

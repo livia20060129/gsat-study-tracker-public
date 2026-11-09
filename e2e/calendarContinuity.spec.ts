@@ -94,6 +94,7 @@ test('sync/status errors keep same-account items, completion, ranges and minutes
   const state: State = { user: userA, status: 'ok', table: 'ok', syncFails: false };
   await setup(page, state);
   await expect(page.locator('#calendarStatusBadge')).toHaveText('已連接');
+  await expect(page.locator('#calendarStatusBadge [data-ui-icon="globe-check"] svg')).toBeVisible();
   const card = page.locator('.item.subject-math').filter({ has: page.locator('[data-field="book"] option[value="4A"]:checked') }).first();
   await card.locator('[data-minutes]').first().fill('33');
   await card.locator('[data-minutes]').first().blur();
@@ -115,6 +116,7 @@ test('sync/status errors keep same-account items, completion, ranges and minutes
   await openSettings(page); await page.locator('#calendarSyncBtn').click();
   await expect(page.locator('#saveBtn')).not.toHaveAttribute('data-test-save-clicked', 'true');
   await expect(page.locator('#calendarMessage')).toContainText('已儲存的項目');
+  await expect(page.locator('#calendarStatusBadge [data-ui-icon="globe-x"] svg')).toBeVisible();
   await expect(card.locator('[data-done]').first()).toBeChecked();
   await expect(card.locator('[data-minutes]').first()).toHaveValue('33');
   state.status = 'fail';
@@ -208,6 +210,7 @@ test('a late status response after the bootstrap timeout cannot apply or persist
   const state: State = { user: userA, status: 'hold', table: 'ok', syncFails: false };
   await setup(page, state, previousRecord('逾時保留項目'), 'controlled');
   await expect.poll(() => Boolean(state.held)).toBe(true);
+  await expect(page.locator('#calendarStatusBadge [data-ui-icon="globe"] svg')).toBeVisible();
   await page.clock.fastForward(16_000);
   await expect(page.locator('#calendarMessage')).toContainText('已儲存的項目');
   const held = state.held!;

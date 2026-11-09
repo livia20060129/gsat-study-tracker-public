@@ -1,7 +1,7 @@
 {
   "name": "gsat-study-tracker-public",
   "private": true,
-  "version": "171.6.0-public.57",
+  "version": "171.6.0-public.58",
   "type": "module",
   "scripts": {
     "validate:env": "node scripts/validate-public-env.mjs",
@@ -18,7 +18,8 @@
     "pretest": "npm run validate:env && node --experimental-strip-types --test tests/publicProjectBinding.test.ts",
     "test": "node --experimental-strip-types --test \"tests/*.test.ts\"",
     "benchmark:runtime": "node --experimental-strip-types scripts/benchmark_runtime.ts",
-    "test:e2e": "npm run build && playwright test"
+    "test:e2e": "npm run build && playwright test",
+    "test:edge": "deno test --allow-env --allow-read --config supabase/functions/google-calendar/deno.json supabase/tests"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.15",

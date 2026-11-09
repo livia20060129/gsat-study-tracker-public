@@ -1,4 +1,5 @@
 import { synchronizeRangeCompletion } from './application/records/synchronizeRangeCompletion.ts';
+import { CALENDAR_SCHEDULE_UPDATED, initializeBrowserCalendarSchedule, refreshBrowserCalendarSchedule } from './application/calendar/browserCalendarSchedule.ts';
 import './todo-page.css';
 import { animateDisclosureChange, initializeDisclosureMotion } from './ui/disclosureMotion.ts';
 import { applyStudyHeadingHierarchy, studyFieldHierarchy } from './ui/studyFieldHierarchy.ts';
@@ -983,6 +984,7 @@ element<HTMLAnchorElement>('refreshTodo').addEventListener('click', function ref
   event.preventDefault();
   draftBases.clear();
   load(true);
+  void refreshBrowserCalendarSchedule();
 });
 window.addEventListener('storage', function refreshChangedRecords(event): void {
   if (event.storageArea !== localStorage) return;
@@ -1004,6 +1006,12 @@ window.addEventListener('popstate', function syncHistoryFilters(): void {
 });
 
 setInterval(refreshTimerDisplays, 1000);
+window.addEventListener(CALENDAR_SCHEDULE_UPDATED, function appliedCalendar(event): void {
+  load();
+  const failed = (event as CustomEvent<{ failedDates: string[] }>).detail?.failedDates;
+  if (failed?.length) setError(`以下日期的最新排程尚未保存：${failed.join('、')}。原紀錄保留，請確認儲存空間後重新讀取。`);
+});
+initializeBrowserCalendarSchedule();
 setInterval(function refreshCalendarDate(): void {
   if (renderedDate !== localDateKey()) render();
   else renderHistory();

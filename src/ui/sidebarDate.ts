@@ -17,7 +17,7 @@ export function initializeSidebarDate(rail: HTMLElement, today: string, onChange
   control.htmlFor = input.id;
   const edit = document.createElement('span');
   edit.className = 'site-date-edit';
-  edit.textContent = '✎';
+  edit.dataset.uiIcon = 'pencil';
   edit.setAttribute('aria-hidden', 'true');
   control.append(dateText, edit, input);
   sourceField?.remove();

@@ -3,16 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="./page-transitions.js?v=171.6.0-public.51"></script>
+  <script src="./page-transitions.js?v=171.6.0-public.58"></script>
   <meta name="theme-color" content="#f5f8fc" />
   <link rel="icon" type="image/png" href="/book.png" />
   <link rel="apple-touch-icon" href="/book.png" />
   <title>每日讀書完成度紀錄卡</title>
 </head>
-<body>
+<body class="tracker-home">
 <main>
 <header class="app-header page-navigation-header">
- <div class="app-heading"><h1>每日讀書完成度紀錄卡</h1><div class="subtitle">每日紀錄、完成度、頁數與每週匯出</div></div>
+ <div class="app-heading home-brand"><span data-home-icon="book" aria-hidden="true"></span><div><h1>每日讀書完成度紀錄卡</h1><div class="subtitle">每日紀錄、完成度、頁數與每週匯出</div></div></div>
+ <button class="home-date" type="button" data-home-date aria-label="修改紀錄日期"><span data-home-icon="calendar" aria-hidden="true"></span><span data-home-date-label></span></button>
  <div class="header-actions page-navigation-actions">
   <a class="header-action-link" href="./gpt.prompt.html">排程建議prompt</a>
   <a class="header-action-link" href="./todo.html">待辦事項</a>
@@ -25,20 +26,20 @@
 <details class="connection-dock" id="connectionSettings">
  <summary class="connection-status-bar" aria-label="Cloud 與 Calendar 狀態；展開連線設定">
   <span class="connection-statuses">
-   <span class="connection-status-item"><span class="connection-status-name">Cloud</span><span class="badge connection-badge" id="cloudStatusBadge" data-state="offline">本機模式</span><button type="button" id="cloudPendingDetailsBtn" class="pending-sync-link" hidden>查看詳細</button></span>
+   <span class="connection-status-item"><span class="connection-status-name">Cloud</span><span class="badge connection-badge" id="cloudStatusBadge" data-state="offline"><span data-cloud-status-icon data-ui-icon="cloud-upload" aria-hidden="true"></span>本機模式</span><button type="button" id="cloudPendingDetailsBtn" class="pending-sync-link" hidden>查看詳細</button></span>
    <span class="connection-divider" aria-hidden="true"></span>
-   <span class="connection-status-item"><span class="connection-status-name">Calendar</span><span class="badge connection-badge" id="calendarStatusBadge" data-state="offline">需先登入</span></span>
+   <span class="connection-status-item"><span class="connection-status-name">Calendar</span><span class="badge connection-badge" id="calendarStatusBadge" data-state="offline"><span data-connection-status-icon data-ui-icon="globe-off" aria-hidden="true"></span>需先登入</span></span>
   </span>
   <span class="connection-quick-actions">
-   <span class="active-timer-summary" id="activeTimerSummary" hidden aria-live="polite">
-    <span class="active-timer-title" id="activeTimerTitle"></span>
-    <strong id="activeTimerDisplay">00:00</strong>
-    <button class="secondary" type="button" data-action="timer-pause-active">暫停</button>
-   </span>
-   <span class="connection-save-feedback" id="status" aria-live="polite"></span>
-   <button id="saveBtn" class="primary connection-save" type="button">儲存紀錄</button>
-   <span class="connection-settings-toggle">連線設定<span class="connection-symbol" aria-hidden="true"></span></span>
+   <button id="saveBtn" class="primary connection-save home-save-button" type="button" aria-label="儲存紀錄" title="儲存紀錄"><span data-home-icon="save" aria-hidden="true"></span>儲存</button>
+   <span class="connection-settings-toggle" title="連線設定"><span data-home-icon="settings" aria-hidden="true"></span><span class="ui-sr-only">連線設定</span></span>
   </span>
+  <span class="active-timer-summary" id="activeTimerSummary" hidden aria-live="polite">
+   <span class="active-timer-title" id="activeTimerTitle"></span>
+   <strong id="activeTimerDisplay">00:00</strong>
+   <button class="secondary" type="button" data-action="timer-pause-active">暫停</button>
+  </span>
+  <span class="connection-save-feedback" id="status" aria-live="polite"></span>
  </summary>
  <div class="connection-settings-content">
   <section class="connection-settings-group" id="cloudPanel" aria-labelledby="cloudSettingsTitle">
@@ -100,7 +101,7 @@
 
 <dialog class="pending-sync-dialog" id="cloudPendingDialog" aria-labelledby="cloudPendingTitle">
  <header><div><h2 id="cloudPendingTitle">待同步紀錄</h2><p data-pending-count></p></div><button type="button" data-pending-close aria-label="關閉待同步詳細">關閉</button></header>
- <p class="small">這裡列出目前帳號尚未確認完成的日期。暫停只停止自動重試，原有紀錄會保留。</p>
+ <p class="small">這裡列出目前帳號尚未確認完成的日期。儲存按鈕、手動重試及載入頁面時會同步；暫停的日期須自行恢復，原有紀錄會保留。</p>
  <p data-pending-message role="status" aria-live="polite"></p>
  <div data-pending-list></div>
  <section data-pending-comparison hidden><h3>版本比較：<span data-pending-date></span></h3><p data-pending-diff class="pending-sync-diff"></p><div class="pending-sync-actions"><button type="button" data-pending-use="local">以本機版本為準</button><button type="button" data-pending-use="cloud">以雲端版本為準</button></div></section>
@@ -117,12 +118,12 @@
  </div>
 </section>
 
-<section class="panel">
- <div class="panel-head"><h2>今日資訊</h2><span class="badge" id="weekdayText"></span></div>
+<section class="panel home-today">
+ <div class="panel-head"><h2><span data-home-icon="info" aria-hidden="true"></span>今日資訊</h2><span class="badge" id="weekdayText"></span></div>
  <div class="content">
   <div class="grid-3 today-info-grid">
    <div class="field today-info-centered-field"><label for="studyDate">日期</label><input id="studyDate" type="date"></div>
-   <div class="field today-info-centered-field"><label for="mood">今日狀態</label><select id="mood"><option value="">未填寫</option><option>精神良好</option><option>普通</option><option>較疲累</option><option>身體不適</option><option>外出</option></select></div>
+   <div class="field today-info-centered-field"><label for="mood"><span data-home-icon="heart" aria-hidden="true"></span>今日狀態</label><select id="mood"><option value="">未填寫</option><option>精神良好</option><option>普通</option><option>較疲累</option><option>身體不適</option><option>外出</option></select></div>
    <div class="field routine-time-field" id="routineTimeField">
     <label id="routineTimeLabel">作息時間</label>
     <div class="routine-time-switch" id="routineTimeModeSwitch" role="tablist" aria-label="選擇作息時間" data-active="0">
@@ -137,14 +138,16 @@
    </div>
   </div>
   <div class="stats overview-stats" id="overviewStats" style="margin-top:12px">
-   <div class="stat overview-metric-stat">
-    <div class="overview-metric-title">今日完成時間</div>
-    <div class="metric-minutes-panel" id="metricMinutesPanel">
-     <div class="subject-time-donut" id="subjectTimeDonut" aria-live="polite"><div class="subject-time-chart is-empty"><div class="subject-time-center"><strong><span id="doneMinutes" data-subject-time-value>0</span></strong><span data-subject-time-caption>分鐘</span></div></div><div class="subject-time-empty">完成項目並填入時間後，這裡會顯示各科時間佔比。</div></div>
-    </div>
+   <div class="stat overview-time-stat">
+     <div class="metric-minutes-panel" id="metricMinutesPanel">
+      <div class="subject-time-donut" id="subjectTimeDonut" aria-live="polite"><div class="subject-time-chart is-empty"><div class="subject-time-center"><strong><span id="doneMinutes" data-subject-time-value>0</span></strong><span data-subject-time-caption>分鐘</span></div></div><div class="subject-time-empty">完成項目並填入時間後，這裡會顯示各科時間佔比。</div></div>
+     </div>
+     <h3>今日完成時間</h3>
    </div>
-   <div class="stat completion-stat">
-    <div id="completionRatePanel">
+   <div class="stat overview-metric-stat completion-stat" data-metric-view="completion">
+    <div class="metric-segments" id="overviewMetricTabs" role="tablist" aria-label="學習成果與提醒" data-active="0"><span class="metric-segment-indicator" aria-hidden="true"></span><button type="button" role="tab" aria-selected="true" aria-controls="completionRatePanel" data-overview-metric="completion">完成率</button><button type="button" role="tab" id="yesterdayReminderTab" aria-selected="false" aria-controls="yesterdayReminderPanel" data-overview-metric="reminder" tabindex="-1">昨日提醒</button></div>
+    <div class="metric-panel-stage">
+    <div class="metric-panel is-active" id="completionRatePanel" role="tabpanel" data-metric-panel="completion" aria-hidden="false">
      <div class="completion-metric">
       <div class="completion-metric-head"><span>原訂今日項目完成率</span><strong id="completionPercent">0%</strong></div>
       <div class="progress"><div id="completionBar" style="width:0"></div></div>
@@ -161,6 +164,11 @@
      </div>
      <details class="completion-notes"><summary>完成率說明</summary><p><strong>原訂今日項目完成率：</strong>只計原訂今日必做項目，補做與自行新增不列入。</p><p><strong>今日總項目完成率：</strong>計入原訂項目、補做及符合統計規則的新增工作量；合併自然卡以整項工作量計算。</p><p>已確認延期與每日選做項目不列入兩種完成率。</p></details>
     </div>
+    <div class="metric-panel" id="yesterdayReminderPanel" role="tabpanel" aria-labelledby="yesterdayReminderTab" data-metric-panel="reminder" data-state="empty" aria-hidden="true" inert>
+     <p class="yesterday-reminder-date" id="yesterdayReminderDate"></p>
+     <div class="yesterday-reminder-text" id="yesterdayReminderText">前一天尚未填寫「明日第一件事」。</div>
+    </div>
+    </div>
    </div>
   </div>
  </div>
@@ -168,6 +176,7 @@
 
 <section class="panel study-record-section" id="studyItemsPanel">
  <div class="panel-head">
+  <h2><span data-home-icon="book" aria-hidden="true"></span>讀書項目</h2>
   <div class="study-items-segments" id="studyItemsViewTabs" role="tablist" aria-label="讀書項目範圍" data-active="0">
    <span class="study-items-segment-indicator" aria-hidden="true"></span>
    <button type="button" role="tab" aria-selected="true" aria-controls="dailyItemsView" data-study-items-view="today">今日項目</button>
@@ -205,11 +214,15 @@
  <div class="content" id="itemList"></div>
 </section>
 
-<section class="panel">
- <div class="panel-head"><h2>每日收尾</h2><span class="badge">供週檢討使用</span></div>
+<section class="panel home-reflection">
+ <div class="panel-head"><h2><span data-home-icon="clipboard" aria-hidden="true"></span>今日回顧與明日準備</h2></div>
  <div class="content">
-  <div class="grid-2"><div class="field"><label for="biggestBlock">今天最大的卡點</label><textarea id="biggestBlock"></textarea></div><div class="field"><label for="firstThingTomorrow">明天第一件事</label><textarea id="firstThingTomorrow"></textarea></div></div>
-  <div class="field" style="margin-top:10px"><label for="notes">其他補充</label><textarea id="notes" class="notes-large" rows="6"></textarea></div>
+  <div class="field"><label for="firstThingTomorrow"><span data-home-icon="flag" aria-hidden="true"></span>明日第一件事</label><textarea id="firstThingTomorrow" rows="3" placeholder="例如：先訂正今天數學講義的第 3 題"></textarea></div>
+  <details class="home-reflection-details" open>
+   <summary><span data-home-icon="note" aria-hidden="true"></span>今日回顧</summary>
+   <div class="home-reflection-fields"><div class="field"><label for="notes">心得與反思</label><textarea id="notes" class="notes-large" rows="3"></textarea></div><div class="field"><label for="biggestBlock">遇到的困難</label><textarea id="biggestBlock" rows="3"></textarea></div></div>
+  </details>
+  <div class="home-save-row"><button class="primary home-save-button" type="button" data-home-save aria-label="儲存紀錄" title="儲存紀錄"><span data-home-icon="save" aria-hidden="true"></span>儲存</button></div>
  </div>
 </section>
 
