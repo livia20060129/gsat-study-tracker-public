@@ -118,11 +118,11 @@ test('todo completions appear in the selected summary period, with skip excluded
   await expect(page.locator('.todo-card')).toHaveCount(3);
   await expandTodoCard(page.locator('.todo-card').filter({ has: page.locator('[data-item-id="todo-summary-english"]') }));
   await page.getByLabel('待辦英文閱讀的完成日期', { exact: true }).fill('2026-10-16');
-  await page.getByRole('button', { name: '標記完成 待辦英文閱讀', exact: true }).click();
+  await page.getByRole('checkbox', { name: '標記完成 待辦英文閱讀', exact: true }).click();
   await expect(page.locator('.todo-card')).toHaveCount(2);
   await expandTodoCard(page.locator('.todo-card').filter({ has: page.locator('[data-item-id="todo-summary-math"]') }));
   await page.getByLabel('待辦數學講義的完成日期', { exact: true }).fill('2026-10-02');
-  await page.getByRole('button', { name: '標記完成 待辦數學講義', exact: true }).click();
+  await page.getByRole('checkbox', { name: '標記完成 待辦數學講義', exact: true }).click();
   await page.getByRole('button', { name: '跳過 只跳過的項目', exact: true }).click();
   await expect(page.locator('.todo-card')).toHaveCount(0);
   await expect(page.locator('.todo-history-item')).toHaveCount(3);
@@ -145,7 +145,7 @@ test('todo completions appear in the selected summary period, with skip excluded
 
   await page.goto('/todo.html');
   await page.getByRole('button', { name: '復原 待辦英文閱讀', exact: true }).click();
-  await expect(page.getByRole('button', { name: '標記完成 待辦英文閱讀', exact: true })).toBeVisible();
+  await expect(page.getByRole('checkbox', { name: '標記完成 待辦英文閱讀', exact: true })).toBeVisible();
   await page.goto('/summary.html#week');
   await expect(list).toContainText('本週尚無完成項目。');
   await page.getByRole('tab', { name: '月', exact: true }).click();

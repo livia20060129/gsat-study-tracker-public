@@ -24,7 +24,8 @@
 .todo-card[data-expanded="true"] .todo-range-summary{display:none}
 .todo-card[data-expanded="false"]{grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px 12px}
 .todo-card[data-expanded="false"] .todo-card-main{display:flex;flex-direction:column}
-.todo-card[data-expanded="false"] h3{order:-2}
+.todo-card-heading{display:grid;grid-template-columns:44px minmax(0,1fr);align-items:start;gap:8px;min-width:0}
+.todo-card[data-expanded="false"] .todo-card-heading{order:-2}
 .todo-card[data-expanded="false"] .todo-range-summary{order:-1}
 .todo-card[data-expanded="false"] .todo-card-meta{margin:5px 0 0}
 .todo-card[data-expanded="false"] .todo-card-meta>span:not(.todo-overdue),

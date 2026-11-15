@@ -31,7 +31,7 @@ export function synchronizeRangeCompletion(storage: KeyValueStorage, prefix: str
     for (const base of records) {
       if (base.syncConflict || base.storageIssue) continue;
       const updated = reconcileRangeCompletion(base, index);
-      if (!updated) continue;
+      if (!updated || sameStudyContent(updated, base)) continue;
       const latest = repository.load(base.date);
       if (!latest || !sameStudyContent(latest, base)) { failed(base.date,'對照期間這一天的本機內容又有更新；已保留較新版本，未套用舊對照。'); continue; }
       const edited = markRecordLocallyEdited(updated, latest);

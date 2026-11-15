@@ -27,7 +27,7 @@ import { vocabularyTranslationGroups } from './study/vocabularyTranslationCounts
 import { vocabularyMeaningGroups } from './study/vocabularyMeaningGroups.ts';
 import { vocabularyReference } from './study/vocabularyAutoFill.ts';
 import { loadVocabularyDefaults } from './study/vocabularyDefaults.ts';
-import { vocabularyMeaningStarKeys, vocabularyWordTokens } from './study/vocabularyStars.ts';
+import { vocabularyMeaningStarKeys } from './study/vocabularyStars.ts';
 import type { StudyRecord, VocabularyTranslations } from './types.ts';
 
 const GROUPING_MODES = ['alphabetical', 'partOfSpeech', 'gsatLevel'] as const;
@@ -44,7 +44,6 @@ let translationsVisible = true;
 let selectedDictionary: VocabularyDictionary = 'oxford';
 try { selectedDictionary = vocabularyDictionary(localStorage.getItem(VOCABULARY_DICTIONARY_KEY)); } catch { /* Optional display preference. */ }
 const editingEntryKeys = new Set<string>();
-const annotatingEntryKeys = new Set<string>();
 const dictionaryPreviews = new WeakMap<HTMLElement, DictionaryPreview>();
 const cloudPreviews = new WeakMap<HTMLElement, CloudTranslationPreview>();
 const rowCache = new Map<string, { signature: string; node: HTMLElement }>();
@@ -112,38 +111,11 @@ function createStarButton(entry: VocabularyReviewEntry, key: string, label: stri
   return button;
 }
 
-function appendWordText(container: HTMLElement, entry: VocabularyReviewEntry, interactive: boolean): void {
-  let end = 0;
-  for (const token of vocabularyWordTokens(entry.text)) {
-    container.append(document.createTextNode(entry.text.slice(end, token.start)));
-    const marked = entry.vocabularyStars?.[token.key] === true;
-    if (interactive) {
-      const button = createStarButton(entry, token.key, `標註英文單字「${token.text}」`);
-      button.classList.add('vocabulary-token');
-      button.prepend(document.createTextNode(token.text));
-      container.append(button);
-    } else {
-      const span = document.createElement('span');
-      span.textContent = token.text;
-      span.classList.toggle('is-word-starred', marked);
-      container.append(span);
-    }
-    end = token.end;
-  }
-  container.append(document.createTextNode(entry.text.slice(end)));
-}
-
 function createWordLink(entry: VocabularyReviewEntry): HTMLElement {
-  if (annotatingEntryKeys.has(entry.key)) {
-    const tokens = document.createElement('span');
-    tokens.className = 'vocabulary-word-text vocabulary-token-list';
-    appendWordText(tokens, entry, true);
-    return tokens;
-  }
   if (!entry.lookupUrl) {
     const text = document.createElement('span');
     text.className = 'vocabulary-word-text';
-    appendWordText(text, entry, false);
+    text.textContent = entry.text;
     return text;
   }
   const link = document.createElement('a');
@@ -152,7 +124,7 @@ function createWordLink(entry: VocabularyReviewEntry): HTMLElement {
   updateDictionaryLink(link);
   link.target = '_blank';
   link.rel = 'noopener noreferrer';
-  appendWordText(link, entry, false);
+  link.textContent = entry.text;
   return link;
 }
 
@@ -390,6 +362,7 @@ function createReadonlyTranslations(entry: VocabularyReviewEntry): HTMLElement {
   container.className = 'vocabulary-readonly-translations';
   for (const { partOfSpeech, meanings } of vocabularyMeaningGroups(entry, activeContentKind)) {
     const group = document.createElement('div');
+    group.className = 'vocabulary-pos-group';
     if (partOfSpeech) {
       const heading = document.createElement('strong');
       heading.textContent = partOfSpeech;
@@ -477,15 +450,6 @@ function createVocabularyRow(entry: VocabularyReviewEntry): HTMLElement {
   const cardStar = createStarButton(entry, 'card', `標註整張卡片「${entry.text}」`);
   cardStar.classList.add('vocabulary-card-star');
   actions.append(cardStar);
-  if (vocabularyWordTokens(entry.text).length) {
-    const annotate = document.createElement('button');
-    annotate.type = 'button';
-    annotate.className = 'vocabulary-edit-button vocabulary-annotate-button';
-    annotate.dataset.annotateEntry = entry.key;
-    annotate.textContent = annotatingEntryKeys.has(entry.key) ? '結束標註' : '個別標註';
-    annotate.setAttribute('aria-pressed', String(annotatingEntryKeys.has(entry.key)));
-    actions.append(annotate);
-  }
   actions.append(editButton);
   identityHead.append(actions);
   identity.append(identityHead);
@@ -598,7 +562,7 @@ function createVocabularyGroup(
 function retainedVocabularyRow(entry: VocabularyReviewEntry, group = ''): HTMLElement {
   const key = `${group}:${entry.key}`;
   nextRowKeys.add(key);
-  const signature = JSON.stringify([entry, editingEntryKeys.has(entry.key), annotatingEntryKeys.has(entry.key), activeContentKind, activeRecordPrefix]);
+  const signature = JSON.stringify([entry, editingEntryKeys.has(entry.key), activeContentKind, activeRecordPrefix]);
   const previous = rowCache.get(key);
   if (previous?.signature === signature) return previous.node;
   if (previous) { dictionaryPreviews.get(previous.node)?.dispose(); cloudPreviews.get(previous.node)?.dispose(); }
@@ -757,7 +721,7 @@ function load(options: { background?: boolean } = {}): void {
     loadedRecords = result.records;
     activeRecordPrefix = result.prefix;
     allEntries = nextEntries;
-    if (scopeChanged) { editingEntryKeys.clear(); annotatingEntryKeys.clear(); resumedLookups.clear(); speech.cancel(); }
+    if (scopeChanged) { editingEntryKeys.clear(); resumedLookups.clear(); speech.cancel(); }
     vocabularyRefreshPending = false;
     const source = result.prefix.startsWith('study-v11:user:') ? '目前登入帳號的本機同步資料' : '訪客本機資料';
     element<HTMLParagraphElement>('vocabularySource').textContent = `${source}｜共讀取 ${result.records.length} 天紀錄`;
@@ -947,14 +911,6 @@ element<HTMLDivElement>('vocabularyList').addEventListener('click', event => {
     }
     return;
   }
-  const annotate = target.closest<HTMLButtonElement>('[data-annotate-entry]');
-  if (annotate) {
-    const key = annotate.dataset.annotateEntry!;
-    if (annotatingEntryKeys.has(key)) annotatingEntryKeys.delete(key);
-    else annotatingEntryKeys.add(key);
-    updateEntryStarUI(key, true);
-    return;
-  }
   const action = target.closest<HTMLButtonElement>('[data-add-translation], [data-delete-translation]');
   if (action) {
     if (action.disabled) return;
@@ -996,7 +952,7 @@ element<HTMLDivElement>('vocabularyList').addEventListener('click', event => {
 });
 
 /** Update every POS copy in place, preserving editors, focus and pending dictionary previews. */
-function updateEntryStarUI(key: string, replaceWord = false): void {
+function updateEntryStarUI(key: string): void {
   const entry = allEntries.find(candidate => candidate.key === key);
   if (!entry) return;
   for (const row of element('vocabularyList').querySelectorAll<HTMLElement>('.vocabulary-row')) {
@@ -1004,14 +960,6 @@ function updateEntryStarUI(key: string, replaceWord = false): void {
     row.classList.toggle('is-card-starred', entry.vocabularyStars?.card === true);
     for (const button of row.querySelectorAll<HTMLButtonElement>('[data-star-key]')) {
       button.setAttribute('aria-pressed', String(entry.vocabularyStars?.[button.dataset.starKey!] === true));
-    }
-    const annotate = row.querySelector<HTMLButtonElement>('[data-annotate-entry]');
-    if (annotate) {
-      annotate.textContent = annotatingEntryKeys.has(key) ? '結束標註' : '個別標註';
-      annotate.setAttribute('aria-pressed', String(annotatingEntryKeys.has(key)));
-    }
-    if (replaceWord || !annotatingEntryKeys.has(key)) {
-      row.querySelector('.vocabulary-word-heading > :is(.vocabulary-word-link,.vocabulary-word-text)')?.replaceWith(createWordLink(entry));
     }
   }
 }
@@ -1032,12 +980,6 @@ element<HTMLButtonElement>('toggleVocabularyTranslations').addEventListener('cli
 for (const button of document.querySelectorAll<HTMLButtonElement>('[data-export-vocabulary]')) {
   button.addEventListener('click', () => exportVocabulary(button.dataset.exportVocabulary === 'translated'));
 }
-element<HTMLSelectElement>('vocabularyExportFormat').addEventListener('change', () => {
-  const format = element<HTMLSelectElement>('vocabularyExportFormat').value.toUpperCase();
-  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-export-vocabulary]')) {
-    button.textContent = `匯出 ${format}（${button.dataset.exportVocabulary === 'translated' ? '有' : '無'}翻譯）`;
-  }
-});
 window.addEventListener('storage', function vocabularyStorageChanged(event): void {
   if (event.storageArea && event.storageArea !== localStorage) return;
   if (event.key === ACTIVE_RECORD_PREFIX_KEY) { load({ background: true }); return; }

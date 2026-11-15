@@ -20,12 +20,10 @@ test('small rows use an eight-second targeted undo instead of restoring a whole 
   assert.doesNotMatch(runtime, /deleteUndoState=cloneRecord\(data\)/);
 });
 
-test('Supabase account recovery includes reset, resend and password update', () => {
-  assert.match(runtime, /resetPasswordForEmail\(email,\{redirectTo:cloudAuthReturnUrl\(\)\}\)/);
-  assert.match(runtime, /auth\.resend\(\{type:'signup'/);
-  assert.match(runtime, /event==='PASSWORD_RECOVERY'/);
-  assert.match(runtime, /auth\.updateUser\(\{password:password\}\)/);
-  assert.match(html, /id="passwordRecoveryDialog"/);
+test('public authentication offers Google only and removes password and linking entrypoints', () => {
+  assert.match(html, /id="cloudGoogleSignInBtn"/);
+  assert.doesNotMatch(html, /cloudEmail|cloudPassword|cloudSignInBtn|cloudSignUpBtn|passwordRecoveryDialog|cloudGoogleLinkBtn/);
+  assert.doesNotMatch(runtime, /signInWithPassword|resetPasswordForEmail|auth\.resend|auth\.signUp|linkIdentity|cloudUpdateRecoveredPassword/);
 });
 
 test('all typed fields save after leaving the field while page exit remains durable', () => {
@@ -47,7 +45,9 @@ test('English review text stays in memory while typing and saves after leaving t
 test('English review separates parts of speech from the animated content-kind switch', () => {
   assert.match(runtime, /var primaryTags=VOCABULARY_PARTS_OF_SPEECH/);
   assert.match(runtime, /\[\['word','單字'\],\['combination','組合'\],\['sentence','句子'\]\]/);
-  assert.match(runtime, /renderEnglishReviewWordTagRow\(w,i,primaryTags,'word-pos-primary'\)\+renderEnglishReviewWordKind\(w,i\)/);
+  // The input layout may move the kind switch above the text; both controls remain available.
+  assert.match(runtime, /renderEnglishReviewWordTagRow\(w,i,primaryTags,'word-pos-primary'\)/);
+  assert.match(runtime, /renderEnglishReviewWordKind\(w,i\)/);
   assert.match(runtime, /current\.fixedCombination=kind==='combination';current\.beautifulSentences=kind==='sentence'/);
   assert.match(styles, /\.word-kind-indicator\{[\s\S]*?transition:transform/);
 });

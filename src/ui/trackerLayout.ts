@@ -77,7 +77,6 @@ function initializeHomeHeader(): void {
         });
     }
     renderIcons(document);
-    const date = document.getElementById('studyDate') as HTMLInputElement;
     const mobileBar = document.getElementById('siteMobileBar');
     const mobileHome = mobileBar?.querySelector<HTMLAnchorElement>('.site-mobile-home');
     if (mobileHome) {
@@ -85,23 +84,7 @@ function initializeHomeHeader(): void {
         mobileHome.innerHTML = '<span data-home-icon="book" aria-hidden="true"></span><span><strong>GSAT Tracker</strong><small>每日讀書完成度紀錄卡</small></span>';
         renderIcons(mobileHome);
     }
-    function updateDate(): void {
-        const value = date.value;
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return;
-        const selected = new Date(`${value}T12:00:00`);
-        document.querySelectorAll('[data-home-date-label]').forEach(node => {
-            node.textContent = `${value.slice(5).replace('-', '.')} 星期${'日一二三四五六'[selected.getDay()]}`;
-        });
-    }
-    document.querySelectorAll('[data-home-date]').forEach(button => button.addEventListener('click', () => {
-        const mobile = document.querySelector<HTMLButtonElement>('#siteMobileBar [data-mobile-section="date"]');
-        if (mobile && matchMedia('(max-width:1199px)').matches) mobile.click();
-        else { date.focus({ preventScroll: true }); try { date.showPicker(); } catch { date.click(); } }
-    }));
     document.querySelector('[data-home-save]')?.addEventListener('click', () => {
         document.getElementById('saveBtn')!.click();
     });
-    date.addEventListener('change', updateDate);
-    new MutationObserver(updateDate).observe(document.getElementById('weekdayText')!, { childList: true, subtree: true });
-    updateDate();
 }

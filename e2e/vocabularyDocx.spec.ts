@@ -16,7 +16,7 @@ test('Word downloads respect the selected list, preserve saved data and support 
         await page.locator('#vocabularySearch').fill(small ? 'alternate' : '');
         for (const translated of [true, false]) {
             const pending = page.waitForEvent('download');
-            await page.getByRole('button', { name: `匯出 DOCX（${translated ? '有' : '無'}翻譯）`, exact: true }).click();
+            await page.getByRole('button', { name: `${translated ? '有' : '無'}翻譯`, exact: true }).click();
             const download = await pending;
             expect(download.suggestedFilename()).toMatch(/\.docx$/);
             await download.saveAs(testInfo.outputPath(`${small ? 'single' : 'multipage'}-${translated ? 'translated' : 'blank'}.docx`));
@@ -25,5 +25,5 @@ test('Word downloads respect the selected list, preserve saved data and support 
     }
     expect(await page.evaluate(() => localStorage.getItem('study-v11:guest:2026-11-02'))).toBe(original);
     await page.locator('#vocabularyExportFormat').selectOption('pdf');
-    await expect(page.getByRole('button', { name: '匯出 PDF（有翻譯）', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: '有翻譯', exact: true })).toBeVisible();
 });

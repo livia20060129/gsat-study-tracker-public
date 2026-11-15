@@ -1,0 +1,385 @@
+{
+  "version": "171.6.0-public.59",
+  "baseRepository": "livia20060129/gsat-study-tracker-public",
+  "baseCommit": "69409dd0e70acec6c35041c58fcda1cf03fa5ea2",
+  "sharedPersonalVersion": "171.6.181",
+  "sourceFileCount": 75,
+  "deletePaths": [],
+  "files": [
+    {
+      "path": "GOOGLE_SIGN_IN_SETUP.md",
+      "sha256": "c0ac6fcbede4829adc2bb016e86340a1825654825686033eb031fbe9d0532a5f",
+      "bytes": 2503
+    },
+    {
+      "path": "LATEST_UPDATE.md",
+      "sha256": "0a970d8a38f705db82c7fb2a180a6844c682e566a8550c38e7251f58085cd2ef",
+      "bytes": 76917
+    },
+    {
+      "path": "README.md",
+      "sha256": "f64d6e6ee1e4b6dbbe136f32bca8a8c4bcf2869c042aa734aa72921969da9f3e",
+      "bytes": 38656
+    },
+    {
+      "path": "e2e/authPersistence.spec.ts",
+      "sha256": "c9ba6f634916927c81b4719df99ee2400426ff0eb649d57f9d03791f65d60118",
+      "bytes": 13029
+    },
+    {
+      "path": "e2e/calendarScheduleReconciliation.spec.ts",
+      "sha256": "165407f374603f0390dc10d9f32a24c6f7f94202b260d60883ab7cc36680d578",
+      "bytes": 25034
+    },
+    {
+      "path": "e2e/cloudTranslation.spec.ts",
+      "sha256": "9c83fc4c96ab70acd4ff57027b38626985fd1c5f81ba2d072280c152edeefb8a",
+      "bytes": 19598
+    },
+    {
+      "path": "e2e/englishReviewWordVisibility.spec.ts",
+      "sha256": "6d6c47dbfd57f12a042371944a75553120fe355e64ced314fce1ba9c900f538d",
+      "bytes": 5263
+    },
+    {
+      "path": "e2e/flatSections.spec.ts",
+      "sha256": "c62b96e7caf88d781c5e0f74f57621503cc80c03b659a4a5f49ca7312a5c2087",
+      "bytes": 13845
+    },
+    {
+      "path": "e2e/flatStudyCards.spec.ts",
+      "sha256": "ddde8ad3e049077ced54d5f9a99fc041be29e45c5e585d11a25c0a5af88460dc",
+      "bytes": 17767
+    },
+    {
+      "path": "e2e/googleAccountAuth.spec.ts",
+      "sha256": "9f31702a230362664923d850d4878f82e9d672c7be1ab09bc1a4caec81779a54",
+      "bytes": 14079
+    },
+    {
+      "path": "e2e/guestCatalogUpgrade.spec.ts",
+      "sha256": "c20498348db37e54fe306fcf4e7eb559788f72941aed8850788137721011cd80",
+      "bytes": 17126
+    },
+    {
+      "path": "e2e/helpers/googleSignIn.ts",
+      "sha256": "1c96dd4a1712892276dbe793de4ba9bec1a278504ae8f4c7fcc8dc3ef6244e16",
+      "bytes": 725
+    },
+    {
+      "path": "e2e/homepageLayout.spec.ts",
+      "sha256": "f8766f8cfd2f4046e7a8f0f8f841c35f39d90c0eec0b00b59e54f493a96283be",
+      "bytes": 6294
+    },
+    {
+      "path": "e2e/interactiveOptional.spec.ts",
+      "sha256": "568f3e754f02b56910b7c424ab169d4f05d3c956b0cfdd04d2c3b7a1ec158f01",
+      "bytes": 6596
+    },
+    {
+      "path": "e2e/menuSelectionMotion.spec.ts",
+      "sha256": "88694e0d072fa402d3c5dfdd8ba426a93b1ad61b4adbf93a800d93acc8001ef4",
+      "bytes": 8288
+    },
+    {
+      "path": "e2e/mobileShellIsolation.spec.ts",
+      "sha256": "6fdbbaec5736b6bb5dc102d75ba033d6e9d4d20a0b057fba736e61d835e0b992",
+      "bytes": 5356
+    },
+    {
+      "path": "e2e/navigationConsistency.spec.ts",
+      "sha256": "4339ae724a5a4f66d78f565aba430213095f04a701ca49d91da9e37b27f5cf38",
+      "bytes": 11756
+    },
+    {
+      "path": "e2e/pageTransitions.spec.ts",
+      "sha256": "e353c82239fa18ba0f50eef9b5b907600f851e347aa579fbe080965b6bba901c",
+      "bytes": 11285
+    },
+    {
+      "path": "e2e/pendingCloudSync.spec.ts",
+      "sha256": "ec76d45c8ace21b05f92bf815d72d4b1577f897d5ea4454e81d465484e4ebbc1",
+      "bytes": 29149
+    },
+    {
+      "path": "e2e/rangeCompletion.spec.ts",
+      "sha256": "7118009c10cc9a38caab0346dbf2da24635cdb150bb6aee812c84817ae746fbb",
+      "bytes": 9024
+    },
+    {
+      "path": "e2e/statusFeedback.spec.ts",
+      "sha256": "0000f26e514c3bc5e9ce691f8be1794e9ac3ed95b56068d09c288435ccef391a",
+      "bytes": 2760
+    },
+    {
+      "path": "e2e/summaryCompletedItems.spec.ts",
+      "sha256": "a08f50bc5095aec74aedd6bf02f603e17611d26ec0ee36d9049f6427e599d177",
+      "bytes": 14306
+    },
+    {
+      "path": "e2e/todoItemFilter.spec.ts",
+      "sha256": "bb80e0d1fe716c039010c07a9c4893857c4c3bf3ff4e18198502e5ebae57f716",
+      "bytes": 15346
+    },
+    {
+      "path": "e2e/todoOrganization.spec.ts",
+      "sha256": "23ed1f820d76e7b588f220089f6aa2679f650b8aaedaf09426784c6b4f3d145b",
+      "bytes": 14808
+    },
+    {
+      "path": "e2e/todoReliability.spec.ts",
+      "sha256": "e1eca405200c836179879726ebd5eeff45a2b2dc840a454c6fba5f66e08a42b6",
+      "bytes": 17688
+    },
+    {
+      "path": "e2e/tracker.spec.ts",
+      "sha256": "808c80dd94184ccd239004c327507f7bb18340f00327d83a1867445ab92976a5",
+      "bytes": 92146
+    },
+    {
+      "path": "e2e/vocabularyDocx.spec.ts",
+      "sha256": "97166ff91430596c07a52f748994bb669a805e18eba40bf42b3b2d0e0f45e733",
+      "bytes": 2181
+    },
+    {
+      "path": "e2e/vocabularyLayout.spec.ts",
+      "sha256": "2fc8ab8e6761d54237b24ad65c8dc73a57c1505f6fcf5de53d07a0ee8837a0cf",
+      "bytes": 10406
+    },
+    {
+      "path": "e2e/vocabularyStars.spec.ts",
+      "sha256": "8c5df1c39416f9d327f2808da3a6d3f94fed2a8cc11cc691312c7cdfb52497dd",
+      "bytes": 18159
+    },
+    {
+      "path": "e2e/weekdayNavigation.spec.ts",
+      "sha256": "7269eef670278cc2e78ecace444bc6b290eb1d57ef5c9d7226b13af88f6d4b32",
+      "bytes": 6709
+    },
+    {
+      "path": "e2e/weeklyScopeVisibility.spec.ts",
+      "sha256": "92bb2fc41d0daad7356354ba23c4606bd2ece2cd751263bd873fbae79972b32c",
+      "bytes": 4344
+    },
+    {
+      "path": "index.html",
+      "sha256": "eef64bc371a58b79ab04f89b2b6a3d461ca1b5b0f233c119c3c0502291083878",
+      "bytes": 19076
+    },
+    {
+      "path": "material.catalog.html",
+      "sha256": "64791266c5eb3c34a93b90cf0736e5eab3bcbc6ba9c386c27cc7a326dea4ebf0",
+      "bytes": 642
+    },
+    {
+      "path": "material.progress.html",
+      "sha256": "cb6553483364b7990b2e02ee15190b2402c3c4549a0596a77c8c5de70aae5baa",
+      "bytes": 6534
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "b6ad0b5466b6b630bdf21d6a5bae3d9b21eb541fd506845e191c14d74095075a",
+      "bytes": 99887
+    },
+    {
+      "path": "package.json",
+      "sha256": "9742080ee1ef399ef2cd950bc043e36d91f358a8ec852c78cfda93b0fbc70592",
+      "bytes": 1843
+    },
+    {
+      "path": "public/google-g.svg",
+      "sha256": "ee1fbdcca79bf022bd251b7fb19d27ae7f4e5e8f0f15c37502669ffd6c38b7d3",
+      "bytes": 737
+    },
+    {
+      "path": "public/gpt.prompt.html",
+      "sha256": "9cac40434d9d3e071bdd61985a9030fd0f0258cf24ee7b69b367bcab1e31f8bc",
+      "bytes": 44020
+    },
+    {
+      "path": "public/privacy.html",
+      "sha256": "ea87d9bde75e5e38bd2ad47e143dcef9acc9c735db3d233fc0a90c2021877b9d",
+      "bytes": 19866
+    },
+    {
+      "path": "public/site-shell.css",
+      "sha256": "fd934ea6e81f318d6b13bb0a8dfce6d734f0199f657ffb936a56dfd7a994e560",
+      "bytes": 31824
+    },
+    {
+      "path": "public/support.html",
+      "sha256": "92f9978903bc3e7be62e163c540c9e7f416b45f24d0d83cb5e9c5ef039a43c97",
+      "bytes": 8624
+    },
+    {
+      "path": "public/terms.html",
+      "sha256": "62d7182e722eeb5e136c0cb423562b1056b2b0e1ff50c89cf7af8a61de6106d3",
+      "bytes": 11278
+    },
+    {
+      "path": "public/vocabulary.sources.html",
+      "sha256": "af1c97a7f5642a78df6dc354c58dce1106a4aea0dbb2cf64aec7bdfd5d6e5bbc",
+      "bytes": 5252
+    },
+    {
+      "path": "src/application/cloud/googleAccountAuth.ts",
+      "sha256": "bf8e1ca98476154ebef5829e2cc2b85f5108a6da91760ce320faa95f1c89522b",
+      "bytes": 10072
+    },
+    {
+      "path": "src/application/records/localRecordEdits.ts",
+      "sha256": "c1795cf44779e095e5abf4bb108a2eaaf7baa37e22248e99ce6e081a46e159b7",
+      "bytes": 3320
+    },
+    {
+      "path": "src/application/records/synchronizeRangeCompletion.ts",
+      "sha256": "2885828f4cf0ab6921cd486645de5b781a3879e1c160f0101746a3d7e20fa26e",
+      "bytes": 2624
+    },
+    {
+      "path": "src/homepage.css",
+      "sha256": "d778bec60893d85890f7913e656242dd321fdceca609534e75aad1bcf0d04b8f",
+      "bytes": 14459
+    },
+    {
+      "path": "src/legacy-app.ts",
+      "sha256": "3aabe16d3b6ccb7ff6ff421a631a0bffe48acdb8e88433d24ab3d42ab38d30e2",
+      "bytes": 357903
+    },
+    {
+      "path": "src/site-shell.ts",
+      "sha256": "1d7d8c713bc7c0a049468f4ee0899eeea1e163d979c5426cfa00ad1e9bf78b29",
+      "bytes": 9673
+    },
+    {
+      "path": "src/study/rangeCompletion.ts",
+      "sha256": "9b199f326624828846cd9c1d49268cf1acefee37d36b0beb3dbf5522e2201feb",
+      "bytes": 7731
+    },
+    {
+      "path": "src/study/recordedActivity.ts",
+      "sha256": "a7143a88fb5f47a327ce267dc28f83c9c04f98671daa68762a206ac51ee5d5a4",
+      "bytes": 5975
+    },
+    {
+      "path": "src/styles.css",
+      "sha256": "e35bfbc0bb39a6dc5203fe262f0401f0073cf66ca8067ad9a2daf7d2cbb9338f",
+      "bytes": 44005
+    },
+    {
+      "path": "src/todo-page.css",
+      "sha256": "85d9d04be67bc1617a07634162a64833ca7623e2d2a42d036da7685156b976c2",
+      "bytes": 14584
+    },
+    {
+      "path": "src/todo-page.ts",
+      "sha256": "7a106993a6acc9545646f7320508028e3da5d31eea6664d4adc760328f5882b5",
+      "bytes": 48825
+    },
+    {
+      "path": "src/ui/cloudTranslationPreview.ts",
+      "sha256": "035c4fde7f369b3155208d1e02f02a65f98f2a46550c4445b4269d1827c7dfcb",
+      "bytes": 7375
+    },
+    {
+      "path": "src/ui/dictionaryPreview.ts",
+      "sha256": "b2029dd31909922687354d8de6105f91103541ac4784958899b2a84e224af620",
+      "bytes": 5416
+    },
+    {
+      "path": "src/ui/disclosureMotion.ts",
+      "sha256": "85be03eaa59ddf44d2eacf277a1f34e343847565a913a74ef630816af171e982",
+      "bytes": 11588
+    },
+    {
+      "path": "src/ui/selectionMotion.ts",
+      "sha256": "4e7946d419dad7f6af55cb1eceda9d9596a0ed8388fe950fda862b4042a51f3f",
+      "bytes": 11474
+    },
+    {
+      "path": "src/ui/sidebarDate.ts",
+      "sha256": "6ac8389ba97a6a28a6bb92b86fc5bc2facbb8d389adfa829d2d280fcb199d172",
+      "bytes": 2771
+    },
+    {
+      "path": "src/ui/statusFeedback.ts",
+      "sha256": "c38ed0a13d161bfdf2dc3259b9e8eefab5ecd4fee174e407033c6f83d0867f27",
+      "bytes": 2353
+    },
+    {
+      "path": "src/ui/trackerLayout.ts",
+      "sha256": "364b35ef9e755d2694fb591f6d0dae66b096e44f0462e501a3bf2d6d76da794b",
+      "bytes": 4492
+    },
+    {
+      "path": "src/ui/weeklyStudyDisplay.ts",
+      "sha256": "ed2fc1b250610d1e89f31c8d1bd5ee0c465f31a843b860c26715480dd4f6cdde",
+      "bytes": 1321
+    },
+    {
+      "path": "src/vocabulary-review-page.ts",
+      "sha256": "d3cb8f543cc605ea341f22ae7b7e36ddc923da0670c726904da83958f03ecc39",
+      "bytes": 48216
+    },
+    {
+      "path": "src/vocabulary-review.css",
+      "sha256": "647ae4a9777101f0bb537dc46b09d47a077bd9e2520424756b70234936b1cbf0",
+      "bytes": 19880
+    },
+    {
+      "path": "summary.html",
+      "sha256": "fa274e72f85e01b32e21200e023427ce0e2124c0a3dcc11a9d8f5b281709eb33",
+      "bytes": 6928
+    },
+    {
+      "path": "tests/englishReviewWordVisibility.test.ts",
+      "sha256": "670ef998ae4f07eac0498119f7172c5fa9354aefc8eb1563d724a9dba87a60e3",
+      "bytes": 4813
+    },
+    {
+      "path": "tests/googleAccountAuth.test.ts",
+      "sha256": "6acb7382f308cde13c3bdadf5a73d9b8da1de10c84eb0b1579408690ccd9245b",
+      "bytes": 8772
+    },
+    {
+      "path": "tests/legalPages.test.ts",
+      "sha256": "7a94f9bb739ce70a41eb4b908929f65e25a5f9d85159d2545e0af8ddc4eeaf48",
+      "bytes": 2064
+    },
+    {
+      "path": "tests/localRecordEdits.test.ts",
+      "sha256": "ab2054ede32f91404faf55b4483337b9c43473da38755cabef01293144d957d3",
+      "bytes": 8926
+    },
+    {
+      "path": "tests/publicEmptyDay.test.ts",
+      "sha256": "da00284eae5315dc8a617fa4f2b3a327783ec2081c4d691b548e5ad640ea8d17",
+      "bytes": 1706
+    },
+    {
+      "path": "tests/rangeCompletion.test.ts",
+      "sha256": "4ac32e99b4a34ae2f586dc8c78f3386b6f17d7a7af025047e04ef3d255a9cf18",
+      "bytes": 14668
+    },
+    {
+      "path": "tests/recordMerge.test.ts",
+      "sha256": "71aa8c7f1609ad20c2996a4bca725a5c2883c1986042a039b86eef96660e36b5",
+      "bytes": 15833
+    },
+    {
+      "path": "tests/safetyUxRegression.test.ts",
+      "sha256": "c3f9d6e70530899bad8a226d9822bb53d444b3a689aabacb211e9f119d054105",
+      "bytes": 8768
+    },
+    {
+      "path": "todo.html",
+      "sha256": "b21f92a712982e572e013c63e3865f4cdf98221dac2d508233760c9251bbf442",
+      "bytes": 4942
+    },
+    {
+      "path": "vocabulary.review.html",
+      "sha256": "6928edba0a4fb76623237683f26fc762ae43547783535412f179be006bd4608f",
+      "bytes": 5782
+    }
+  ]
+}

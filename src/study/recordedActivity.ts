@@ -105,3 +105,11 @@ export function clearUnrecordedCalendarConflict(record: StudyRecord): StudyRecor
   delete next.syncConflictCloud;
   return next;
 }
+
+
+/** A newly opened empty public day is a local view, not an intentional cloud edit. */
+export function isNewEmptyRecord(record: StudyRecord, previous?: StudyRecord | null): boolean {
+  return !previous && !record.storageIssue && !record.syncConflict
+    && Number(record.serverRevision || 0) === 0 && record.items.length === 0
+    && !hasProtectedStudyInput(record);
+}

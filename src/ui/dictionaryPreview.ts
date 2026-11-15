@@ -3,6 +3,7 @@ import { localDictionaryLookup } from '../study/localDictionaryLookup.ts';
 import { loadEcdictTranslations } from '../study/ecdictLookup.ts';
 import { VOCABULARY_PARTS_OF_SPEECH } from '../study/vocabularyTranslationCounts.ts';
 import type { VocabularyTranslations } from '../types.ts';
+import { waitForDisclosure } from './disclosureMotion.ts';
 
 export interface DictionaryPreviewOptions {
   word: string;
@@ -63,7 +64,11 @@ export class DictionaryPreview {
     const serial = ++this.requestSerial;
     this.output.replaceChildren();
     let translations: VocabularyTranslations | null;
-    try { translations = await loadEcdictTranslations(this.options.word); }
+    try {
+      await waitForDisclosure(this.element);
+      if (this.disposed || serial !== this.requestSerial) return;
+      translations = await loadEcdictTranslations(this.options.word);
+    }
     catch {
       if (!this.disposed && serial === this.requestSerial) this.status.textContent = 'ECDICT 暫時無法載入，可稍後重試或手動輸入中文。';
       return;

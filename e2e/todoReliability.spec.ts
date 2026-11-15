@@ -49,7 +49,7 @@ test('todo keeps completion-date choices and exact elapsed time through mode swi
   await page.getByRole('tab', { name: '自然', exact: true }).click();
   await expect(completionDate).toHaveValue('2026-10-16');
   await page.locator('[data-todo-timer-action="finish"]').click();
-  await page.getByRole('button', { name: '標記完成 物理計時驗證' }).click();
+  await page.getByRole('checkbox', { name: '標記完成 物理計時驗證' }).click();
   const stored = await page.evaluate(({ prefix, date }) => JSON.parse(localStorage.getItem(prefix + date)!), { prefix, date });
   expect(stored.items[0].checkedOn).toBe('2026-10-16');
   expect(Number(stored.items[0].minutes)).toBeGreaterThan(1);

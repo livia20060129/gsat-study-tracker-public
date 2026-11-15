@@ -8,6 +8,7 @@ import { siteNavigationPage } from './ui/siteNavigation.ts';
 import { initializeSidebarDate } from './ui/sidebarDate.ts';
 import { initializeDisclosureMotion } from './ui/disclosureMotion.ts';
 import { initializeMobileSections } from './ui/mobileSections.ts';
+import { initializeSelectionMotion } from './ui/selectionMotion.ts';
 import type { StudyItem, StudyRecord } from './types.ts';
 initializeDisclosureMotion();
 const cache = new Map<string, {
@@ -61,6 +62,7 @@ right.querySelectorAll<HTMLAnchorElement>('.site-tools a,.site-workspace-home').
 });
 left.querySelector('.site-summary-link')!.setAttribute('aria-label', '週／月總結');
 if (currentPage === 'summary.html') left.querySelector('.site-summary-link')!.setAttribute('aria-current', 'page');
+initializeSelectionMotion(right, bar);
 const sidebarDate = initializeSidebarDate(left, dateKey(), function dateChanged(): void {
     scheduleRefresh();
     mobileSections.showContent();
@@ -117,7 +119,9 @@ function refreshRails(): void {
             const entered = key <= today && records.some(record => record.date === key && hasRecordInput(record));
             if (entered)
                 count += 1;
-            return `<span${entered ? ' class="has-record"' : ''} title="${key}${entered ? ' 已填寫' : ' 尚未填寫'}">${['一', '二', '三', '四', '五', '六', '日'][index]}</span>`;
+            const weekday = ['一', '二', '三', '四', '五', '六', '日'][index];
+            const label = `${key} 星期${weekday}，${entered ? '已填寫' : '尚未填寫'}`;
+            return `<a href="./index.html?date=${key}" data-week-date="${key}"${entered ? ' class="has-record"' : ''}${key === selected ? ' aria-current="date"' : ''} aria-label="${label}" title="${label}">${weekday}</a>`;
         });
         left.querySelector('[data-rail-year]')!.textContent = String(anchor.getFullYear());
         left.querySelector('[data-rail-date]')!.textContent = `${String(anchor.getMonth() + 1).padStart(2, '0')}.${String(anchor.getDate()).padStart(2, '0')}`;

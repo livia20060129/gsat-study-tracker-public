@@ -56,6 +56,7 @@ test('switching kinds updates only that row without replacing controls or cleari
   const snapshots: StudyItem[] = [];
   const context = reviewRuntime({ persist: () => snapshots.push(structuredClone(item)) });
   const posRow = { hidden: false };
+  const row = { querySelector: (selector: string) => selector === '.word-pos-primary' ? posRow : null };
   const buttons = ['word', 'combination', 'sentence'].map(kind => ({
     getAttribute: () => kind,
     attributes: {} as Record<string, string>,
@@ -64,12 +65,12 @@ test('switching kinds updates only that row without replacing controls or cleari
   const switcher = {
     dataset: { active: '0' },
     querySelectorAll: () => buttons,
-    closest: () => ({ querySelector: () => posRow }),
+    closest: (selector: string) => selector === '.english-word-entry' ? row : null,
   };
   for (const [index, kind] of ['combination', 'sentence', 'word'].entries()) {
     context.selectEnglishReviewWordKind(item, {
       getAttribute: (name: string) => name === 'data-index' ? '0' : kind,
-      closest: () => switcher,
+      closest: (selector: string) => selector === '[data-word-kind-switch]' ? switcher : null,
     });
     assert.equal(posRow.hidden, kind !== 'word');
     assert.equal(switcher.dataset.active, String(kind === 'word' ? 0 : index + 1));

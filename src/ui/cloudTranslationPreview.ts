@@ -1,3 +1,4 @@
+import { waitForDisclosure } from './disclosureMotion.ts';
 import { CloudTranslationError, translateWithGoogle } from '../application/cloudTranslationClient.ts';
 import { cloudTranslationInput, type CloudTranslation } from '../study/cloudTranslation.ts';
 import type { CloudTranslationTarget } from '../study/cloudTranslationSelection.ts';
@@ -91,6 +92,8 @@ export class CloudTranslationPreview {
     this.confirmation = undefined;
     this.status.textContent = '正在使用 Google 翻譯…';
     try {
+      await waitForDisclosure(this.element);
+      if (this.disposed || serial !== this.requestSerial) return;
       const result = await translateWithGoogle(this.options.text, this.options.scope, this.controller.signal);
       if (this.disposed || serial !== this.requestSerial) return;
       if (this.target && this.options.partsOfSpeech?.length === 0 && !this.target.value && !this.targetChosen) {

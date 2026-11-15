@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
 
-test('pronunciation and Chinese controls use a separate row from export controls', async ({ page }) => {
-  for (const width of [1440, 375, 320]) {
+test('vocabulary tools use centered labeled groups and wrap into centered rows on narrow screens', async ({ page }) => {
+  for (const width of [1440, 768, 375, 320]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/vocabulary.review.html');
     const reading = page.locator('.vocabulary-reading-tools');
@@ -10,9 +10,42 @@ test('pronunciation and Chinese controls use a separate row from export controls
     await expect(reading.locator('#toggleVocabularyTranslations')).toBeVisible();
     await expect(reading.locator('#vocabularyAccent')).toBeVisible();
     await expect(exporting.locator('#vocabularyExportFormat')).toBeVisible();
-    const first = (await reading.boundingBox())!;
-    const second = (await exporting.boundingBox())!;
-    expect(second.y).toBeGreaterThanOrEqual(first.y + first.height + 8);
+    await expect(exporting.locator('.vocabulary-export-format>span')).toBeVisible();
+    await expect(exporting.locator('.vocabulary-export-format>span')).toHaveText('匯出格式');
+    await expect(exporting.getByLabel('匯出格式', { exact: true })).toHaveId('vocabularyExportFormat');
+    expect((await exporting.locator('#vocabularyExportFormat').boundingBox())!.width).toBeGreaterThanOrEqual(62);
+    await expect(exporting.locator('#vocabularyExportFormat option')).toHaveText(['.pdf', '.docx']);
+    for (const format of ['pdf', 'docx', 'pdf']) {
+      await exporting.locator('#vocabularyExportFormat').selectOption(format);
+      for (const label of ['有翻譯', '無翻譯']) {
+        const button = exporting.getByRole('button', { name: label, exact: true });
+        await expect(button).toHaveText(label);
+        await expect(button.locator('[data-ui-icon="download"] svg')).toBeVisible();
+        await expect(button.locator('svg path')).not.toHaveCount(0);
+      }
+      // On a narrow phone the format label and the two download actions may
+      // wrap independently, but each resulting row remains centered.
+      const groups = await exporting.locator('.vocabulary-export-format,.vocabulary-export-actions').evaluateAll(nodes => nodes.map(node => {
+        const rect = node.getBoundingClientRect();
+        return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+      }));
+      const box = (await exporting.boundingBox())!;
+      const rows = new Map<number, typeof groups>();
+      for (const group of groups) { const y = Math.round(group.y + group.height / 2); rows.set(y, [...(rows.get(y) ?? []), group]); }
+      for (const row of rows.values()) {
+        const left = Math.min(...row.map(group => group.x)), right = Math.max(...row.map(group => group.x + group.width));
+        expect(Math.abs((left + right) / 2 - box.x - box.width / 2)).toBeLessThan(1);
+      }
+    }
+    await expect(page.locator('.vocabulary-translation-tools')).toContainText('中文翻譯');
+    await expect(reading.getByLabel('發音口音')).toBeVisible();
+    await expect(reading.getByLabel('辭典版本')).toBeVisible();
+    const first = (await reading.boundingBox())!, second = (await exporting.boundingBox())!;
+    const toolbar = (await page.locator('.vocabulary-tool-columns').boundingBox())!;
+    const onSameRow = Math.abs(first.y + first.height / 2 - second.y - second.height / 2) < 1;
+    if (width === 1440) expect(onSameRow).toBe(true);
+    if (onSameRow) expect(Math.abs((first.x + second.x + second.width) / 2 - toolbar.x - toolbar.width / 2)).toBeLessThan(1);
+    else for (const row of [first, second]) expect(Math.abs(row.x + row.width / 2 - toolbar.x - toolbar.width / 2)).toBeLessThan(1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   }
 });
@@ -62,6 +95,9 @@ test('the Google badge and references sit under the title and all word groupings
   await expect(page.locator('#vocabularyLegacySources')).toBeHidden();
   await expect(page.locator('.vocabulary-row a[href*="ECDICT"], .vocabulary-row .vocabulary-reference-sources')).toHaveCount(0);
   const rows = page.locator('.vocabulary-row');
+  await expect(rows.first()).toHaveCSS('border-top-width', '1px');
+  await expect(rows.first()).toHaveCSS('border-radius', '14px');
+  await expect(rows.first()).toHaveCSS('background-color', 'rgb(251, 253, 255)');
   for (const grouping of ['字母排序', '詞性', 'Level']) {
     await page.getByRole('button', { name: grouping, exact: true }).click();
     await expect(rows).toHaveCount(4);

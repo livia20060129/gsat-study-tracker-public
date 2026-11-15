@@ -23,7 +23,9 @@ test('all public legal and support pages offer the same bilingual control', () =
 });
 
 test('English privacy policy explicitly discloses AI and Limited Use handling', () => {
-  assert.match(pages.privacy, /does not integrate with any third-party artificial intelligence or machine learning API/);
+  assert.match(pages.privacy, /Except for user-initiated Google Cloud Translation,[\s\S]*does not integrate with other third-party artificial intelligence or machine learning APIs/);
+  assert.match(pages.privacy, /Google is the only sign-in method offered for cloud accounts/);
+  assert.match(pages.privacy, /Signing in alone does not grant Calendar access/);
   assert.match(pages.privacy, /Google Workspace API data is not used to train, improve, or evaluate generalized AI\/ML models/);
   assert.match(pages.privacy, /adheres to the[\s\S]*Google API Services User Data Policy[\s\S]*including the Limited Use requirements/);
   assert.match(pages.privacy, /static text page and copy tool/);

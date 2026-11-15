@@ -186,6 +186,7 @@ test('rails render before async shell data, retain geometry through hydration, a
         const rect = node.getBoundingClientRect();
         return { x: rect.x, y: rect.y, width: rect.width, opacity: getComputedStyle(node).opacity };
       }));
+      const weekdayHeightBefore = await page.locator('.site-week-ticks').evaluate(node => node.getBoundingClientRect().height);
       release();
       await expect(page.locator('#siteRecordDate')).toHaveCount(1);
       const bootstrapVersion = await page.locator('script[src*="page-transitions.js"]').evaluate(node => new URL((node as HTMLScriptElement).src).searchParams.get('v'));
@@ -196,6 +197,8 @@ test('rails render before async shell data, retain geometry through hydration, a
         const rect = node.getBoundingClientRect();
         return { x: rect.x, y: rect.y, width: rect.width, opacity: getComputedStyle(node).opacity };
       }));
+      const weekdayHeightAfter = await page.locator('.site-week-ticks').evaluate(node => node.getBoundingClientRect().height);
+      expect(Math.abs(weekdayHeightAfter - weekdayHeightBefore), `${path} weekday reserved height`).toBeLessThan(1);
       expect(after).toHaveLength(before.length);
       for (let index = 0; index < before.length; index += 1) {
         for (const property of ['x', 'y', 'width'] as const) {

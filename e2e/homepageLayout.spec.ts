@@ -6,7 +6,8 @@ for (const width of [360, 1440]) test(`home information and reflection retain da
   await page.setViewportSize({ width, height: 900 });
   await page.goto('/');
   await expect(page.locator('.home-brand h1')).toHaveText('每日讀書完成度紀錄卡');
-  await expect(page.locator('[data-home-date-label]').first()).toHaveText('11.08 星期日');
+  await expect(page.locator('[data-home-date], [data-home-date-label], .app-header input[type="date"]')).toHaveCount(0);
+  await expect(page.locator('#studyDate')).toHaveValue('2026-11-08');
   await expect(page.locator('#routineDisclosure')).toBeHidden();
   await expect(page.locator('#todayStatusToggle')).toHaveAttribute('aria-expanded','false');
   await expect(page.locator('.mood-segments')).toBeVisible();
@@ -81,6 +82,8 @@ for (const width of [360, 1440]) test(`home information and reflection retain da
   await expect(page.locator('#saveBtn')).toHaveCSS('background-color','rgb(4, 120, 87)');
   expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('study-v11:guest:2026-11-08')!).notes)).toBe('等待重試的草稿');
   await selectStudyDate(page, '2026-11-07');
-  await expect(page.locator('[data-home-date-label]').first()).toHaveText('11.07 星期六');
+  await expect(page.locator('#studyDate')).toHaveValue('2026-11-07');
+  await expect(page.locator('.site-rail-date [data-rail-date]')).toHaveText('11.07');
+  await expect(page.locator('[data-home-date], [data-home-date-label]')).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

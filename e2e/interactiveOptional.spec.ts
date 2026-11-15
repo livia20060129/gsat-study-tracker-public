@@ -29,6 +29,17 @@ test('daily interactive card and Monday vocabulary are optional, with completed 
   const childId = await typeSelect.evaluate(node => node.closest('[data-item]')!.getAttribute('data-item'));
   await typeSelect.selectOption('mathOral');
   const child = card.locator(`[data-item="${childId}"]`);
+  for (const width of [320, 375]) {
+    await page.setViewportSize({ width, height: 900 });
+    const bounds = await child.evaluate(node => {
+      const checkbox = node.querySelector('[data-done]')!.getBoundingClientRect();
+      const title = node.querySelector('.item-top>[data-done]+div')!.getBoundingClientRect();
+      return { checkboxRight: checkbox.right, checkboxTop: checkbox.top, checkboxBottom: checkbox.bottom, titleLeft: title.left, titleTop: title.top, titleBottom: title.bottom };
+    });
+    expect(bounds.checkboxRight).toBeLessThan(bounds.titleLeft);
+    expect(bounds.checkboxTop).toBeLessThan(bounds.titleBottom);
+    expect(bounds.checkboxBottom).toBeGreaterThan(bounds.titleTop);
+  }
   await child.locator('[data-field="topic"]').fill('函數觀念');
   await child.locator('[data-minutes]').fill('25');
   await child.locator('[data-done]').check();

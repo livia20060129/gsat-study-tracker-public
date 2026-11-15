@@ -30,12 +30,12 @@ async function readNavigation(page: Page): Promise<{
   });
 }
 
-test('prompt navigation has no content-card frame and keeps all three buttons inside the header', async ({ page }, testInfo) => {
+test('prompt navigation uses the shared selection pill and keeps all three buttons inside the header', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 393, height: 852 });
   await page.goto('/gpt.prompt.html');
   await expect(page.locator('body')).toHaveAttribute('data-mobile-section', 'content');
   const navigation = await readNavigation(page);
-  expect(navigation.surface.slice(0, 7)).toEqual(Array(7).fill('0px'));
+  expect(navigation.surface.slice(0, 7)).toEqual(['0px', '0px', '3px', '3px', '0px', '0px', '13px']);
   expect(navigation.surface[7]).toBe('none');
   expect(navigation.contained).toBe(true);
   expect(navigation.height).toBe(112);
@@ -71,7 +71,7 @@ test('prompt contents keep their cards, copy action and anchors while full-page 
   });
   await page.setViewportSize({ width: 393, height: 852 });
   await page.goto('/gpt.prompt.html');
-  await expect(page.locator('main > nav')).toHaveCSS('border-radius', '22px');
+  await expect(page.locator('main > nav')).toHaveCSS('border-radius', '16px');
   await page.getByRole('button', { name: '複製完整 Prompt', exact: true }).click();
   await expect(page.getByRole('button', { name: '已複製', exact: true })).toBeVisible();
   const copied = await page.locator('html').getAttribute('data-copied-prompt');

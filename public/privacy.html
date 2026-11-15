@@ -1,15 +1,14 @@
 <!doctype html>
 <html lang="zh-Hant">
 <head>
-  <script src="./page-transitions.js?v=171.6.0-public.58"></script>
-  <link rel="stylesheet" href="./site-shell.css?v=171.6.0-public.54">
+  <script src="./page-transitions.js?v=171.6.0-public.59"></script>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   
   <meta name="description" content="GSAT Study Tracker 隱私權政策與 Google Calendar 資料使用說明。">
   <title>隱私權政策｜GSAT Study Tracker</title>
   <link rel="stylesheet" href="./legal.css?v=171.6.135">
-  <link rel="stylesheet" href="./site-shell.css?v=171.6.154">
+  <link rel="stylesheet" href="./site-shell.css?v=171.6.0-public.59">
   <script src="./legal-language.js" defer></script>
 </head>
 <body data-page-title-zh="隱私權政策｜GSAT Study Tracker" data-page-title-en="Privacy Policy | GSAT Study Tracker" data-page-description-zh="GSAT Study Tracker 隱私權政策與 Google Calendar 資料使用說明。" data-page-description-en="GSAT Study Tracker Privacy Policy and Google Calendar data-use disclosures.">
@@ -29,17 +28,20 @@
     <article data-legal-panel="zh-Hant">
       
       <p class="lead">本政策說明 GSAT Study Tracker 如何處理讀書紀錄、帳號資料與 Google Calendar 資料。</p>
-      <p class="meta">生效日期：2026 年 11 月 6 日</p>
+      <p class="meta">生效日期：2026 年 11 月 15 日</p>
 
       <h2>一、適用範圍</h2>
       <p>本政策適用於 GSAT Study Tracker（以下稱「本網站」）的讀書紀錄、雲端同步及 Google Calendar 連線功能。營運者為 GSAT Study Tracker 個人專案營運者，聯絡信箱為 <a href="mailto:a8744895@gmail.com">a8744895@gmail.com</a>。</p>
       <p>若使用者不同意提供 Calendar 相關資料，仍可使用不需要 Google Calendar 的 Tracker 功能，但無法使用 Calendar 同步。</p>
 
       <h2>二、蒐集及處理的資料</h2>
+      <h3>Google 帳號登入</h3>
+      <p>本網站的雲端帳號只提供 Google 登入，由 Supabase Auth 處理驗證。登入請求使用 openid、email、profile 基本權限，可能處理 Google 帳號識別、電子郵件、顯示名稱與頭像，以及 Supabase 使用者識別碼及登入憑證，以識別帳號與保存登入狀態。本網站不要求輸入或保存 Google 密碼。已綁定的 Google 身分沿用原 Supabase 使用者識別碼，不另行搬移讀書紀錄或重設翻譯額度。</p>
+      <p>Google 登入與 Google Calendar 授權為獨立操作。僅登入 Google 不會自動取得 Calendar 讀取權限；未登入仍可使用訪客本機紀錄。</p>
       <h3>帳號與讀書紀錄</h3>
       <ul><li>登入電子郵件、Supabase 使用者識別碼、登入與同步狀態。</li><li>每日讀書項目、完成狀態、完成率、讀書時間、學習進度及使用者自行輸入的備註。</li></ul>
       <h3>Google Calendar 資料</h3>
-      <p>使用者主動授權後，本網站以 <code>calendar.events.readonly</code> 唯讀權限讀取主要 Calendar 中指定期間內的行程資料。目前同步範圍約為過去 60 天至未來 240 天，可能包含：</p>
+      <p>使用者主動授權後，本網站以 <code>calendar.events.readonly</code> 唯讀權限讀取主要 Calendar 中指定期間內的行程資料。同步會讀取範圍內的歷史行程與未來約 240 天的行程，不僅限於最近 60 天，可能包含：</p>
       <ul><li>行程標題、說明及地點。</li><li>開始與結束日期、時間及全天行程狀態。</li><li>事件識別碼、更新時間、重複行程資訊及 Calendar 行程連結。</li></ul>
       <p>本網站不會透過 Calendar API 新增、修改或刪除 Google Calendar 內的原始行程。</p>
       <h3>OAuth 與技術資料</h3>
@@ -51,7 +53,7 @@
       <div class="notice">本網站不會將 Google Calendar 資料用於廣告、精準行銷、出售資料、訓練或改進一般用途 AI／ML 模型、分析其他使用者作為營運者的升學成果，或其他與 Tracker 功能無關的用途。</div>
 
       <h2>四、AI／ML 與 Google Limited Use</h2>
-      <p>GSAT Study Tracker 不整合任何第三方 AI 或機器學習 API，也不會自動將 Google Workspace API 的原始、彙整、匿名化或衍生資料傳送給 AI／ML 服務。Google Workspace API 資料不會用於訓練、改進或評估一般用途 AI／ML 模型。</p>
+      <p>除使用者主動發起的 Google Cloud Translation 機器翻譯外，本網站不整合其他第三方 AI 或機器學習 API，也不會自動將 Google Workspace API 的原始、彙整、匿名化或衍生資料傳送給 AI／ML 服務。Google Workspace API 資料不會用於訓練、改進或評估一般用途 AI／ML 模型。</p>
       <p>網站中的排程格式說明是靜態文字頁面及複製工具，不會呼叫 AI 服務，也不會自動附加或傳送 Google Calendar 資料。使用者如自行匯出、複製或分享資料，該動作由使用者主動決定。</p>
       <div class="notice"><strong>Limited Use 聲明：</strong>本網站對 Google Workspace API 所取得資訊的使用，遵守 <a href="https://developers.google.com/terms/api-services-user-data-policy" rel="noopener noreferrer">Google API Services User Data Policy</a>，包括 Limited Use 要求。</div>
 
@@ -83,17 +85,20 @@
     <article data-legal-panel="en" lang="en" hidden>
       
       <p class="lead">This policy explains how GSAT Study Tracker processes study records, account information, and Google Calendar data.</p>
-      <p class="meta">Effective date: November 6, 2026</p>
+      <p class="meta">Effective date: November 15, 2026</p>
 
       <h2>1. Scope</h2>
       <p>This policy applies to the study-record, cloud-sync, and Google Calendar connection features of GSAT Study Tracker (the “Service”). The Service is operated as a personal project. Privacy and data requests may be sent to <a href="mailto:a8744895@gmail.com">a8744895@gmail.com</a>.</p>
       <p>Users who do not authorize access to Google Calendar may continue using Tracker features that do not require Calendar synchronization.</p>
 
       <h2>2. Information We Process</h2>
+      <h3>Google account sign-in</h3>
+      <p>Google is the only sign-in method offered for cloud accounts. Supabase Auth handles authentication using the basic openid, email, and profile scopes. Account identifiers, email address, display name, avatar, Supabase user identifier, and authentication credentials may be processed to identify the account and maintain its session. The Service does not ask for or store Google passwords. An already linked Google identity continues using the original Supabase user identifier, study records, and translation allowance.</p>
+      <p>Google sign-in and Google Calendar authorization are separate actions. Signing in alone does not grant Calendar access. Guest local records remain available without sign-in.</p>
       <h3>Account and study records</h3>
       <ul><li>Sign-in email address, Supabase user identifier, and sign-in and synchronization status.</li><li>Daily study items, completion status, completion rates, study time, learning progress, and notes entered by the user.</li></ul>
       <h3>Google Calendar data</h3>
-      <p>After a user provides authorization, the Service uses the read-only <code>calendar.events.readonly</code> scope to read events from the user’s primary calendar within a defined period. The current synchronization window is approximately 60 days in the past through 240 days in the future. Data may include:</p>
+      <p>After a user provides authorization, the Service uses the read-only <code>calendar.events.readonly</code> scope to read events from the user’s primary calendar within a defined period. Synchronization includes historical events in the synchronization range and approximately 240 future days; it is not limited to the most recent 60 days. Data may include:</p>
       <ul><li>Event title, description, and location.</li><li>Start and end dates and times, including all-day status.</li><li>Event identifiers, update timestamps, recurrence information, and the Google Calendar event link.</li></ul>
       <p>The Service does not create, modify, or delete original Google Calendar events through the Calendar API.</p>
       <h3>OAuth and technical information</h3>
@@ -105,7 +110,7 @@
       <div class="notice">Google Calendar data is not used for advertising, targeted marketing, sale of data, training or improving generalized AI/ML models, analysis of other users for the operator’s academic-admission results, or purposes unrelated to Tracker functionality.</div>
 
       <h2>4. AI/ML and Google Limited Use</h2>
-      <p>GSAT Study Tracker does not integrate with any third-party artificial intelligence or machine learning API. Raw, aggregated, anonymized, or derived Google Workspace API data is not automatically transferred to an AI/ML service. Google Workspace API data is not used to train, improve, or evaluate generalized AI/ML models.</p>
+      <p>Except for user-initiated Google Cloud Translation, GSAT Study Tracker does not integrate with other third-party artificial intelligence or machine learning APIs. Raw, aggregated, anonymized, or derived Google Workspace API data is not automatically transferred to an AI/ML service. Google Workspace API data is not used to train, improve, or evaluate generalized AI/ML models.</p>
       <p>The scheduling-format reference available on the website is a static text page and copy tool. It does not call an AI service and does not automatically attach or transmit Google Calendar data. Any export, copy, or sharing action is initiated and controlled by the user.</p>
       <div class="notice"><strong>Limited Use statement:</strong> The use of information received from Google Workspace APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy" rel="noopener noreferrer">Google API Services User Data Policy</a>, including the Limited Use requirements.</div>
 

@@ -26,6 +26,7 @@ interface MotionOptions {
   boxFrom?: Partial<Record<typeof BOX_PROPERTIES[number], string>>;
   revealBoundary?: { from: DOMRect; selector: string };
   scroll?: DisclosureSnapshot['scroll'];
+  overflow?: 'hidden' | 'clip';
 }
 
 const motions = new Map<HTMLElement, Motion>();
@@ -44,6 +45,16 @@ function stopMotion(element: HTMLElement): void {
 
 function finishMotions(): void {
   for (const motion of [...motions.values()]) motion.finish();
+}
+
+/** Insert async controls after their containing disclosure stops moving and clipping. */
+export async function waitForDisclosure(element: HTMLElement): Promise<void> {
+  while (element.isConnected) {
+    const container = element.closest<HTMLElement>('[data-disclosure-motion]');
+    const motion = container && motions.get(container);
+    if (!motion) return;
+    await Promise.all(motion.animations.map(animation => animation.finished.catch(() => {})));
+  }
 }
 
 function reducedMotion(): boolean {
@@ -71,7 +82,8 @@ function runMotion(
   }
   const timing: KeyframeAnimationOptions = { duration: DURATION, easing: EASING, fill: 'both' };
   const opening = options.opening !== false;
-  const frames: Keyframe[] = [{ height: `${from}px`, overflow: 'hidden' }, { height: `${to}px`, overflow: 'hidden' }];
+  const overflow = options.overflow ?? 'hidden';
+  const frames: Keyframe[] = [{ height: `${from}px`, overflow }, { height: `${to}px`, overflow }];
   if (options.collapseBox) {
     const style = getComputedStyle(element);
     for (const property of BOX_PROPERTIES) {
@@ -152,7 +164,14 @@ export function animateDisclosureChange(element: HTMLElement, change: () => void
 /** Supports editors that replace their own row while keeping the surrounding list unchanged. */
 export function animateDisclosureReplacement(element: HTMLElement, before: DisclosureSnapshot): void {
   stopMotion(element);
-  runMotion(element, before.height, element.getBoundingClientRect().height, { fade: [...element.children].filter(child => child instanceof HTMLElement) as HTMLElement[], scroll: before.scroll });
+  // An editor's controls already have their final coordinates while its height
+  // reveals them. `hidden` makes this temporary box programmatically scrollable:
+  // scrollIntoView can shift its contents between pointer down and click, then
+  // lose that scroll as the box grows. Clip without creating a scroll container.
+  runMotion(element, before.height, element.getBoundingClientRect().height, {
+    fade: [...element.children].filter(child => child instanceof HTMLElement) as HTMLElement[],
+    scroll: before.scroll, overflow: 'clip',
+  });
 }
 
 export function animateVisibility(element: HTMLElement, visible: boolean): void {

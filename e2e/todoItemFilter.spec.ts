@@ -230,7 +230,7 @@ test('completing and skipping the last selected items keeps the filter empty unt
   await seedItems(page);
   const select = page.getByRole('combobox', { name: '查看項目', exact: true });
   await select.selectOption('english:ACE Reading');
-  await page.locator('.todo-card').first().getByRole('button', { name: '標記完成 ACE Reading', exact: true }).click();
+  await page.locator('.todo-card').first().getByRole('checkbox', { name: '標記完成 ACE Reading', exact: true }).click();
   await expect(page.locator('.todo-card')).toHaveCount(1);
   await page.locator('.todo-card').getByRole('button', { name: '跳過 ACE Reading', exact: true }).click();
   await expect(page.locator('.todo-card')).toHaveCount(0);

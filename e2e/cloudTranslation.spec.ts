@@ -212,7 +212,7 @@ test('multiple POS require a choice and dictionary switching preserves the edito
   await panel.locator('[data-cloud-translation-query]').click();
   await expect(panel.locator('[data-cloud-translation-apply]')).toBeDisabled();
   await panel.getByRole('combobox', { name: 'Google 翻譯填入詞性' }).selectOption('adjective');
-  await page.getByRole('combobox', { name: '查詢辭典', exact: true }).selectOption('cambridge');
+  await page.getByRole('combobox', { name: '辭典版本', exact: true }).selectOption('cambridge');
   await expect(panel.locator('.cloud-translation-result')).toHaveText('Google 候選翻譯');
   await expect(page.locator('[data-cloud-translation-query]')).toHaveCount(1);
   await expect(page.locator('.vocabulary-row [data-cloud-translation-query]')).toHaveCount(1);
@@ -259,12 +259,12 @@ test('dictionary switching updates all word links, persists and does not modify 
   const before = await records(page);
   const link = page.locator('.vocabulary-row[data-entry-key="cell"] .vocabulary-word-link');
   await expect(link).toHaveAttribute('href', 'https://www.oxfordlearnersdictionaries.com/search/english/?q=cell');
-  await page.getByRole('combobox', { name: '查詢辭典', exact: true }).selectOption('cambridge');
+  await page.getByRole('combobox', { name: '辭典版本', exact: true }).selectOption('cambridge');
   await expect(link).toHaveAttribute('href', 'https://dictionary.cambridge.org/dictionary/english-chinese-traditional/cell');
   await page.reload();
-  await expect(page.getByRole('combobox', { name: '查詢辭典', exact: true })).toHaveValue('cambridge');
+  await expect(page.getByRole('combobox', { name: '辭典版本', exact: true })).toHaveValue('cambridge');
   await expect(link).toHaveAttribute('href', 'https://dictionary.cambridge.org/dictionary/english-chinese-traditional/cell');
-  await page.getByRole('combobox', { name: '查詢辭典', exact: true }).selectOption('oxford');
+  await page.getByRole('combobox', { name: '辭典版本', exact: true }).selectOption('oxford');
   await expect(link).toHaveAttribute('href', 'https://www.oxfordlearnersdictionaries.com/search/english/?q=cell');
   expect(await records(page)).toEqual(before);
   expect(requests).toEqual([]);

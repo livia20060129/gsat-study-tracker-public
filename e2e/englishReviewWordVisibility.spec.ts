@@ -1,7 +1,7 @@
 import { selectStudyDate } from './helpers/siteNavigation.ts';
 import { expect, test } from '@playwright/test';
 
-test('review POS follows word/combination/sentence modes on mobile, preserves checks and reloads correctly', async ({ page }) => {
+test('review POS follows word/combination/sentence modes on mobile, preserves checks and reloads correctly', async ({ page }, testInfo) => {
   await page.clock.install({ time: new Date('2026-10-23T12:00:00+08:00') });
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto('/');
@@ -25,6 +25,30 @@ test('review POS follows word/combination/sentence modes on mobile, preserves ch
   const word = card.locator('.field').filter({ has: page.locator('[data-word-text][data-index="0"]') });
   const phrase = card.locator('.field').filter({ has: page.locator('[data-word-text][data-index="1"]') });
   const sentence = card.locator('.field').filter({ has: page.locator('[data-word-text][data-index="2"]') });
+  for (const width of [1280, 375, 320]) {
+    await page.setViewportSize({ width, height: 812 });
+    const entries = await card.locator('.english-word-entry').evaluateAll(nodes => nodes.map(node => {
+      const style = getComputedStyle(node);
+      const type = node.querySelector('.word-kind-field')!;
+      const text = node.querySelector('[data-word-text]')!;
+      return {
+        divider: style.borderTopWidth,
+        dividerStyle: style.borderTopStyle,
+        typeAboveText: type.getBoundingClientRect().bottom <= text.getBoundingClientRect().top,
+        typeLabel: type.querySelector('.word-kind-label')!.textContent,
+        overflows: node.scrollWidth > node.clientWidth + 1,
+      };
+    }));
+    expect(entries).toHaveLength(4);
+    expect(entries[0].divider).toBe('0px');
+    for (const entry of entries.slice(1)) {
+      expect(entry.divider).toBe('2px');
+      expect(entry.dividerStyle).toBe('solid');
+    }
+    expect(entries.every(entry => entry.typeAboveText && entry.typeLabel === '內容類型' && !entry.overflows)).toBe(true);
+    await card.screenshot({ path: testInfo.outputPath(`word-entry-dividers-${width}.png`) });
+  }
+  await page.setViewportSize({ width: 375, height: 812 });
   await expect(word.locator('.word-pos-primary')).toBeVisible();
   await expect(word.getByLabel('Noun', { exact: true })).toBeChecked();
   await expect(phrase.locator('.word-pos-primary')).toBeHidden();

@@ -2,6 +2,7 @@ import { synchronizeRangeCompletion } from './application/records/synchronizeRan
 import { CALENDAR_SCHEDULE_UPDATED, initializeBrowserCalendarSchedule, refreshBrowserCalendarSchedule } from './application/calendar/browserCalendarSchedule.ts';
 import './todo-page.css';
 import { animateDisclosureChange, initializeDisclosureMotion } from './ui/disclosureMotion.ts';
+import { animateCompletionCheckbox } from './ui/selectionMotion.ts';
 import { applyStudyHeadingHierarchy, studyFieldHierarchy } from './ui/studyFieldHierarchy.ts';
 
 import { saveLocalRecordEdit } from './application/records/localRecordEdits.ts';
@@ -230,6 +231,10 @@ function createTimeEditor(entry: OverdueTaskEntry): HTMLElement {
   label.textContent = '學習時間';
   const modes = document.createElement('div');
   modes.className = 'todo-time-modes';
+  modes.style.setProperty('--time-selection', entry.timer.mode === 'timer' ? '1' : '0');
+  const indicator = document.createElement('span');
+  indicator.setAttribute('aria-hidden', 'true');
+  modes.append(indicator);
   modes.dataset.active = entry.timer.mode;
   modes.setAttribute('role', 'group');
   modes.setAttribute('aria-label', `${entry.title}的時間輸入方式`);
@@ -327,7 +332,6 @@ function createTodoCard(entry: OverdueTaskEntry): HTMLElement {
   article.className = `todo-card subject-${entry.subject}`;
   const main = document.createElement('div');
   main.className = 'todo-card-main';
-  main.append(createMeta(entry));
   const title = document.createElement('h3');
   title.textContent = display.title;
   applyStudyHeadingHierarchy(title);
@@ -338,25 +342,31 @@ function createTodoCard(entry: OverdueTaskEntry): HTMLElement {
   expand.setAttribute('aria-label', `展開或收合 ${display.title}的詳細內容`);
   expand.setAttribute('aria-expanded', String(expandedCards.has(entry.key)));
   article.dataset.expanded = String(expandedCards.has(entry.key));
-  main.append(title);
-  setTodoRangeSummary(main, display.rangeSummary);
   const controls = document.createElement('div');
   controls.className = 'todo-card-controls';
   const actions = document.createElement('div');
   actions.className = 'todo-actions';
-  const complete = document.createElement('button');
-  complete.type = 'button';
+  const completionLabel = document.createElement('label');
+  completionLabel.className = 'todo-completion-control';
+  const complete = document.createElement('input');
+  complete.type = 'checkbox';
   complete.className = 'todo-complete';
-  complete.textContent = '完成';
   applyActionData(complete, entry);
   complete.setAttribute('aria-label', `標記完成 ${entry.title}`);
+  completionLabel.append(complete);
+  const heading = document.createElement('div');
+  heading.className = 'todo-card-heading';
+  heading.append(completionLabel, title);
+  main.append(heading);
+  setTodoRangeSummary(main, display.rangeSummary);
+  main.append(createMeta(entry));
   const skip = document.createElement('button');
   skip.type = 'button';
   skip.className = 'todo-skip';
   skip.textContent = '跳過';
   applyActionData(skip, entry);
   skip.setAttribute('aria-label', `跳過 ${entry.title}`);
-  actions.append(expand, complete, skip);
+  actions.append(expand, skip);
   controls.append(actions);
   article.append(main, controls);
   if (expandedCards.has(entry.key)) populateTodoCardEditors(article, entry);
@@ -610,7 +620,8 @@ function skipTask(action: TodoActionTarget): void {
   }
 }
 
-function completeTask(action: TodoActionTarget, completionDate: string): void {
+function completeTask(action: TodoActionTarget, completionDate: string, checkbox: HTMLInputElement): void {
+  let savedCompletion = false;
   try {
     const state = currentTimer(action);
     if (state?.mode === 'timer') {
@@ -621,11 +632,24 @@ function completeTask(action: TodoActionTarget, completionDate: string): void {
       updateOverdueTaskCompletion(record, action.itemId, true, completionDate)
     ));
     if (!saved) return setError('找不到原始項目或完成日期無效，請重新讀取後再試。');
+    savedCompletion = true;
     setError('');
     setFeedback(`已完成「${action.title}」，完成日期為 ${completionDate}。可在下方清單復原。`);
-    render();
+    const card = checkbox.closest<HTMLElement>('.todo-card');
+    const motion = animateCompletionCheckbox(checkbox);
+    if (card && motion) {
+      // Persist first. Keep the checked box visible for its short confirmation,
+      // then move the saved item to history. No delayed or duplicate data write.
+      card.dataset.completing = 'true';
+      card.inert = true;
+      checkbox.disabled = true;
+      const finish = (): void => { delete card.dataset.completing; render(); };
+      void motion.finished.then(finish, finish);
+    } else render();
   } catch (error) {
     saveError(error, '無法保存完成狀態，請確認瀏覽器儲存權限。');
+  } finally {
+    if (!savedCompletion) checkbox.checked = false;
   }
 }
 
@@ -891,7 +915,7 @@ element<HTMLDivElement>('todoList').addEventListener('click', function handleTod
   const card = clicked.closest<HTMLElement>('.todo-card');
   if (clicked.closest('[data-todo-expand]') && card) return toggleTodoCard(card);
   const target = (event.target as HTMLElement).closest<HTMLElement>(
-    '.todo-skip, .todo-complete, [data-todo-time-mode], [data-todo-timer-action]',
+    '.todo-skip, [data-todo-time-mode], [data-todo-timer-action]',
   );
   if (!target) {
     if (!card || clicked.closest('input, select, textarea, button, a, label, fieldset, .todo-record-grid, .todo-time-editor, [contenteditable="true"]')) return;
@@ -902,11 +926,6 @@ element<HTMLDivElement>('todoList').addEventListener('click', function handleTod
   const action = actionFromElement(target);
   if (!action) return;
   if (target.classList.contains('todo-skip')) return skipTask(action);
-  if (target.classList.contains('todo-complete')) {
-    const date = target.closest<HTMLElement>('.todo-card')
-      ?.querySelector<HTMLInputElement>('[data-todo-completion-date]')?.value ?? drafts.value(draftKey(action), 'completionDate', localDateKey());
-    return completeTask(action, date);
-  }
   if (target.dataset.todoTimeMode) {
     const minutes = target.closest<HTMLElement>('.todo-card')
       ?.querySelector<HTMLInputElement>('[data-todo-minutes]')?.value ?? '';
@@ -916,6 +935,15 @@ element<HTMLDivElement>('todoList').addEventListener('click', function handleTod
 });
 
 element<HTMLDivElement>('todoList').addEventListener('change', function handleTodoChange(event): void {
+  if (event.target instanceof HTMLInputElement && event.target.matches('.todo-complete')) {
+    const checkbox = event.target;
+    const action = actionFromElement(checkbox);
+    if (!action || !checkbox.checked) return;
+    const date = checkbox.closest<HTMLElement>('.todo-card')
+      ?.querySelector<HTMLInputElement>('[data-todo-completion-date]')?.value ?? drafts.value(draftKey(action), 'completionDate', localDateKey());
+    completeTask(action, date, checkbox);
+    return;
+  }
   const range = (event.target as HTMLElement).closest<HTMLInputElement>('[data-todo-range]');
   if (range) {
     const action = actionFromElement(range);

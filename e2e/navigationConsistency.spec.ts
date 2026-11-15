@@ -46,7 +46,13 @@ test('all pages share desktop rails and three full-width mobile sections without
         expect(Math.abs((await page.locator('.site-rail-right').boundingBox())!.width - width)).toBeLessThanOrEqual(16);
         await expect(page.locator('.site-rail-backdrop')).toHaveCount(0);
         await expect(page.locator('.site-tools a')).toHaveCount(4);
+        await expect(home).toBeVisible();
+        const menuWidths = await page.locator('.site-workspace-home,.site-tools>a').evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().width));
+        expect(Math.max(...menuWidths) - Math.min(...menuWidths)).toBeLessThan(1);
+        const activeMenuItem = page.locator('.site-workspace-home[aria-current=page],.site-tools>a[aria-current=page]');
+        if (await activeMenuItem.count()) await expect(activeMenuItem).toHaveCSS('background-color', 'rgb(234, 240, 255)');
         if (await selectedTool.count()) await expect(selectedTool).toHaveCSS('color', 'rgb(57, 103, 233)');
+        if (path === '/vocabulary.review.html' && width === 375) await page.screenshot({ path: testInfo.outputPath('mobile-menu-selection.png'), fullPage: true });
         await page.keyboard.press('Escape');
         await expect(page.locator('.site-rail-right')).toBeHidden();
         await expect(page.locator('button[data-mobile-section="content"]')).toBeFocused();

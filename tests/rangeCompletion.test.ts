@@ -5,6 +5,7 @@ import { synchronizeRangeCompletion } from '../src/application/records/synchroni
 import { LocalStudyRecordRepository } from '../src/infrastructure/storage/localStudyRecordRepository.ts';
 import { decodeStudyRecord, encodeStudyRecord } from '../src/storage/studyRecordCodec.ts';
 import { readBrowserRecordHistory } from '../src/infrastructure/storage/localRecordHistory.ts';
+import { markRecordSynced } from '../src/storage/recordSync.ts';
 import type { StudyItem, StudyRecord } from '../src/types.ts';
 
 function item(id: string, start = '1', end = '10', done = false): StudyItem {
@@ -27,6 +28,39 @@ test('public Calendar generic materials participate while civics, history, geogr
   assert.equal(resolved.items[0].done, true);
   assert.equal(resolved.items[1].done, false);
   assert.equal(resolved.items[2].done, false);
+});
+
+function jsonbOrder(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(jsonbOrder);
+  if (!value || typeof value !== 'object') return value;
+  const object = value as Record<string, unknown>;
+  return Object.fromEntries(Object.keys(object).sort((a,b)=>a.length-b.length || a.localeCompare(b))
+    .map(key=>[key,jsonbOrder(object[key])]));
+}
+
+test('cloud JSONB key order cannot reapply an unchanged automatic completion', () => {
+  const source=record('2026-09-30',item('source','1','10',true));
+  const marked=reconcile(record('2026-10-01',item('plan')),source)!;
+  const cloud=jsonbOrder(markRecordSynced(marked)) as StudyRecord;
+  assert.equal(reconcile(cloud,source),null);
+});
+
+test('33 confirmed automatic-completion days remain byte-for-byte unchanged during repeated history checks', () => {
+  const source=record('2026-09-30',item('source','1','10',true));
+  const rows=[source,...Array.from({length:33},(_,index)=>{
+    const date=new Date(Date.UTC(2026,9,index+1)).toISOString().slice(0,10);
+    return reconcile(record(date,item(`plan-${index}`)),source)!;
+  })].map(row=>jsonbOrder(markRecordSynced({...row,serverRevision:2})) as StudyRecord);
+  const prefix='study-v11:user:confirmed:';
+  const values=new Map(rows.map(row=>[prefix+row.date,JSON.stringify(row)]));
+  const before=new Map(values);let writes=0;
+  const storage={get length(){return values.size},key(index:number){return [...values.keys()][index]??null},
+    getItem(key:string){return values.get(key)??null},setItem(key:string,value:string){writes++;values.set(key,value)},removeItem(key:string){values.delete(key)}};
+  for(let pass=0;pass<3;pass++){
+    assert.deepEqual(synchronizeRangeCompletion(storage,prefix,pass===2).saved,[]);
+    assert.deepEqual(values,before);
+  }
+  assert.equal(writes,0);
 });
 
 test('completed adjacent ranges check a fully covered overdue/future item with the actual completion date', () => {

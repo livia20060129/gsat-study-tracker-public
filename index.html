@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="./page-transitions.js?v=171.6.0-public.58"></script>
+  <script src="./page-transitions.js?v=171.6.0-public.59"></script>
   <meta name="theme-color" content="#f5f8fc" />
   <link rel="icon" type="image/png" href="/book.png" />
   <link rel="apple-touch-icon" href="/book.png" />
@@ -13,7 +13,6 @@
 <main>
 <header class="app-header page-navigation-header">
  <div class="app-heading home-brand"><span data-home-icon="book" aria-hidden="true"></span><div><h1>每日讀書完成度紀錄卡</h1><div class="subtitle">每日紀錄、完成度、頁數與每週匯出</div></div></div>
- <button class="home-date" type="button" data-home-date aria-label="修改紀錄日期"><span data-home-icon="calendar" aria-hidden="true"></span><span data-home-date-label></span></button>
  <div class="header-actions page-navigation-actions">
   <a class="header-action-link" href="./gpt.prompt.html">排程建議prompt</a>
   <a class="header-action-link" href="./todo.html">待辦事項</a>
@@ -26,7 +25,7 @@
 <details class="connection-dock" id="connectionSettings">
  <summary class="connection-status-bar" aria-label="Cloud 與 Calendar 狀態；展開連線設定">
   <span class="connection-statuses">
-   <span class="connection-status-item"><span class="connection-status-name">Cloud</span><span class="badge connection-badge" id="cloudStatusBadge" data-state="offline"><span data-cloud-status-icon data-ui-icon="cloud-upload" aria-hidden="true"></span>本機模式</span><button type="button" id="cloudPendingDetailsBtn" class="pending-sync-link" hidden>查看詳細</button></span>
+   <span class="connection-status-item"><span class="connection-status-name">Cloud</span><span class="badge connection-badge" id="cloudStatusBadge" data-state="offline"><span data-cloud-status-icon data-ui-icon="cloud-upload" aria-hidden="true"></span>本機模式</span><button type="button" id="cloudPendingDetailsBtn" class="pending-sync-link" hidden>詳細</button></span>
    <span class="connection-divider" aria-hidden="true"></span>
    <span class="connection-status-item"><span class="connection-status-name">Calendar</span><span class="badge connection-badge" id="calendarStatusBadge" data-state="offline"><span data-connection-status-icon data-ui-icon="globe-off" aria-hidden="true"></span>需先登入</span></span>
   </span>
@@ -39,20 +38,18 @@
    <strong id="activeTimerDisplay">00:00</strong>
    <button class="secondary" type="button" data-action="timer-pause-active">暫停</button>
   </span>
-  <span class="connection-save-feedback" id="status" aria-live="polite"></span>
+  <span class="connection-save-feedback" id="statusFeedback" hidden><span id="status" aria-live="polite"></span><button type="button" id="statusAcknowledgeBtn" class="connection-status-ack">了解</button></span>
  </summary>
  <div class="connection-settings-content">
   <section class="connection-settings-group" id="cloudPanel" aria-labelledby="cloudSettingsTitle">
    <h2 id="cloudSettingsTitle">Cloud 帳號與同步</h2>
    <div id="cloudLoggedOut">
-    <div class="connection-login-grid">
-     <div class="field"><label for="cloudEmail">Email</label><input id="cloudEmail" type="email" autocomplete="email" placeholder="你的 Email"></div>
-     <div class="field"><label for="cloudPassword">密碼</label><input id="cloudPassword" type="password" autocomplete="current-password" minlength="6" placeholder="至少 6 碼"></div>
-     <div class="connection-actions"><button id="cloudSignInBtn" class="primary" type="button">登入</button><button id="cloudSignUpBtn" type="button">建立帳號</button><button id="cloudForgotPasswordBtn" class="text-action" type="button">忘記密碼</button><button id="cloudResendVerificationBtn" class="text-action" type="button">重寄驗證信</button></div>
-    </div>
+    <button id="cloudGoogleSignInBtn" class="google-account-button" type="button"><img src="./google-g.svg" width="20" height="20" alt="" aria-hidden="true">使用 Google 登入</button>
+    <p class="small google-account-note">使用 Google 帳號登入，即可存取雲端紀錄。</p>
    </div>
    <div id="cloudLoggedIn" hidden>
     <div class="connection-account"><strong id="cloudUserEmail"></strong></div>
+    <div class="small google-account-note">使用 Google 帳號登入</div>
     <div class="connection-actions">
      <button id="cloudRefreshBtn" class="secondary" type="button">重新讀取雲端</button>
      <button id="cloudSyncLocalBtn" type="button">補上本機舊資料</button>
@@ -60,6 +57,7 @@
      <button id="cloudSignOutBtn" type="button">登出</button>
     </div>
    </div>
+   <p id="cloudGoogleMessage" class="small google-account-message" aria-live="polite" hidden></p>
    <div class="small connection-message" id="cloudMessage" aria-live="polite">未登入時仍可使用；訪客新增的內容會在登入後自動保存到帳號。</div>
    <div class="cloud-refresh-notice" id="cloudRefreshNotice" hidden aria-live="polite">
     <span>雲端有較新的資料；輸入完成後會安全合併並更新畫面。</span>
@@ -88,16 +86,6 @@
  </div>
 </details>
 
-<dialog class="account-recovery-dialog" id="passwordRecoveryDialog" aria-labelledby="passwordRecoveryTitle">
- <form method="dialog" id="passwordRecoveryForm">
-  <h2 id="passwordRecoveryTitle">設定新密碼</h2>
-  <p class="small">請輸入至少 6 碼的新密碼。完成後即可用新密碼登入。</p>
-  <div class="field"><label for="cloudNewPassword">新密碼</label><input id="cloudNewPassword" type="password" autocomplete="new-password" minlength="6" required></div>
-  <div class="field"><label for="cloudNewPasswordConfirm">再次輸入新密碼</label><input id="cloudNewPasswordConfirm" type="password" autocomplete="new-password" minlength="6" required></div>
-  <div class="dialog-message small" id="passwordRecoveryMessage" aria-live="polite"></div>
-  <div class="connection-actions dialog-actions"><button id="cloudUpdatePasswordBtn" class="primary" type="submit">更新密碼</button><button id="cloudCancelPasswordBtn" type="button">取消</button></div>
- </form>
-</dialog>
 
 <dialog class="pending-sync-dialog" id="cloudPendingDialog" aria-labelledby="cloudPendingTitle">
  <header><div><h2 id="cloudPendingTitle">待同步紀錄</h2><p data-pending-count></p></div><button type="button" data-pending-close aria-label="關閉待同步詳細">關閉</button></header>

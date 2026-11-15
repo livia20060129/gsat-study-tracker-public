@@ -1,3 +1,4 @@
+import { installGoogleSignInRedirect } from './helpers/googleSignIn.ts';
 import { navigateSite } from './helpers/siteNavigation.ts';
 import { expect, test, type Page } from '@playwright/test';
 import { enableMaterialEditing } from './helpers/materialEditing.ts';
@@ -36,9 +37,8 @@ async function addBook(page: Page, mode: 'pages' | 'unit' | 'round' = 'pages'): 
 }
 async function signIn(page: Page): Promise<void> {
   await page.locator('#connectionSettings summary').click();
-  await page.locator('#cloudEmail').fill('test@example.com');
-  await page.locator('#cloudPassword').fill('dummy-password');
-  await page.locator('#cloudSignInBtn').click();
+  await installGoogleSignInRedirect(page);
+  await page.locator('#cloudGoogleSignInBtn').click();
 }
 
 async function addSelectedCatalogItem(page: Page): Promise<ReturnType<Page['locator']>> {
@@ -59,7 +59,7 @@ test('guest login merges same-date additions and catalogs into cloud, captures c
   }, date);
   const cloud = new Map<string, { study_date: string; payload: Record<string, unknown>; revision: number; updated_at: string }>();
   cloud.set(date, { study_date: date, payload: { date, notes: 'existing account note', items: [{ id: 'same', type: 'general', title: '帳號原有', source: 'custom', done: true, minutes: '30', required: false, f: {} }] }, revision: 3, updated_at: '2026-10-29T03:00:00Z' });
-  const user = { id: userId, email: 'test@example.com', aud: 'authenticated', role: 'authenticated' };
+  const user = { id: userId, email: 'test@example.com', aud: 'authenticated', role: 'authenticated', app_metadata: { provider: 'google' }, identities: [{ provider: 'google' }] };
   await page.route('https://xcpnxkkixsxzgbqsiuud.supabase.co/**', async route => {
     const request = route.request(), url = new URL(request.url());
     if (url.pathname.endsWith('/auth/v1/token')) return route.fulfill({ json: { access_token: 'eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoiYXV0aGVudGljYXRlZCJ9.signature', token_type: 'bearer', refresh_token: 'test-refresh', expires_in: 3600, user } });
@@ -98,9 +98,9 @@ test('guest login merges same-date additions and catalogs into cloud, captures c
 test('failed login keeps guest additions and never starts an account import', async ({ page }) => {
   await isolatedGuest(page);
   await page.evaluate(date => localStorage.setItem('study-v11:guest:' + date, JSON.stringify({ date, items: [{ id: 'guest', type: 'general', source: 'custom', title: 'guest', f: {} }] })), date);
-  await page.route('**/auth/v1/token?grant_type=password', route => route.fulfill({ status: 400, json: { error: 'invalid_grant', error_description: 'Invalid login credentials' } }));
+  await page.route('**/auth/v1/token?grant_type=pkce', route => route.fulfill({ status: 400, json: { error: 'invalid_grant', error_description: 'Invalid login credentials' } }));
   await page.goto('/'); await signIn(page);
-  await expect(page.locator('#cloudMessage')).toContainText('Invalid login credentials');
+  await expect(page.locator('#cloudGoogleMessage')).toContainText('Google 登入未完成');
   expect(await page.evaluate(() => Object.keys(localStorage).some(key => key.startsWith('study-v11:user:')))).toBe(false);
   expect(await page.evaluate(date => JSON.parse(localStorage.getItem('study-v11:guest:' + date)!).items.some((item: { id: string }) => item.id === 'guest'), date)).toBe(true);
 });

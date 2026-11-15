@@ -66,7 +66,7 @@ test('completing a Unit from todo checks covered scheduled Units with their own 
   await page.goto('/todo.html');
   const card = page.locator('.todo-card').filter({ has: page.locator('[data-item-id="unit-source"]') });
   await expandTodoCard(card);
-  await card.getByRole('button', { name: /^標記完成/ }).click();
+  await card.getByRole('checkbox', { name: /^標記完成/ }).click();
   await expect.poll(async () => (await stored(page, '2026-11-08', 'unit-plan')).done).toBe(true);
   await page.goto('/'); await selectStudyDate(page, '2026-11-08');
   await expect(page.locator('[data-item="unit-plan"] [data-done]')).toBeChecked();
@@ -77,7 +77,7 @@ test('local range failure dates stay inside View details and a manual range retr
   await page.addInitScript(()=>{
     const set=Storage.prototype.setItem;
     Storage.prototype.setItem=function(key,value){
-      if(this===localStorage && key==='study-v11:guest:2026-11-08' && localStorage.getItem('test:range-quota')==='yes'
+      if(this===localStorage && key==='study-v11:guest:'+(localStorage.getItem('test:range-quota-date')||'2026-11-08') && localStorage.getItem('test:range-quota')==='yes'
         && JSON.parse(value).items.some((item:StudyItem)=>item.id==='plan'&&item.done)) throw new DOMException('full','QuotaExceededError');
       set.call(this,key,value);
     };
@@ -86,17 +86,46 @@ test('local range failure dates stay inside View details and a manual range retr
   await page.evaluate(()=>localStorage.setItem('test:range-quota','yes'));
   await page.goto('/');await selectStudyDate(page,'2026-11-05');
   await page.locator('[data-item="source"] [data-done]').check();
-  await expect(page.locator('#status')).toContainText('本機儲存空間不足');
+  await expect(page.locator('#status')).toContainText('原因見詳細');
   await expect(page.locator('#status')).not.toContainText('2026-11-08');
   await expect(page.locator('#cloudPendingDialog')).toBeHidden();
   expect((await stored(page,'2026-11-08','plan')).done).toBe(false);
-  await page.getByRole('button',{name:'查看詳細',exact:true}).click();
+  await page.getByRole('button',{name:'詳細',exact:true}).click();
   await expect(page.locator('[data-range-failures]')).toContainText('2026-11-08');
   await expect(page.locator('[data-range-failures]')).toContainText('本機儲存空間不足');
+  await page.locator('[data-retry-ranges]').click();
+  await expect(page.locator('#status')).toHaveText('本機對照仍有 1 天未更新，原因見詳細。');
+  await page.locator('[data-pending-close]').click();
+  await page.getByRole('button', { name: '了解', exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#statusFeedback')).toBeHidden();
+  await expect(page.locator('#connectionSettings')).not.toHaveAttribute('open', '');
+  await expect(page.getByRole('button',{name:'詳細',exact:true})).toBeVisible();
+  expect((await stored(page,'2026-11-08','plan')).done).toBe(false);
+  await page.reload();
+  await page.locator('[data-item="source"] [data-done]').uncheck();
+  await page.locator('[data-item="source"] [data-done]').check();
+  await page.getByRole('button',{name:'詳細',exact:true}).click();
+  await page.locator('[data-retry-ranges]').click();
+  await expect(page.locator('#status')).toHaveText('本機對照仍有 1 天未更新，原因見詳細。');
+  await expect(page.locator('#statusFeedback')).toBeHidden();
+  await expect(page.locator('[data-range-failures]')).toContainText('2026-11-08');
+  await page.evaluate(()=>{
+    const next=JSON.parse(localStorage.getItem('study-v11:guest:2026-11-08')!);
+    next.date='2026-11-09';
+    localStorage.setItem('study-v11:guest:2026-11-09',JSON.stringify(next));
+    localStorage.setItem('test:range-quota-date','2026-11-09');
+  });
+  await page.locator('[data-retry-ranges]').click();
+  await expect(page.locator('#status')).toHaveText('本機對照仍有 1 天未更新，原因見詳細。');
+  await expect(page.locator('#statusFeedback')).toBeVisible();
+  await expect(page.locator('[data-range-failures]')).toContainText('2026-11-09');
+  await expect(page.locator('[data-range-failures]')).not.toContainText('2026-11-08');
   await page.evaluate(()=>localStorage.removeItem('test:range-quota'));
   await page.locator('[data-retry-ranges]').click();
   await expect(page.locator('[data-pending-message]')).toContainText('本機完成範圍對照已更新');
   await expect(page.locator('[data-range-failures]')).toBeHidden();
+  await expect(page.locator('#statusFeedback')).toBeVisible();
   expect((await stored(page,'2026-11-08','plan')).done).toBe(true);
   expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('study-v11:guest:2026-11-08')!).notes)).toBe('保留原筆記');
 });

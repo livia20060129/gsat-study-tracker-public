@@ -136,7 +136,7 @@ test('flat page and Unit cards keep ranges editable while references omit Calend
 test('nested natural subjects display their names once and retain desktop/mobile layout and independent controls', async ({ page }, testInfo) => {
   const recordDate = '2026-10-24';
   const integration = studyItem('flat-integration', 'scienceReview', { subject: '混合', calendarNaturalIntegration: true, calendarTopic });
-  integration.f.calendarIntegrationEntries = ['生物', '化學', '物理', '地科'].map(subject => ({
+  integration.f.calendarIntegrationEntries = (['生物', '化學', '物理', '地科'] as const).map(subject => ({
     id: `natural-integration-${recordDate}-${subject}`, type: 'scienceReview', title: subject,
     subject, material: '123日的淬鍊', required: true, done: false, minutes: '',
     source: 'calendarNaturalIntegration', calendarIntegrationChild: true,
@@ -271,7 +271,7 @@ test('flat todo cards preserve direct range edits and synchronize them back to t
   await expect(todo).toBeVisible();
   await expect(todo).not.toContainText('Google Calendar API');
   await expect(todo).not.toHaveCSS('background-color', 'rgb(255, 255, 255)');
-  await expect(todo).toHaveCSS('border-left-width', '4px');
+  await expect(todo).toHaveCSS('border-left-width', '3px');
   await expect(page.locator('.study-record-section')).toHaveCSS('border-top-width', '0px');
   const end = todo.locator('[data-todo-range="end"]');
   await expect(end).toBeEditable();

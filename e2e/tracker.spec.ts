@@ -166,7 +166,7 @@ test('overdue task page filters subjects and persists skip without marking compl
   await minutes.dispatchEvent('change');
   await expect(page.locator('#todoFeedback')).toContainText('25.5 分鐘');
   const completionDate = await page.getByLabel('英文閱讀的完成日期').inputValue();
-  await page.getByRole('button', { name: '標記完成 英文閱讀' }).click();
+  await page.getByRole('checkbox', { name: '標記完成 英文閱讀' }).click();
   await expect(page.locator('#todoEmpty')).toBeVisible();
   await expect(page.locator('#todoFeedback')).toContainText(`完成日期為 ${completionDate}`);
   await expect(page.locator('#todoHistoryList')).toContainText('英文閱讀');
@@ -755,12 +755,12 @@ test('whole-card deletion requires confirmation and small-row deletion can be un
   await expect(wordInput).toHaveValue('regression');
 });
 
-test('account recovery controls are readable without changing data', async ({ page }) => {
-  await page.locator('.connection-settings-toggle').click();
-  await expect(page.getByRole('button', { name: '忘記密碼' })).toBeVisible();
-  await expect(page.getByRole('button', { name: '重寄驗證信' })).toBeVisible();
-  await page.getByRole('button', { name: '忘記密碼' }).click();
-  await expect(page.locator('#cloudMessage')).toContainText('請先輸入');
+test('Google is the only public login option and viewing settings does not change records', async ({ page }) => {
+  const before = await page.evaluate(() => localStorage.getItem('study-v11:guest:' + document.querySelector<HTMLInputElement>('#studyDate')!.value));
+  await clickConnectionToggle(page.locator('.connection-settings-toggle'));
+  await expect(page.locator('#cloudGoogleSignInBtn')).toBeVisible();
+  await expect(page.locator('#cloudEmail,#cloudPassword,#cloudSignUpBtn,#passwordRecoveryDialog,#cloudGoogleLinkBtn')).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.getItem('study-v11:guest:' + document.querySelector<HTMLInputElement>('#studyDate')!.value))).toBe(before);
 });
 
 test('mobile connection settings stay anchored to their scrolled position', async ({ browser }) => {

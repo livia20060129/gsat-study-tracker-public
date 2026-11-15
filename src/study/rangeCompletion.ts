@@ -116,7 +116,10 @@ function desiredCompletion(item: StudyItem, index: ReturnType<typeof completedRa
   const date = range && coverageDate(index.get(range.key) ?? [], range);
   if (date && range) {
     const marker: AutomaticCompletion = { date, range };
-    if (item.done && JSON.stringify(previous) === JSON.stringify(marker)) return undefined;
+    // JSONB may reorder both marker and nested range keys on a cloud round-trip.
+    // Compare the actual completion facts, never their serialization order.
+    if (item.done && previous?.date === date && previous.range?.key === range.key
+      && previous.range.start === range.start && previous.range.end === range.end) return undefined;
     return marker;
   }
   return previous ? null : undefined;

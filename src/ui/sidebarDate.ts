@@ -37,5 +37,22 @@ export function initializeSidebarDate(rail: HTMLElement, today: string, onChange
     }
     onChange();
   });
+  rail.querySelector('.site-week-ticks')?.addEventListener('click', function openWeekday(event): void {
+    const click = event as MouseEvent;
+    if (!original || click.defaultPrevented || click.button !== 0 || click.metaKey || click.ctrlKey || click.altKey || click.shiftKey || !(click.target instanceof Element)) return;
+    const link = click.target.closest<HTMLAnchorElement>('a[data-week-date]');
+    if (!link || link.download || (link.target && link.target !== '_self')) return;
+    const date = requestedStudyDate(new URL(link.href).search);
+    if (!date) return;
+    click.preventDefault();
+    input.value = date;
+    // Keep Tracker's save-before-switch handling, including a failed save
+    // restoring the original input value, and the mobile return to content.
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    if (input.value !== date) return;
+    const url = new URL(location.href);
+    url.searchParams.set('date', date);
+    history.replaceState(history.state, '', url);
+  });
   return input;
 }

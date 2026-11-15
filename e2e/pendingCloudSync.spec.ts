@@ -88,7 +88,7 @@ async function setup(page: Page, options: { dates?: string[]; changed?: boolean;
 }
 
 async function openDetails(page: Page): Promise<void> {
-  await page.getByRole('button', { name: '查看詳細', exact: true }).click();
+  await page.getByRole('button', { name: '詳細', exact: true }).click();
   await expect(page.locator('#cloudPendingDialog')).toBeVisible();
 }
 

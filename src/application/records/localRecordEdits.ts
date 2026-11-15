@@ -1,6 +1,6 @@
 import { LocalStudyRecordRepository, type KeyValueStorage } from '../../infrastructure/storage/localStudyRecordRepository.ts';
 import {
-  markRecordLocallyEdited, mergeStudyRecordsThreeWay, sameStudyContent,
+  markRecordLocallyEdited, mergeStudyRecordsForUpload, mergeStudyRecordsThreeWay, sameStudyContent,
   type StudyRecordMergeResult,
 } from '../../storage/recordSync.ts';
 import type { StudyRecord } from '../../types.ts';
@@ -9,17 +9,26 @@ import { rangeCompletionSignature } from '../../study/rangeCompletion.ts';
 import { synchronizeRangeCompletion } from './synchronizeRangeCompletion.ts';
 import { isUnrecordedCalendarCache } from '../../study/recordedActivity.ts';
 
+/** A queued pre-Calendar render cannot restore generated fields removed by a newer schedule. */
+export function mergeQueuedRecord(queued: StudyRecord, latest: StudyRecord | null): StudyRecord {
+  if (!latest) return queued;
+  if (isUnrecordedCalendarCache(latest, queued)) return latest;
+  return mergeStudyRecordsForUpload(latest, queued);
+}
+
 /** Shares the editor's loaded-base merge with standalone pages. */
 export function reconcileLocalRecordEdit(draft: StudyRecord, latest: StudyRecord | null, base: StudyRecord): StudyRecordMergeResult {
   if (!latest || sameStudyContent(latest, base)) {
     return { record: draft, conflicts: [], usedThreeWayMerge: false };
   }
   const merged = mergeStudyRecordsThreeWay(draft, latest, base);
-  // A delayed render may still hold an older projection of the same schedule.
+  // A delayed render may hold an older projection, or only default presets if
+  // it started before Calendar loaded. The latest record establishes that this
+  // is a schedule cache; all three versions must still be free of actual input.
   // Only actual input needs merging; never resurrect generated cache fields or
   // a cleared conflict by treating that stale projection as a user's edit.
   if (merged.conflicts.length
-    && isUnrecordedCalendarCache(draft, latest) && isUnrecordedCalendarCache(base)) {
+    && isUnrecordedCalendarCache(draft, latest) && isUnrecordedCalendarCache(base, latest)) {
     return { record: latest, conflicts: [], usedThreeWayMerge: false };
   }
   return merged;

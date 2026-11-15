@@ -8,6 +8,7 @@ async function seed(page: Page): Promise<void> {
     for (const date of ['2026-11-01', '2026-11-02']) localStorage.setItem(`study-v11:guest:${date}`, JSON.stringify({ schemaVersion: 2, date, items: [{
       id: 'review', type: 'englishVocabInteractive', done: true, minutes: '15', required: false, f: { words: [
         { id: 'alternate', text: 'alternate', noun: true, verb: true, gsatLevel: 3, showGsatLevel: true,
+          vocabularyStars: { 'word:alternate:0': true },
           translationsByPartOfSpeech: { noun: ['代替者', '候補者'], verb: ['輪流'] } },
         { id: 'phrase', text: 'pay a premium', fixedCombination: true, translation: '支付保費；支付溢價' },
         { id: 'sentence', text: 'Time after time, practice makes perfect.', beautifulSentences: true, translation: '一次又一次；熟能生巧' },
@@ -17,7 +18,7 @@ async function seed(page: Page): Promise<void> {
   await page.reload();
 }
 
-test('card, meaning and English stars are independent, survive sorting and reload, and clear all source copies', async ({ page }) => {
+test('card and meaning stars survive sorting and reload without exposing retired English annotations', async ({ page }) => {
   await seed(page);
   const row = page.locator('.vocabulary-row[data-entry-key="alternate"]');
   const card = row.getByRole('button', { name: '標註整張卡片「alternate」', exact: true });
@@ -25,10 +26,8 @@ test('card, meaning and English stars are independent, survive sorting and reloa
   await card.click();
   await noun.click();
   await expect(row.getByRole('button', { name: '標註 Noun 第 1 筆翻譯', exact: true })).toHaveAttribute('aria-pressed', 'false');
-  await row.getByRole('button', { name: '個別標註', exact: true }).click();
-  await row.getByRole('button', { name: '標註英文單字「alternate」', exact: true }).click();
-  await row.getByRole('button', { name: '結束標註', exact: true }).click();
-  await expect(row.locator('.vocabulary-word-link .is-word-starred')).toHaveText('alternate');
+  await expect(row.locator('[data-annotate-entry], [data-star-key^="word:"], .is-word-starred')).toHaveCount(0);
+  await expect(row.locator('.vocabulary-word-link')).toHaveText('alternate');
   await page.getByRole('button', { name: '隱藏中文', exact: true }).click();
   await expect(row.locator('.vocabulary-meaning-answer').first()).toHaveCSS('visibility', 'hidden');
   await expect(noun).toHaveAttribute('aria-pressed', 'true');
@@ -42,7 +41,7 @@ test('card, meaning and English stars are independent, survive sorting and reloa
   await page.reload();
   await expect(card).toHaveAttribute('aria-pressed', 'true');
   await expect(noun).toHaveAttribute('aria-pressed', 'false');
-  await expect(row.locator('.is-word-starred')).toHaveCount(1);
+  await expect(row.locator('[data-annotate-entry], [data-star-key^="word:"], .is-word-starred')).toHaveCount(0);
   await card.click();
   const saved = await page.evaluate(() => ['2026-11-01', '2026-11-02'].map(date => JSON.parse(localStorage.getItem(`study-v11:guest:${date}`)!).items[0]));
   for (const item of saved) {
@@ -53,22 +52,20 @@ test('card, meaning and English stars are independent, survive sorting and reloa
   }
 });
 
-test('mobile phrases and sentences support separate repeated English tokens and each masked translation without overflow', async ({ page }, testInfo) => {
+test('mobile phrases and sentences retain card and masked-meaning stars with plain English and no overflow', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await seed(page);
   await page.getByRole('button', { name: '組合', exact: true }).click();
   const phrase = page.locator('.vocabulary-row[data-entry-key="pay a premium"]');
-  await phrase.getByRole('button', { name: '個別標註', exact: true }).click();
-  await phrase.getByRole('button', { name: '標註英文單字「premium」', exact: true }).click();
+  await expect(phrase.locator('[data-annotate-entry], [data-star-key^="word:"]')).toHaveCount(0);
+  await expect(phrase.locator('.vocabulary-word-link,.vocabulary-word-text')).toHaveText('pay a premium');
+  await phrase.getByRole('button', { name: '標註整張卡片「pay a premium」', exact: true }).click();
   await phrase.getByRole('button', { name: '標註 中文 第 2 筆翻譯', exact: true }).click();
   await page.getByRole('button', { name: '句子', exact: true }).click();
   const sentence = page.locator('.vocabulary-row').filter({ hasText: 'Time after time' });
-  await sentence.getByRole('button', { name: '個別標註', exact: true }).click();
-  const repeated = sentence.locator('[data-star-key^="word:time:"]');
-  await expect(repeated).toHaveCount(2);
-  await repeated.nth(1).click();
-  await expect(repeated.first()).toHaveAttribute('aria-pressed', 'false');
-  await expect(repeated.nth(1)).toHaveAttribute('aria-pressed', 'true');
+  await expect(sentence.locator('[data-annotate-entry], [data-star-key^="word:"]')).toHaveCount(0);
+  await expect(sentence.locator('.vocabulary-word-link,.vocabulary-word-text')).toHaveText('Time after time, practice makes perfect.');
+  await sentence.getByRole('button', { name: '標註整張卡片「Time after time, practice makes perfect.」', exact: true }).click();
   await sentence.getByRole('button', { name: '標註 中文 第 1 筆翻譯', exact: true }).click();
   await page.getByRole('button', { name: '隱藏中文', exact: true }).click();
   await expect(sentence.locator('.vocabulary-meaning-mask')).toHaveText(['－', '－']);
@@ -80,7 +77,8 @@ test('mobile phrases and sentences support separate repeated English tokens and 
   }
   await page.reload();
   await page.getByRole('button', { name: '句子', exact: true }).click();
-  await expect(sentence.locator('.is-word-starred')).toHaveText('time');
+  await expect(sentence.locator('.is-word-starred')).toHaveCount(0);
+  await expect(sentence.locator('[data-star-key="card"]')).toHaveAttribute('aria-pressed', 'true');
   await expect(sentence.getByRole('button', { name: '標註 中文 第 1 筆翻譯', exact: true })).toHaveAttribute('aria-pressed', 'true');
 });
 
@@ -102,7 +100,7 @@ test('star clicks preserve editing inputs and meaning corrections keep the right
   await expect(row.getByRole('button', { name: '標註 Noun 第 1 筆翻譯', exact: true })).toHaveAttribute('aria-pressed', 'true');
 });
 
-test('a deleted unrelated record cannot block any of the three star controls', async ({ page }) => {
+test('a deleted unrelated record cannot block card or meaning star controls', async ({ page }) => {
   await seed(page);
   await page.evaluate(() => localStorage.setItem('study-v11:guest:2026-10-30', JSON.stringify({ date: '2026-10-30', items: [] })));
   await page.reload();
@@ -111,17 +109,13 @@ test('a deleted unrelated record cannot block any of the three star controls', a
   const card = row.locator('[data-star-key="card"]');
   await card.click();
   await expect(card).toHaveAttribute('aria-pressed', 'true');
-  await row.getByRole('button', { name: '個別標註', exact: true }).click();
-  const word = row.getByRole('button', { name: '標註英文單字「alternate」', exact: true });
-  await word.click();
-  await expect(word).toHaveAttribute('aria-pressed', 'true');
   const meaning = row.getByRole('button', { name: '標註 Noun 第 2 筆翻譯', exact: true });
   await meaning.click();
   await expect(meaning).toHaveAttribute('aria-pressed', 'true');
   await page.reload();
   await expect(card).toHaveAttribute('aria-pressed', 'true');
   await expect(meaning).toHaveAttribute('aria-pressed', 'true');
-  await expect(row.locator('.is-word-starred')).toHaveText('alternate');
+  await expect(row.locator('[data-annotate-entry], [data-star-key^="word:"], .is-word-starred')).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.getItem('study-v11:guest:2026-10-30'))).toBeNull();
 });
 
@@ -133,7 +127,7 @@ test('touching the icon center or button edge toggles every star type', async ({
     for (const kind of ['單字', '組合', '句子']) {
       await page.getByRole('button', { name: kind, exact: true }).click();
       const row = page.locator('.vocabulary-row').first();
-      await row.getByRole('button', { name: '個別標註', exact: true }).click();
+      await expect(row.locator('[data-annotate-entry], [data-star-key^="word:"]')).toHaveCount(0);
       for (const button of await row.locator('[data-star-key]').all()) {
         await button.scrollIntoViewIfNeeded();
         const bounds = (await button.boundingBox())!;
@@ -169,7 +163,6 @@ async function beginStarPointerPress(page: Page, button: Locator): Promise<{ x: 
 test('a fractionally clipped meaning star is centered before a split pointer click', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 600 });
   await seed(page);
-  await page.getByRole('button', { name: '個別標註', exact: true }).click();
   const row = page.locator('.vocabulary-row[data-entry-key="alternate"]');
   const button = row.getByRole('button', { name: '標註 Noun 第 2 筆翻譯', exact: true });
   await button.evaluate(node => {
@@ -194,8 +187,7 @@ for (const viewport of [{ width: 1280, height: 720 }, { width: 1280, height: 600
     const other = await context.newPage();
     await other.goto('/summary.html');
     const row = page.locator('.vocabulary-row[data-entry-key="alternate"]');
-    await row.getByRole('button', { name: '個別標註', exact: true }).click();
-    for (const [index, key] of ['card', 'word:alternate:0', 'meaning:Noun:%E5%80%99%E8%A3%9C%E8%80%85:0'].entries()) {
+    for (const [index, key] of ['card', 'meaning:Noun:%E4%BB%A3%E6%9B%BF%E8%80%85:0', 'meaning:Noun:%E5%80%99%E8%A3%9C%E8%80%85:0'].entries()) {
       await row.evaluate(node => { node.setAttribute('data-pointer-probe', 'original'); });
       await page.evaluate(() => { (window as unknown as Window & { storageProbe: number }).storageProbe = 0;
         window.addEventListener('storage', () => { (window as unknown as Window & { storageProbe: number }).storageProbe += 1; }, { once: true }); });
@@ -222,7 +214,8 @@ for (const viewport of [{ width: 1280, height: 720 }, { width: 1280, height: 600
     }
     await page.reload();
     await expect(row.locator('[data-star-key="card"]')).toHaveAttribute('aria-pressed', 'true');
-    await expect(row.locator('.is-word-starred')).toHaveText('alternate');
+    await expect(row.locator('[data-annotate-entry], [data-star-key^="word:"], .is-word-starred')).toHaveCount(0);
+    await expect(row.getByRole('button', { name: '標註 Noun 第 1 筆翻譯', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await expect(row.getByRole('button', { name: '標註 Noun 第 2 筆翻譯', exact: true })).toHaveAttribute('aria-pressed', 'true');
     const concurrentRecord = await page.evaluate(() => JSON.parse(localStorage.getItem('study-v11:guest:2026-11-02')!));
     expect(concurrentRecord.notes).toBe('另一分頁更新 2');
@@ -231,7 +224,7 @@ for (const viewport of [{ width: 1280, height: 720 }, { width: 1280, height: 600
   });
 }
 
-test('all three star controls recover from full storage by compacting confirmed baselines', async ({ page }) => {
+test('card and meaning star controls recover from full storage by compacting confirmed baselines', async ({ page }) => {
   await seed(page);
   await page.evaluate(() => {
     for (let day = 20; day < 24; day += 1) {
@@ -253,15 +246,13 @@ test('all three star controls recover from full storage by compacting confirmed 
   });
   const row = page.locator('.vocabulary-row[data-entry-key="alternate"]');
   await row.locator('[data-star-key="card"]').click();
-  await row.getByRole('button', { name: '個別標註', exact: true }).click();
-  await row.getByRole('button', { name: '標註英文單字「alternate」', exact: true }).click();
   await row.getByRole('button', { name: '標註 Noun 第 2 筆翻譯', exact: true }).click();
   await expect(row.locator('[data-star-key="card"]')).toHaveAttribute('aria-pressed', 'true');
   await expect(row.locator('[data-star-save-error]')).toHaveCount(0);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('study-v11:guest:2026-10-20')!).__localSyncBase)).toBe('same-content-v1');
   await page.reload();
   await expect(row.locator('[data-star-key="card"]')).toHaveAttribute('aria-pressed', 'true');
-  await expect(row.locator('.is-word-starred')).toHaveText('alternate');
+  await expect(row.locator('[data-annotate-entry], [data-star-key^="word:"], .is-word-starred')).toHaveCount(0);
   await expect(row.getByRole('button', { name: '標註 Noun 第 2 筆翻譯', exact: true })).toHaveAttribute('aria-pressed', 'true');
 });
 
@@ -276,8 +267,7 @@ test('unrecoverable star storage failures show beside the card and never claim a
     };
   });
   const row = page.locator('.vocabulary-row[data-entry-key="alternate"]');
-  await row.getByRole('button', { name: '個別標註', exact: true }).click();
-  const buttons = [row.locator('[data-star-key="card"]'), row.getByRole('button', { name: '標註英文單字「alternate」', exact: true }), row.getByRole('button', { name: '標註 Noun 第 2 筆翻譯', exact: true })];
+  const buttons = [row.locator('[data-star-key="card"]'), row.getByRole('button', { name: '標註 Noun 第 2 筆翻譯', exact: true })];
   for (const button of buttons) {
     await button.click();
     await expect(button).toHaveAttribute('aria-pressed', 'false');
