@@ -81,6 +81,12 @@ export function catalogMaterialMatchesItem(material: CatalogMaterial, item: Stud
   const f = item.f ?? {};
   if (f.catalogMaterialId === material.id) return true;
   const match = material.match;
+  // Older manual math selectors accidentally saved the UUID as the book name.
+  // Resolve only an exact same-subject custom identity; leave stored input intact.
+  if (!match && !f.catalogMaterialId && material.subject === '數學' && item.source === 'custom'
+    && ['mathStudy', 'mathLecture', 'mathPractice'].includes(item.type)
+    && /^custom:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(material.id)
+    && f.material === material.id.slice('custom:'.length)) return true;
   if (!match) return false;
   if (material.subject === '國文' && item.type !== 'chineseReading') return false;
   if (material.subject === '英文' && !['extra', 'magazine', 'calendarStudy'].includes(item.type)) return false;

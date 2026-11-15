@@ -2646,19 +2646,19 @@ function activeManualMaterialChoices(subject){
   if(manualMaterialChoicesCache&&manualMaterialChoicesCache.prefix===STORE_PREFIX)return manualMaterialChoicesCache.choices.filter(function(choice){return choice.subject===subject});
   var progressSource=readMaterialProgressRecords(store),rows=materialProgressRows(progressSource.records),selectionPrefix=progressSource.prefix||STORE_PREFIX;
   var selectedIds=readMaterialSelection(store,selectionPrefix,rows.map(function(row){return row.id}));
-  var choices=selectedManualMaterialChoices(rows,selectedIds);
+  var choices=selectedManualMaterialChoices(rows,selectedIds,catalogOverrides(progressSource.records));
   manualMaterialChoicesCache={prefix:STORE_PREFIX,choices:choices};
   return choices.filter(function(choice){return choice.subject===subject});
  }catch(e){return[]}
 }
 function applySelectedCatalogMaterial(item,subject,value,book){
  var choice=activeManualMaterialChoices(subject).find(function(candidate){
-  return candidate.value===value&&(!book||candidate.book===book);
+  return candidate.value===value&&(!candidate.book||candidate.book===book);
  });
  if(!choice)return null;
  var entry=catalogRuntime().overrides.find(function(candidate){return candidate.id===choice.id&&!candidate.deleted});
  if(!entry)return null;
- var fields=catalogItemFields(entry);item.f=Object.assign(item.f||{},fields);item.title=entry.title;
+ var fields=catalogItemFields(entry);if(subject==='math'&&choice.book)fields.book=choice.book;Object.keys(fields).forEach(function(field){propagateDailyWorkField(item,field,fields[field])});item.title=entry.title;
  return fields;
 }
 function manualMaterialSubjectForType(type){return type==='mathLecture'?'math':type==='scienceReview'?'natural':type==='socialStudy'?'social':type==='extra'?'english':type==='chineseReading'?'chinese':''}
@@ -2677,7 +2677,7 @@ function manualExistingOption(values,current,labelFor){
  return'<optgroup label="既有紀錄"><option value="'+esc(currentValue)+'" selected>'+esc((labelFor?labelFor(currentValue):currentValue)+'（目前紀錄）')+'</option></optgroup>';
 }
 function mathMaterialOptions(v){
- var values=unique(activeManualMaterialChoices('math').map(function(choice){return choice.value})),split=values.filter(function(value){return value==='對話式'||value==='教學講義'}),review=values.filter(function(value){return split.indexOf(value)<0}),labelFor=function(value){return value==='新大滿貫'?value+'（數學A）':value};
+ var choices=activeManualMaterialChoices('math'),values=unique(choices.map(function(choice){return choice.value})),split=values.filter(function(value){return value==='對話式'||value==='教學講義'||choices.some(function(choice){return choice.value===value&&choice.group==='分冊講義'})}),review=values.filter(function(value){return split.indexOf(value)<0}),labelFor=function(value){return value==='新大滿貫'?value+'（數學A）':value};
  return'<option value="">請選擇</option>'+manualOptionGroup('分冊講義',split,v)+manualOptionGroup('複習講義',review,v,labelFor)+manualExistingOption(values,v,labelFor);
 }
 function isCalendarMathMaterialLocked(x){
@@ -3931,7 +3931,7 @@ function handleChange(e){
  if(t.matches('[data-check]')&&x){var k=t.getAttribute('data-check');if(k==='progress'&&x.type==='scienceReview'){markCalendarNaturalProgressByUser(x,t.checked);propagateDailyWorkField(x,'calendarProgressSetByUser',true);propagateDailyWorkField(x,'calendarProgressUserValue',t.checked)}propagateDailyWorkField(x,k,t.checked);if(k==='corrected'&&(x.type==='mathLecture'||x.type==='scienceReview'||x.type==='socialStudy'||x.type==='extra')){var correctionItemId=x.id;persist(false);var savedCorrectionItem=findItem(correctionItemId)||x;if(!refreshCorrectionReasonField(card,savedCorrectionItem))render();else updateSummary();return}updateSummary();persist(false);return}
  if(t.matches('[data-chinese-kind]')&&x&&x.type==='chineseReading'){
   if(isCalendarPageMappedBook(x)){render();return}
-  applyChineseItemSelection(x,t.value);render();persist(false);return
+  applyChineseItemSelection(x,t.value);applySelectedCatalogMaterial(x,'chinese',t.value);render();persist(false);return
  }
  if((t.matches('[data-book-topic]')||t.matches('[data-book-round]'))&&x&&x.type==='extra'){
   if(isCalendarPageMappedBook(x)){render();return}
@@ -3940,8 +3940,18 @@ function handleChange(e){
  if(t.matches('[data-field]')&&x){
   var f=t.getAttribute('data-field');if(f==='material'&&isCalendarMathMaterialLocked(x)){render();return}if(isCalendarPageMappedBook(x)&&(f==='start'||f==='end'||f==='topic'||f==='round'||f==='title')){render();return}if(f==='start'||f==='end'){var orderedRange=orderCardPageRange(card);if(orderedRange.endAdjusted)propagateDailyWorkRangeField(x,'end',orderedRange.end);var rangeValidation=validateCardPageRange(card,true);if(!rangeValidation.valid){id('status').textContent=rangeValidation.message;return}}var changedFields=[f];if(f==='start'||f==='end')propagateDailyWorkRangeField(x,f,t.value);else propagateDailyWorkField(x,f,t.value);
  if((x.type==='mathStudy'||x.type==='mathLecture'||x.type==='mathPractice')&&(f==='material'||f==='book')){if(f==='material'){x.f.book='';changedFields.push('book')}x.f.unit='';x.f.chapter='';changedFields.push('unit','chapter')}
-  if(x.type==='scienceReview'&&(f==='subject'||f==='material')){if(f==='subject'&&isCalendarNatural(x)){x.f.subject=calendarNaturalSubject(x.f.calendarTopic||x.description);propagateDailyWorkField(x,'subject',x.f.subject);render();persist(false);return}x.f.unit='';x.f.chapter='';changedFields.push('unit','chapter');normalizeScience(x.f);changedFields.push('material','subject')}
+  var selectedManagedFields=null;
+  if(x.type==='scienceReview'&&(f==='subject'||f==='material')){
+   if(f==='subject'&&isCalendarNatural(x)){x.f.subject=calendarNaturalSubject(x.f.calendarTopic||x.description);propagateDailyWorkField(x,'subject',x.f.subject);render();persist(false);return}
+   x.f.unit='';x.f.chapter='';changedFields.push('unit','chapter');
+   if(f==='material')selectedManagedFields=applySelectedCatalogMaterial(x,'natural',x.f.material,x.f.subject);
+   if(!selectedManagedFields)normalizeScience(x.f);
+   changedFields.push('material','subject');
+  }
   if(x.type==='socialStudy'&&(f==='subject'||f==='book')){if(f==='subject'){x.f.book='';x.f.start='';x.f.end='';changedFields.push('book','start','end')}else{var selectedSocialBook=canonicalPageMappedBook(x.f.book);if(selectedSocialBook&&pageMappedBookSubject(selectedSocialBook)==='社會')x.f.subject=pageMappedBookSocialSubject(selectedSocialBook)||x.f.subject;changedFields.push('subject')}}
+  if((x.type==='mathStudy'||x.type==='mathLecture'||x.type==='mathPractice')&&(f==='material'||f==='book'))selectedManagedFields=applySelectedCatalogMaterial(x,'math',x.f.material,x.f.book);
+  if(x.type==='socialStudy'&&f==='book')selectedManagedFields=applySelectedCatalogMaterial(x,'social',x.f.book,x.f.subject);
+  if(selectedManagedFields)Object.keys(selectedManagedFields).forEach(function(field){if(changedFields.indexOf(field)<0)changedFields.push(field)});
   if(x.type==='extra'&&f==='title'){x.f.scopeKind='';x.f.roundEnd='';x.f.calendarUnitProgress='';x.f.level='';x.f.start='';x.f.end='';x.f.unitStart='';x.f.unitEnd='';x.f.unit='';x.f.round='';x.f.topic='';x.f.book='';x.f.warriorsBook='';x.f.chapter='';x.f.progress=false;x.f.graded=false;x.f.corrected=false;x.f.reason='';var selectedEnglishTopicBook=canonicalPageMappedBook(x.f.title);if(selectedEnglishTopicBook&&pageMappedBookSubject(selectedEnglishTopicBook)==='英文')x.f.book=selectedEnglishTopicBook;var selectedCatalogFields=applySelectedCatalogMaterial(x,'english',x.f.title);changedFields.push('scopeKind','roundEnd','calendarUnitProgress','level','start','end','unitStart','unitEnd','unit','round','topic','book','warriorsBook','chapter','progress','graded','corrected','reason');if(selectedCatalogFields)Object.keys(selectedCatalogFields).forEach(function(field){if(changedFields.indexOf(field)<0)changedFields.push(field)});x.required=customCountsOriginal(x)}
   changedFields.forEach(function(field){if(field!=='start'&&field!=='end')propagateDailyWorkField(x,field,x.f[field])});
   if(x.type==='extra'&&f==='level')x.required=customCountsOriginal(x);

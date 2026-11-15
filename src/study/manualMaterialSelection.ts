@@ -1,17 +1,29 @@
 import type { MaterialProgressRow, MaterialProgressSubject } from './materialProgress.ts';
+import type { CatalogMaterial } from './materialCatalog.ts';
 
 export interface ManualMaterialChoice {
   id: string;
   subject: MaterialProgressSubject;
   value: string;
   book?: string;
+  group?: MaterialProgressRow['group'];
 }
 
 function stripSubjectPrefix(title: string, prefix: string): string {
   return title.startsWith(prefix) ? title.slice(prefix.length) : title;
 }
 
-export function manualMaterialChoice(row: MaterialProgressRow): ManualMaterialChoice | null {
+export function manualMaterialChoice(row: MaterialProgressRow, material?: CatalogMaterial): ManualMaterialChoice | null {
+  if (material && material.id === row.id && !material.deleted && !material.reset) {
+    let value = material.title;
+    let book: string | undefined;
+    if (row.subject === 'math') book = material.match?.book;
+    if (row.subject === 'natural' || row.subject === 'social') book = material.subject;
+    if (row.subject === 'social') value = `${material.subject}｜${material.title}`;
+    return { id: row.id, subject: row.subject, value, group: row.group, ...(book ? { book } : {}) };
+  }
+  // Custom IDs are opaque; they never contain a material name or volume.
+  if (row.id.startsWith('custom:')) return null;
   if (row.subject === 'chinese') {
     return {
       id: row.id,
@@ -67,11 +79,13 @@ export function manualMaterialChoice(row: MaterialProgressRow): ManualMaterialCh
 export function selectedManualMaterialChoices(
   rows: readonly MaterialProgressRow[],
   selectedIds: readonly string[],
+  catalog: readonly CatalogMaterial[] = [],
 ): ManualMaterialChoice[] {
   const selected = new Set(selectedIds);
+  const materials = new Map(catalog.map(material => [material.id, material]));
   return rows
     .filter(row => selected.has(row.id))
-    .map(manualMaterialChoice)
+    .map(row => manualMaterialChoice(row, materials.get(row.id)))
     .filter((choice): choice is ManualMaterialChoice => choice !== null);
 }
 
