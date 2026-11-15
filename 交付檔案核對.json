@@ -1,108 +1,98 @@
 {
-  "version": "171.6.0-public.60",
+  "version": "171.6.0-public.61",
   "baseRepository": "livia20060129/gsat-study-tracker-public",
-  "baseCommit": "649ba5ae0df281d145e859588d923c8378cc7f9b",
-  "sourceFileCount": 20,
+  "baseCommit": "658d43e51e784dfc7e8f73117920c47f8118e0a1",
+  "sourceFileCount": 18,
   "deletePaths": [],
   "files": [
     {
       "path": "LATEST_UPDATE.md",
-      "sha256": "4266e5b19393b8a22f45886f2db5e49aae449dddfcd464e83a6e024ca3936a71",
-      "bytes": 79197
+      "sha256": "c99c64b3f008170d82d8fc073bb3fe8b72422328a01a7a82d05013b638a7e193",
+      "bytes": 81227
     },
     {
       "path": "README.md",
-      "sha256": "756bedaf6b91577af777d2a7fc695fa32ae5227d1d2b134dfd047c3889c82328",
-      "bytes": 39172
+      "sha256": "fb32f3f6f8566f8f796f0dd171a2f302be75346f09d427e7d4e625af08a579ab",
+      "bytes": 39492
     },
     {
-      "path": "e2e/manualCatalogSelection.spec.ts",
-      "sha256": "83f5793dcc66f7845df54ae4d33d7f58e43e62a9d78450ec724151bf43c0a727",
-      "bytes": 10593
+      "path": "e2e/summaryDonutInteraction.spec.ts",
+      "sha256": "003be4a91d0cd4726a59df8f2aa1b383280ff96a33ce8f03983154bb55ec08fb",
+      "bytes": 3293
     },
     {
       "path": "index.html",
-      "sha256": "65993cddefdeaeff764428fdd3ff85210d3739eb5d12552ac0e912ae7924c15a",
+      "sha256": "8081e560d2d2220d8a92aa7c59d9ac0b2d75b37f33b8498c6c8b6ab361fb0963",
       "bytes": 19076
     },
     {
       "path": "material.catalog.html",
-      "sha256": "0bbcadbaa2f395898232fc224021dccc3734445cb52600eac841342fec75bfd7",
+      "sha256": "5ebbe8d6a129d80a3fda897d30a06d04f969955ad6c66f8975600a86d7a14c79",
       "bytes": 642
     },
     {
       "path": "material.progress.html",
-      "sha256": "d5d2d59222d7b997f094fad42856a3a2a521087300320cd5525d5b7d76758816",
+      "sha256": "5c88944bcba530a6758bd820bb04368534e3b4fd78eb9cb062123fe6ce2276aa",
       "bytes": 6534
     },
     {
       "path": "package-lock.json",
-      "sha256": "d6b47506f9667d69e9d8616b7bef3093e0b35456e96128305a4971f2c6a14780",
+      "sha256": "a3be67016f8ce60df50c3f0f3eb5cdf214fc71d4700808d6076023a09c6b23c7",
       "bytes": 99887
     },
     {
       "path": "package.json",
-      "sha256": "cdab59f48a61c2713d7a3932fd7b212c13571858c8641e0d470a2a6b70fc1557",
+      "sha256": "76bd7761841baa15d618cb5861475d59b32e99a88c38b777bd68bc923c917751",
       "bytes": 1843
     },
     {
       "path": "public/gpt.prompt.html",
-      "sha256": "364a9606152e933f79e9afe6d2fdb33ad717f423137f8091ad5011c52effbab6",
+      "sha256": "c4750648d1c8a49e3be19ca7cb13ee08cb16491350ce58bbf174a9b07df037b8",
       "bytes": 44020
     },
     {
       "path": "public/privacy.html",
-      "sha256": "1e50da73a5a15d884f7d959bd2bf38fea82119ea03706a587be3131f703ce0db",
+      "sha256": "7a18ef9e729093b3ac8225339c3062dac9242e4031e4a3092411f0eb617acb27",
       "bytes": 19866
     },
     {
       "path": "public/support.html",
-      "sha256": "da555c1b30c86a766ad424a7da998f6a557084fbb01184135076cb81784fe66a",
+      "sha256": "9cfb037e897b5b2a813d6df4a3fc2a8746e9918d1a733baac3ae46777210d323",
       "bytes": 8624
     },
     {
       "path": "public/terms.html",
-      "sha256": "ff287995c64fd4937fa80b6384ec303eb5d0a975acd62f36c5bdc2f6b98b865d",
+      "sha256": "de350f3fec1efe26a51ac4b1b41c0e5e3840e42a8d32aa9e071c1a09264d2fd5",
       "bytes": 11278
     },
     {
       "path": "public/vocabulary.sources.html",
-      "sha256": "bf16f039cab7127bd423294617d2ae420aad229439cf84a77f1bdb3e50b78921",
+      "sha256": "808e269e3b3ed1662501efc2000eb6aa804219295f69131d6c1d28e7f5138c81",
       "bytes": 5252
     },
     {
-      "path": "src/legacy-app.ts",
-      "sha256": "7521c65363f901bdf397a7d52113b84570af517be4c39621d5208532e556609e",
-      "bytes": 358881
+      "path": "src/learning-summary-page.ts",
+      "sha256": "9c82d30658cace60df7365c047ec98a4eeb76ab0141c727154dde3185eed7330",
+      "bytes": 36104
     },
     {
-      "path": "src/study/manualMaterialSelection.ts",
-      "sha256": "b3ae73b41fab1fea7969d32ce45bb42b76d689de80ce34ea46f64d5c6f8d3f57",
-      "bytes": 3227
-    },
-    {
-      "path": "src/study/materialCatalog.ts",
-      "sha256": "b7add71523f841acb0785f4617885cf46f662f2e9af1bb58eef83cc2ccdaf9bf",
-      "bytes": 9312
+      "path": "src/learning-summary.css",
+      "sha256": "15295a7d7c59ec6cf1b1c8849a1556f594a7625f8c40007b0e62a758ba826bc3",
+      "bytes": 25665
     },
     {
       "path": "summary.html",
-      "sha256": "c6d2ecbf5d6506ce5e152712153af7f151fc33831da969ff24adbeaa711ec686",
+      "sha256": "3d5c43b62b7267aff774616a1359dfed89786809f0737f56079eb086cfe95bec",
       "bytes": 6928
     },
     {
-      "path": "tests/manualCatalogSelection.test.ts",
-      "sha256": "5408cd626324a7c00de3b08353a2ffa001cb2bb52d574860e5540604ebbb13f3",
-      "bytes": 4603
-    },
-    {
       "path": "todo.html",
-      "sha256": "99d29e2b89fa07cbe48fd4c2a6c137558896892213f1c359cc165b422b88409a",
+      "sha256": "401cc2d27e8631ba014683ef6d42e704c8ea5047d954166adf0672ced2021a15",
       "bytes": 4942
     },
     {
       "path": "vocabulary.review.html",
-      "sha256": "0d20bcfff3e48187cd0941babbc3a7d9fd709ac2e088a8c2b4c9de20fb2fec46",
+      "sha256": "d4405b3eb7e0a3368308fd07cec360f0de39c69ed0b5a989c4450249d9068567",
       "bytes": 5782
     }
   ]

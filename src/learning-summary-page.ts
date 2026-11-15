@@ -327,6 +327,8 @@ function returnToSubjectOverview(): void {
   const overlay = source?.cloneNode(true) as HTMLElement | undefined;
   if (overlay && sourceRect) {
     overlay.classList.add('summary-donut-return-overlay');
+    overlay.inert = true;
+    overlay.setAttribute('aria-hidden', 'true');
     overlay.style.left = `${sourceRect.left}px`;
     overlay.style.top = `${sourceRect.top}px`;
     overlay.style.width = `${sourceRect.width}px`;

@@ -1,4 +1,5 @@
 @import "./header-action-link.css";
+.summary-donut-return-overlay,.summary-donut-return-overlay *{pointer-events:none!important}
 .summary-trend .trend-makeup-time,.makeup-time-dot{fill:#9dd6ff;background:#9dd6ff}
 body .time-dot{background:#b8cae0}
 body .summary-chart-legend{flex-wrap:wrap;justify-content:flex-end}
