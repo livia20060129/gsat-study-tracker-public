@@ -1,8 +1,10 @@
 # GSAT Study Tracker
 
-目前版本：**公開版 v171.6.0-public.62**
+目前版本：**公開版 v171.6.0-public.63**
 
 公開版學測讀書追蹤器，整合 Google Calendar 唯讀排程、手動新增項目、Supabase 跨裝置同步、計時、完成率、教材進度與學習總結。
+
+public.63 修正 Calendar 安全性 migration 在舊版 `sync_calendar_tasks(text,jsonb,date,date)` 不存在時中斷的問題。只在該精確簽名存在時撤銷 PUBLIC／anon／authenticated 執行權限並授權 service_role；不存在時不建立舊 RPC，其餘憑證保護、nonce、同步鎖與權限設定照常執行。公開專案已唯讀確認本次 migration 未套用，因此修正原待執行檔案；覆蓋、commit 並 push 後，執行新 commit 的既有部署流程。不要將失敗 migration 手動標記為已套用。public.62 的登入修正及公開版設定均保留。
 
 public.62 修正 Google 登入前的錯誤提示：欄位檢查失敗、讀書紀錄無法保存，以及登入驗證資料無法讀寫，會分別顯示正確原因。起床／就寢時間不完整時直接提示欄位格式，修正後可重試登入；真正的登入驗證儲存失敗仍會阻止跳轉並保留已存草稿。沿用持久化 PKCE、原帳號 UUID、資料空間及登出保護，沒有清除資料或降級為分頁記憶體。
 

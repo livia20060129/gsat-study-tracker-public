@@ -169,8 +169,14 @@ grant execute on function public.calendar_connection_read(uuid),public.calendar_
   public.calendar_sync_begin(uuid,uuid),public.calendar_sync_end(uuid,uuid) to service_role;
 
 -- The current hourly workflow uses the authenticated Edge Function, not the legacy token RPC.
-revoke execute on function public.sync_calendar_tasks(text,jsonb,date,date) from public,anon,authenticated;
-grant execute on function public.sync_calendar_tasks(text,jsonb,date,date) to service_role;
+-- Some public databases never had this optional legacy function.
+do $$
+begin
+  if pg_catalog.to_regprocedure('public.sync_calendar_tasks(text,jsonb,date,date)') is not null then
+    revoke execute on function public.sync_calendar_tasks(text,jsonb,date,date) from public,anon,authenticated;
+    grant execute on function public.sync_calendar_tasks(text,jsonb,date,date) to service_role;
+  end if;
+end $$;
 
 
 notify pgrst, 'reload schema';

@@ -5,7 +5,8 @@ import assert from 'node:assert/strict';
 
 // This Vault test double verifies RPC access, migration and lifecycle contracts.
 // Encryption itself is provided by the hosted, installed supabase_vault extension.
-test('Calendar migration protects credentials, consumes nonces once, and serializes syncs across owners', async () => {
+for (const legacyRpcExists of [true, false]) {
+test(`Calendar migration protects credentials, consumes nonces once, and serializes syncs across owners with legacy RPC ${legacyRpcExists ? 'present' : 'absent'}`, async () => {
   const db = new PGlite();
   const user='00000000-0000-0000-0000-000000000154';
   const owner='00000000-0000-0000-0000-000000000155';
@@ -21,9 +22,12 @@ test('Calendar migration protects credentials, consumes nonces once, and seriali
       create table public.google_calendar_connections(user_id uuid primary key references auth.users(id) on delete cascade,
         calendar_id text default 'primary', client_id text, refresh_token text not null,access_token text,
         access_token_expires_at timestamptz,scope text,updated_at timestamptz,sync_error text);
-      create function public.sync_calendar_tasks(text,jsonb,date,date) returns jsonb language sql security definer as $$ select '{}'::jsonb $$;
       insert into auth.users values('${user}');
       insert into public.google_calendar_connections(user_id,refresh_token,access_token) values('${user}','old-refresh','old-access');`);
+    if (legacyRpcExists) {
+      await db.exec(`create function public.sync_calendar_tasks(text,jsonb,date,date) returns jsonb language sql security definer as $$ select '{}'::jsonb $$;
+        grant execute on function public.sync_calendar_tasks(text,jsonb,date,date) to anon, authenticated;`);
+    }
     const sql=readFileSync(new URL('../supabase/migrations/20261109111803_public_calendar_security.sql',import.meta.url),'utf8')
       .replace(/^create extension if not exists supabase_vault with schema vault;$/m,'');
     await db.exec(sql);
@@ -31,10 +35,22 @@ test('Calendar migration protects credentials, consumes nonces once, and seriali
     assert.equal(row.refresh_token,null); assert.equal(row.access_token,null); assert.ok(row.refresh_secret_id);
     await db.exec('set role anon');
     await assert.rejects(db.query(`select public.calendar_connection_read('${user}')`), /permission denied/);
-    await assert.rejects(db.query(`select public.sync_calendar_tasks('token','[]','2026-01-01','2026-01-02')`), /permission denied/);
+    if (legacyRpcExists) {
+      await assert.rejects(db.query(`select public.sync_calendar_tasks('token','[]','2026-01-01','2026-01-02')`), /permission denied/);
+    }
     await db.exec('set role authenticated');
     await assert.rejects(db.query(`select public.calendar_connection_read('${user}')`), /permission denied/);
+    if (legacyRpcExists) {
+      await assert.rejects(db.query(`select public.sync_calendar_tasks('token','[]','2026-01-01','2026-01-02')`), /permission denied/);
+    }
     await db.exec('set role service_role');
+    if (legacyRpcExists) {
+      const legacy = await db.query<{ result: object }>(`select public.sync_calendar_tasks('token','[]','2026-01-01','2026-01-02') as result`);
+      assert.deepEqual(legacy.rows[0].result, {});
+    } else {
+      const legacy = await db.query<{ legacy_rpc: string | null }>(`select to_regprocedure('public.sync_calendar_tasks(text,jsonb,date,date)')::text as legacy_rpc`);
+      assert.equal(legacy.rows[0].legacy_rpc, null);
+    }
     const connection=(await db.query<{c:{refresh_token:string}}>(`select public.calendar_connection_read('${user}') as c`)).rows[0].c;
     assert.equal(connection.refresh_token,'old-refresh');
     await db.query(`select public.calendar_connection_write('${user}',$1::jsonb)`,[JSON.stringify({access_token:'renewed-access'})]);
@@ -63,3 +79,4 @@ test('Calendar migration protects credentials, consumes nonces once, and seriali
     assert.equal((await db.query<{n:number}>('select count(*)::int as n from calendar_private.sync_leases')).rows[0].n,0);
   } finally { await db.close(); }
 });
+}

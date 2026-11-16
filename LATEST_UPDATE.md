@@ -1,5 +1,36 @@
 # 最新更新
 
+版本：v171.6.0-public.63
+
+日期：2026-11-16（公開版）
+
+## 修正 Calendar 安全性 migration 對已退休 RPC 的依賴
+
+- 以實際 GitHub public.62（`cb0ae20e3f70205bc25d125591d0ea84bf685f25`）為基準，保留登入提示修正與既有公開版設定。
+- 已唯讀查詢 `xcpnxkkixsxzgbqsiuud`：舊 `sync_calendar_tasks(text,jsonb,date,date)` 不存在，`20261109111803` 尚未登錄套用，且 nonce／lease 資料表與 refresh_secret_id 欄位尚未建立。這與 Actions 在撤銷舊 RPC 權限時發生 42883 的錯誤一致。
+- 原歷史 bridge migration 已明確不重建退休的 token RPC。安全性 migration 改用 `pg_catalog.to_regprocedure` 檢查精確函式簽名；存在才撤銷 PUBLIC／anon／authenticated 並授權 service_role，不存在則不重建它，繼續完成安全性更新。
+- 保留所有必要 RPC 的權限設定、Vault 憑證搬移、一次性 nonce、同步 lease、RLS 與服務角色限制；沒有吞掉未知 SQL 錯誤或跳過整份 migration。
+- 這份 migration 在公開專案尚未成功套用，直接修正原待執行檔案。未新增 migration、升級套件、修改既有部署順序、重建資料庫或更動正式資料；遠端僅執行唯讀查詢。
+
+## 驗證
+
+- 新增「舊 RPC 不存在」案例後，原 SQL 重現相同的 `42883`；修正後，舊 RPC 存在／不存在兩種完整 migration 情境均通過。
+- 使用 PGlite 實際執行 SQL，確認匿名及一般登入角色無法呼叫舊 RPC、service_role 仍可執行；舊 RPC 不存在時不會被重建。兩種情境均驗證既有 token 搬移、更新／刪除、nonce 單次使用、同步 lease 及資料刪除連帶清理。Vault 使用既有測試替身，不宣稱驗證正式 Vault 加密。
+- `npm test`：955 個單元測試及 7 個公開專案綁定檢查通過；`npm run build`（含型別檢查）通過。瀏覽器／Edge Function 程式未變更，本次未重跑其完整測試。
+- 正式資料庫只做狀態查詢，尚未套用修正；部署成功仍須以新 commit 的 Actions 結果確認。
+
+## 套用
+
+將必要檔案按原目錄覆蓋 public.62，commit 並 push，讓新 commit 執行既有 GitHub Actions。不要只重跑仍含舊 SQL 的失敗 commit；也不要以 migration repair 將失敗項目標記為已套用。這裡未執行正式 db push、commit、push 或部署。
+
+參考：[PostgreSQL to_regprocedure](https://www.postgresql.org/docs/current/functions-info.html)、[Supabase migration tracking](https://supabase.com/docs/guides/deployment/database-migrations)。CLI 維持專案固定的 2.116.0，沒有混用 v3 的部署旗標。
+
+Suggested commit: `fix: guard retired Calendar RPC permissions in migration`
+
+---
+
+# public.62 更新紀錄
+
 版本：v171.6.0-public.62
 
 日期：2026-11-16（公開版）
