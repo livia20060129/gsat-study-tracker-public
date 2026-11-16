@@ -1,39 +1,99 @@
 {
-  "version": "171.6.0-public.63",
+  "version": "171.6.0-public.64",
   "baseRepository": "livia20060129/gsat-study-tracker-public",
-  "baseCommit": "cb0ae20e3f70205bc25d125591d0ea84bf685f25",
-  "sourceFileCount": 6,
+  "baseCommit": "7870fa3fd08d9043cebad6c5e843f1e38f80c0f6",
+  "sourceFileCount": 18,
   "deletePaths": [],
   "files": [
     {
       "path": "LATEST_UPDATE.md",
-      "sha256": "bd1cf3baaf69230d74d1c9e969bae06271a66673544fc893a8123f73c0d537d6",
-      "bytes": 86222
+      "sha256": "b682b270468a7d056511052d077e9bed61d5f8653a33e21a7e46b904ef37b328",
+      "bytes": 88791
     },
     {
       "path": "README.md",
-      "sha256": "8bc012c1ef1a4092afd6fddf516e4dbc8ff1a32e3870def7dfd93bb5c47a029b",
-      "bytes": 40546
+      "sha256": "077613de6204fc9c7079b812fbd7ec10441efd137e8b62155a019cb48f430b39",
+      "bytes": 41051
+    },
+    {
+      "path": "e2e/googleAccountAuth.spec.ts",
+      "sha256": "0a947c6bca5b1d7adff28e88a8202370ae13aea2c4ab01cbb022dbd503840fd8",
+      "bytes": 19896
+    },
+    {
+      "path": "index.html",
+      "sha256": "3419d1d9e772ef51682bb8823ad15f7403eb2d8508b4fed178cd2f2f1009185d",
+      "bytes": 19076
+    },
+    {
+      "path": "material.catalog.html",
+      "sha256": "25c2621ec918d2e31f352f40c216b1733309989447253897c28b73638a4e939f",
+      "bytes": 642
+    },
+    {
+      "path": "material.progress.html",
+      "sha256": "9abec70df8adf2a21ade6e65ef16fe2442a2d7032160148137e6d93a8d3854d9",
+      "bytes": 6534
     },
     {
       "path": "package-lock.json",
-      "sha256": "1e9e5c3d72eb573895605c546e92cabd620e09846577845989c4b41f7a59a0e1",
+      "sha256": "b2bd006dec1a974b58481dfda9b9fffc1a08c10d991f066c3aaa737d77e87f37",
       "bytes": 99887
     },
     {
       "path": "package.json",
-      "sha256": "87437a2c84dd48f3a3c6eed977b0ecfc9c1d91253d60b90a1663f5450b997742",
+      "sha256": "9cd79d74c08cd72bd5c9a65ff48395edaee28cecc711ffc210c02cfe49a82f56",
       "bytes": 1843
     },
     {
-      "path": "supabase/migrations/20261109111803_public_calendar_security.sql",
-      "sha256": "2ef642c34ffd9a0b02c127f2c94cc842ea25c547eafde8798eb28697b8da492b",
-      "bytes": 10981
+      "path": "public/gpt.prompt.html",
+      "sha256": "3a1898591209ac870cfa351c3d9c2927da6cce6d9c4322f6af6d907fc88da216",
+      "bytes": 44020
     },
     {
-      "path": "tests/calendarSecuritySql.test.ts",
-      "sha256": "047bca9dd85ab97e5a6390d29e32869faa168777ffd7c7eb8268d6748097e18f",
-      "bytes": 6493
+      "path": "public/privacy.html",
+      "sha256": "7b5d49415c467e65e9094834ac9b3179ee36ef59c13287bdd9b30ad7485979f7",
+      "bytes": 19866
+    },
+    {
+      "path": "public/support.html",
+      "sha256": "e8b73b6ec7e997b210fa4ba1e726b115e307ec427505f9029a93eb064d364b55",
+      "bytes": 8624
+    },
+    {
+      "path": "public/terms.html",
+      "sha256": "365df83ffe408acbb592a97a007021135c43776fb41d0b89d4e5a96ed8600ffe",
+      "bytes": 11278
+    },
+    {
+      "path": "public/vocabulary.sources.html",
+      "sha256": "b2167128d1561634bdea33fff0be67ac336a6b0c1e14f45ffb50b4805c2a02fa",
+      "bytes": 5252
+    },
+    {
+      "path": "src/legacy-app.ts",
+      "sha256": "3199c1bfa920aba46308917086bcb1db14b02ea7682e464e0c22d02132a5df69",
+      "bytes": 359729
+    },
+    {
+      "path": "summary.html",
+      "sha256": "4d933d6c13e270560f12873c69228f6ffbb9f1617733e26fa312e64cb9763bef",
+      "bytes": 6928
+    },
+    {
+      "path": "tests/legacyRecordPersistence.test.ts",
+      "sha256": "a80c8205c0ef243e1e89909962871b71f6e7b0816b86dd62b1125da1e97489b6",
+      "bytes": 4315
+    },
+    {
+      "path": "todo.html",
+      "sha256": "39d2b989f8d5d8c51ae1bb2c0aee35ecdc85d78ed17f9c4bb8616c24dab81ff0",
+      "bytes": 4942
+    },
+    {
+      "path": "vocabulary.review.html",
+      "sha256": "9899535ea47d700fe901b2c16565d1c91e06fb88f54448bc34780f383b07c1f0",
+      "bytes": 5782
     }
   ]
 }

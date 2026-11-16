@@ -117,6 +117,36 @@ async function setup(page: Page, signedIn = false): Promise<MockState> {
 async function accountScope(page: Page): Promise<string | null> { return page.evaluate(key => localStorage.getItem(key), activeKey); }
 async function saved(page: Page) { return page.evaluate(({ prefix, date }) => JSON.parse(localStorage.getItem(prefix + date)!), { prefix, date }); }
 
+async function unchangedDraftLoginWithFullRecordStorage(page: Page): Promise<void> {
+  const state = await setup(page);
+  await page.locator('#saveBtn').click();
+  await expect(page.locator('#saveBtn')).toHaveAttribute('data-state', 'local');
+  await settings(page);
+  await page.evaluate(date => {
+    const set = Storage.prototype.setItem;
+    Storage.prototype.setItem = function(key, value): void {
+      if (key === `study-v11:guest:${date}`) {
+        set.call(sessionStorage, 'test:blocked-record-write', 'yes');
+        throw new DOMException('full', 'QuotaExceededError');
+      }
+      set.call(this, key, value);
+    };
+  }, date);
+  await page.locator('#cloudGoogleSignInBtn').click();
+  await expect(page.locator('#cloudUserEmail')).toHaveText(user().email);
+  expect(await page.evaluate(() => sessionStorage.getItem('test:blocked-record-write'))).toBeNull();
+  expect(state.authorizations).toHaveLength(1);
+  expect(state.tokenRequests).toBe(1);
+  expect((await saved(page)).notes).toBe(original.notes);
+  expect((await saved(page)).items).toEqual(expect.arrayContaining([
+    expect.objectContaining({ id: 'guest-import:original-item', title: '保留項目', minutes: '18' }),
+  ]));
+}
+
+test('already saved content can sign in without another guest-record write when storage is full', async ({ page }) => {
+  await unchangedDraftLoginWithFullRecordStorage(page);
+});
+
 test('Google-only login uses PKCE, imports the guest draft and restores the chosen date across every page', async ({ page }) => {
   const state = await setup(page);
   await expect(page.locator('#cloudGoogleSignInBtn')).toHaveText('使用 Google 登入');
@@ -180,6 +210,7 @@ test('failed draft storage prevents leaving the current page', async ({ page }) 
   await expect(page.locator('#cloudGoogleMessage')).toContainText('讀書紀錄');
   await expect(page.locator('#cloudGoogleMessage')).not.toContainText('登入驗證資料');
   await expect(page.locator('#notes')).toHaveValue('尚未保存的草稿');
+  expect(await page.evaluate(date => JSON.parse(localStorage.getItem('study-v11:guest:' + date)!).notes, date)).toBe(original.notes);
   expect(state.authorizations).toHaveLength(0);
 });
 
@@ -258,6 +289,26 @@ test('legacy password recovery links cannot create a new public login', async ({
 
 test.describe('mobile Google-only access', () => {
   test.use({ viewport: { width: 320, height: 812 }, isMobile: true, hasTouch: true });
+  test('a saved mobile draft needs no record rewrite before Google login', async ({ page }) => {
+    await unchangedDraftLoginWithFullRecordStorage(page);
+  });
+  test('a genuinely unsaved mobile draft stays on the page when storage is full', async ({ page }) => {
+    const state = await setup(page);
+    await page.locator('#notes').fill('手機尚未保存的內容');
+    await page.evaluate(date => {
+      const set = Storage.prototype.setItem;
+      Storage.prototype.setItem = function(key, value): void {
+        if (key === `study-v11:guest:${date}`) throw new DOMException('full', 'QuotaExceededError');
+        set.call(this, key, value);
+      };
+    }, date);
+    await page.locator('#cloudGoogleSignInBtn').tap();
+    await expect(page.locator('#cloudGoogleMessage')).toContainText('讀書紀錄');
+    await expect(page.locator('#cloudGoogleMessage')).toContainText('儲存空間不足');
+    await expect(page.locator('#notes')).toHaveValue('手機尚未保存的內容');
+    expect(state.authorizations).toHaveLength(0);
+    expect(await page.evaluate(date => JSON.parse(localStorage.getItem('study-v11:guest:' + date)!).notes, date)).toBe(original.notes);
+  });
   test('the Google button remains tappable and returns to the same date without overflow', async ({ page }, testInfo) => {
     await setup(page);
     const button = page.locator('#cloudGoogleSignInBtn');

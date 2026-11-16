@@ -4282,7 +4282,10 @@ function persist(show,options){
   }
   relinkDailyWorkSourceItems(data.items);
  var ok=false;
- try{ok=writeStoredRecord(data)&&sameStudyContent(readStoredRecord(data.date),data)}catch(e){}
+ try{
+  var needsWrite=changed||!previous||!sameStudyContent(previous,data);
+  ok=(!needsWrite||writeStoredRecord(data))&&sameStudyContent(readStoredRecord(data.date),data);
+ }catch(e){}
  if(ok){
   if(rangeCompletionSignature(data)!==rangeCompletionSignature(previous)){
    var rangeSync=synchronizeLocalRanges();
