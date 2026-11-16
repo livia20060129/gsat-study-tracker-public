@@ -177,8 +177,57 @@ test('failed draft storage prevents leaving the current page', async ({ page }) 
   }, date);
   await page.locator('#cloudGoogleSignInBtn').click();
   await expect(page.locator('#cloudGoogleMessage')).toContainText('儲存空間');
+  await expect(page.locator('#cloudGoogleMessage')).toContainText('讀書紀錄');
+  await expect(page.locator('#cloudGoogleMessage')).not.toContainText('登入驗證資料');
   await expect(page.locator('#notes')).toHaveValue('尚未保存的草稿');
   expect(state.authorizations).toHaveLength(0);
+});
+
+for (const mode of ['wake', 'bedtime'] as const) test(`an incomplete ${mode} time gives a field error and can be corrected before Google login`, async ({ page }) => {
+  const state = await setup(page);
+  await page.locator('#notes').fill('保留登入前的完整筆記');
+  await page.locator('#todayStatusToggle').click();
+  if (mode === 'bedtime') await page.locator('[data-routine-mode="bedtime"]').click();
+  await page.locator('#wakeHour').fill(mode === 'wake' ? '7' : '23');
+  await page.locator('#wakeHour').blur();
+  await page.locator('#cloudGoogleSignInBtn').click();
+  const message = page.locator('#cloudGoogleMessage');
+  await expect(message).toContainText(mode === 'wake' ? '起床時間格式不正確' : '就寢時間格式不正確');
+  await expect(message).not.toContainText('儲存空間');
+  await expect(page.locator('#notes')).toHaveValue('保留登入前的完整筆記');
+  expect(state.authorizations).toHaveLength(0);
+  await page.locator('#wakeMinute').fill('20');
+  await page.locator('#wakeMinute').blur();
+  await page.locator('#cloudGoogleSignInBtn').click();
+  await expect(page.locator('#cloudUserEmail')).toHaveText(user().email);
+  expect((await saved(page)).notes).toBe('保留登入前的完整筆記');
+  await expect(page.locator('#studyDate')).toHaveValue(date);
+});
+
+for (const stage of ['intent', 'verifier'] as const) test(`a real ${stage} storage failure preserves the saved draft and permits a successful retry`, async ({ page }) => {
+  const state = await setup(page);
+  await page.locator('#notes').fill('驗證儲存失敗時仍保留的筆記');
+  await page.locator('#notes').blur();
+  await page.evaluate(stage => {
+    const put = IDBObjectStore.prototype.put;
+    sessionStorage.setItem('test:block-auth-write', 'yes');
+    IDBObjectStore.prototype.put = function(value, key): IDBRequest<IDBValidKey> {
+      const blockedKey = stage === 'intent' ? key === 'study-v11:auth:google-intent' : String(key).endsWith('-code-verifier');
+      if (this.name === 'sessions' && blockedKey && sessionStorage.getItem('test:block-auth-write') === 'yes') {
+        throw new DOMException('private quota details', 'QuotaExceededError');
+      }
+      return put.call(this, value, key);
+    };
+  }, stage);
+  await page.locator('#cloudGoogleSignInBtn').click();
+  await expect(page.locator('#cloudGoogleMessage')).toContainText('無法保存登入驗證資料');
+  await expect(page.locator('#cloudGoogleMessage')).not.toContainText('private quota details');
+  await expect(page.locator('#notes')).toHaveValue('驗證儲存失敗時仍保留的筆記');
+  expect(state.authorizations).toHaveLength(0);
+  await page.evaluate(() => sessionStorage.removeItem('test:block-auth-write'));
+  await page.locator('#cloudGoogleSignInBtn').click();
+  await expect(page.locator('#cloudUserEmail')).toHaveText(user().email);
+  expect((await saved(page)).notes).toBe('驗證儲存失敗時仍保留的筆記');
 });
 
 test('a missing OAuth intent cannot exchange a code or replace an existing account', async ({ page }) => {

@@ -26,6 +26,54 @@ export interface GoogleAuthReturn {
   allowExchange: boolean;
 }
 
+export class GoogleAuthDraftError extends Error {
+  constructor(message = '登入前的讀書紀錄尚未保存，請先按「儲存」查看原因並修正後再試；目前內容仍保留。') {
+    super(message);
+    this.name = 'GoogleAuthDraftError';
+  }
+}
+
+class GoogleAuthStorageError extends Error {
+  constructor() {
+    super('無法保存登入狀態，請確認瀏覽器允許此網站使用儲存空間後再試一次。');
+    this.name = 'GoogleAuthStorageError';
+  }
+}
+
+/** Keep SDK verifier failures in the auth-storage stage without changing persistence. */
+export function guardGoogleAuthStorage(storage: GoogleAuthStorage): GoogleAuthStorage {
+  return {
+    async getItem(key): Promise<string | null> {
+      try { return await storage.getItem(key); }
+      catch { throw new GoogleAuthStorageError(); }
+    },
+    async setItem(key, value): Promise<void> {
+      try { await storage.setItem(key, value); }
+      catch { throw new GoogleAuthStorageError(); }
+    },
+    async removeItem(key): Promise<void> {
+      try { await storage.removeItem(key); }
+      catch { throw new GoogleAuthStorageError(); }
+    },
+  };
+}
+
+function requireSavedDraft(saveDraft: () => boolean): void {
+  try {
+    if (saveDraft()) return;
+  } catch (error) {
+    if (error instanceof GoogleAuthDraftError) throw error;
+  }
+  throw new GoogleAuthDraftError();
+}
+
+async function readGoogleAuthIntent(storage: GoogleAuthStorage, now: number): Promise<GoogleAuthIntent | null> {
+  let raw: string | null;
+  try { raw = await storage.getItem(GOOGLE_AUTH_INTENT_KEY); }
+  catch { throw new GoogleAuthStorageError(); }
+  return parseGoogleAuthIntent(raw, now);
+}
+
 export function hasGoogleIdentity(user: GoogleAuthUser | null): boolean {
   return Boolean(user?.identities?.some(identity => identity.provider === 'google')
     || user?.app_metadata?.providers?.includes('google') || user?.app_metadata?.provider === 'google');
@@ -53,6 +101,8 @@ export function parseGoogleAuthIntent(raw: string | null, now: number): GoogleAu
 
 /** Error codes only: provider descriptions may contain URLs or private data. */
 export function googleAuthErrorMessage(error: unknown): string {
+  if (error instanceof GoogleAuthDraftError) return error.message;
+  if (error instanceof GoogleAuthStorageError) return '無法保存登入驗證資料，請確認瀏覽器允許此網站使用儲存空間後再試。';
   const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : '';
   if (code === 'provider_disabled' || code === 'validation_failed') return 'Google 登入尚未完成設定，請依設定說明啟用 Supabase 的 Google 登入。';
   if (code === 'access_denied') return '已取消 Google 授權，原有紀錄仍保留。';
@@ -74,7 +124,7 @@ export async function prepareGoogleAuthReturn(href: string, storage: GoogleAuthS
   }
   const code = url.searchParams.get('error_code') || hash.get('error_code') || url.searchParams.get('error') || hash.get('error');
   let intent: GoogleAuthIntent | null;
-  try { intent = parseGoogleAuthIntent(await storage.getItem(GOOGLE_AUTH_INTENT_KEY), now); }
+  try { intent = await readGoogleAuthIntent(storage, now); }
   catch (error) { return { requested: true, intent: null, error: googleAuthErrorMessage(error), allowExchange: false }; }
   if (code) return { requested: true, intent, error: googleAuthErrorMessage({ code }), allowExchange: false };
   if (!intent || !url.searchParams.get('code')) return { requested: true, intent, error: googleAuthErrorMessage({ code: 'google_auth_expired' }), allowExchange: false };
@@ -105,8 +155,9 @@ export async function beginGoogleAuthentication(options: {
   const intent: GoogleAuthIntent = { version: 1, kind: 'signin',
     date: options.date, startedAt: options.now ?? Date.now(), attempt: options.attempt ?? crypto.randomUUID() };
   if (!parseGoogleAuthIntent(JSON.stringify(intent), intent.startedAt)) throw new Error('Invalid Google authentication context');
-  if (!options.saveDraft()) throw new Error('登入前的草稿尚未保存。');
-  await options.storage.setItem(GOOGLE_AUTH_INTENT_KEY, JSON.stringify(intent));
+  requireSavedDraft(options.saveDraft);
+  try { await options.storage.setItem(GOOGLE_AUTH_INTENT_KEY, JSON.stringify(intent)); }
+  catch { throw new GoogleAuthStorageError(); }
   try {
     const request: OAuthOptions = { provider: 'google', options: { redirectTo: googleAuthReturnUrl(options.href),
       scopes: 'openid email profile', queryParams: { prompt: 'select_account' }, skipBrowserRedirect: true } };
@@ -118,9 +169,9 @@ export async function beginGoogleAuthentication(options: {
       && url.searchParams.get('provider') === 'google' && Boolean(url.searchParams.get('code_challenge'))
       && url.searchParams.get('code_challenge_method')?.toLowerCase() === 's256';
     if (!valid || options.currentUserId() !== null) throw { code: 'google_identity_mismatch' };
-    const current = parseGoogleAuthIntent(await options.storage.getItem(GOOGLE_AUTH_INTENT_KEY), options.now ?? Date.now());
+    const current = await readGoogleAuthIntent(options.storage, options.now ?? Date.now());
     if (current?.attempt !== intent.attempt) throw { code: 'google_auth_replaced' };
-    if (!options.saveDraft()) throw new Error('登入前的草稿尚未保存。');
+    requireSavedDraft(options.saveDraft);
     url.searchParams.delete('skip_http_redirect');
     options.redirect(url.href);
   } catch (error) {

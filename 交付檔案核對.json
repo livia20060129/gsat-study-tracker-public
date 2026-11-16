@@ -1,98 +1,108 @@
 {
-  "version": "171.6.0-public.61",
+  "version": "171.6.0-public.62",
   "baseRepository": "livia20060129/gsat-study-tracker-public",
-  "baseCommit": "658d43e51e784dfc7e8f73117920c47f8118e0a1",
-  "sourceFileCount": 18,
+  "baseCommit": "606890cac0fe9c85e351d3b3144a16373143e2d9",
+  "sourceFileCount": 20,
   "deletePaths": [],
   "files": [
     {
+      "path": "GOOGLE_SIGN_IN_SETUP.md",
+      "sha256": "fbf45e8aed8716ed1e205d3c60c56489c7c143dd4dd4796933a5e12359ca05a1",
+      "bytes": 3354
+    },
+    {
       "path": "LATEST_UPDATE.md",
-      "sha256": "c99c64b3f008170d82d8fc073bb3fe8b72422328a01a7a82d05013b638a7e193",
-      "bytes": 81227
+      "sha256": "061030da808d9cc8b4a77aff7cd4f8010a0c238ccff7dce2419885d361533108",
+      "bytes": 83468
     },
     {
       "path": "README.md",
-      "sha256": "fb32f3f6f8566f8f796f0dd171a2f302be75346f09d427e7d4e625af08a579ab",
-      "bytes": 39492
+      "sha256": "26147eecdb9e75ccd251967ab5510697d55015fdf10bd8d8d1926c517049a61e",
+      "bytes": 39942
     },
     {
-      "path": "e2e/summaryDonutInteraction.spec.ts",
-      "sha256": "003be4a91d0cd4726a59df8f2aa1b383280ff96a33ce8f03983154bb55ec08fb",
-      "bytes": 3293
+      "path": "e2e/googleAccountAuth.spec.ts",
+      "sha256": "dfe0cf754c5f89ff0be05bf5fe075068dacfc99f886770e908cf3ebaae78ae46",
+      "bytes": 17197
     },
     {
       "path": "index.html",
-      "sha256": "8081e560d2d2220d8a92aa7c59d9ac0b2d75b37f33b8498c6c8b6ab361fb0963",
+      "sha256": "9c25f8852d4e9dcac6b8fe8343c1629c11eb00874c5e5b3a1663ad6bc00352a7",
       "bytes": 19076
     },
     {
       "path": "material.catalog.html",
-      "sha256": "5ebbe8d6a129d80a3fda897d30a06d04f969955ad6c66f8975600a86d7a14c79",
+      "sha256": "181d135c270a3b5947b8cd49a71b9888a556380e5f9137ee9e1a6a0f28483f78",
       "bytes": 642
     },
     {
       "path": "material.progress.html",
-      "sha256": "5c88944bcba530a6758bd820bb04368534e3b4fd78eb9cb062123fe6ce2276aa",
+      "sha256": "f5123674bea004c376f26ba1ea8024bc6f50580b5deb4da4b0543467fe8d5fbf",
       "bytes": 6534
     },
     {
       "path": "package-lock.json",
-      "sha256": "a3be67016f8ce60df50c3f0f3eb5cdf214fc71d4700808d6076023a09c6b23c7",
+      "sha256": "5599f30531fc520546e68f0c38345de0a1445335b40a3f16e66aac8b61047d90",
       "bytes": 99887
     },
     {
       "path": "package.json",
-      "sha256": "76bd7761841baa15d618cb5861475d59b32e99a88c38b777bd68bc923c917751",
+      "sha256": "c0eaeaa23ed0a96cb28bdbff2e20eb49970d6c6d9e7448c18f1a69bfd08a3c7f",
       "bytes": 1843
     },
     {
       "path": "public/gpt.prompt.html",
-      "sha256": "c4750648d1c8a49e3be19ca7cb13ee08cb16491350ce58bbf174a9b07df037b8",
+      "sha256": "d5367aa9c875c49829af56c62dcb60a15db4a3cf8be6281252e143d810ee60eb",
       "bytes": 44020
     },
     {
       "path": "public/privacy.html",
-      "sha256": "7a18ef9e729093b3ac8225339c3062dac9242e4031e4a3092411f0eb617acb27",
+      "sha256": "ea3ead07180e31c1538effdce9501eb62beb1afaea9b2235176882a979874cab",
       "bytes": 19866
     },
     {
       "path": "public/support.html",
-      "sha256": "9cfb037e897b5b2a813d6df4a3fc2a8746e9918d1a733baac3ae46777210d323",
+      "sha256": "d6918b925d4165c088b5d69da2ebad5ec85dfc1aee1684c084de02dc786b0c26",
       "bytes": 8624
     },
     {
       "path": "public/terms.html",
-      "sha256": "de350f3fec1efe26a51ac4b1b41c0e5e3840e42a8d32aa9e071c1a09264d2fd5",
+      "sha256": "33566a5b62f02f17a99733ebd06ac73130bdb889e442fd605417fe1f3c3a13de",
       "bytes": 11278
     },
     {
       "path": "public/vocabulary.sources.html",
-      "sha256": "808e269e3b3ed1662501efc2000eb6aa804219295f69131d6c1d28e7f5138c81",
+      "sha256": "f703edf2af042d6f5190a7df130a81a8123c977ab57c02977291b68a77370f57",
       "bytes": 5252
     },
     {
-      "path": "src/learning-summary-page.ts",
-      "sha256": "9c82d30658cace60df7365c047ec98a4eeb76ab0141c727154dde3185eed7330",
-      "bytes": 36104
+      "path": "src/application/cloud/googleAccountAuth.ts",
+      "sha256": "2d1b967645e78b0bbe29038b543ddb497fa684c33e5ffbd9c45cc3534338c50d",
+      "bytes": 11858
     },
     {
-      "path": "src/learning-summary.css",
-      "sha256": "15295a7d7c59ec6cf1b1c8849a1556f594a7625f8c40007b0e62a758ba826bc3",
-      "bytes": 25665
+      "path": "src/legacy-app.ts",
+      "sha256": "aa5a0b45b8f789f74942c07ecf95b4bac68414c6532eeac09ec61808c05778b8",
+      "bytes": 359637
     },
     {
       "path": "summary.html",
-      "sha256": "3d5c43b62b7267aff774616a1359dfed89786809f0737f56079eb086cfe95bec",
+      "sha256": "dacd2b8da4438143597894511a6a451e4c7a4b363a66629c1da0dd6543b2afc2",
       "bytes": 6928
     },
     {
+      "path": "tests/googleAccountAuth.test.ts",
+      "sha256": "223466c228ffb16236811ee7d4f3bac21fce6808faed47c088052f4ab39e43ea",
+      "bytes": 11570
+    },
+    {
       "path": "todo.html",
-      "sha256": "401cc2d27e8631ba014683ef6d42e704c8ea5047d954166adf0672ced2021a15",
+      "sha256": "7771455b164c98889dec655e007093fb2ec940507bce24e17c87760e96319b59",
       "bytes": 4942
     },
     {
       "path": "vocabulary.review.html",
-      "sha256": "d4405b3eb7e0a3368308fd07cec360f0de39c69ed0b5a989c4450249d9068567",
+      "sha256": "9f652f22be8f2f95be59c97ff487377a17cc7037d61cd8dae23572a9a080a20d",
       "bytes": 5782
     }
   ]

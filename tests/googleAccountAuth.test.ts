@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { beginGoogleAuthentication, cleanGoogleAuthReturnUrl, clearGoogleAuthIntent, completeGoogleAuthReturn,
-  GOOGLE_AUTH_INTENT_KEY, googleAuthErrorMessage, googleAuthFetch, googleAuthReturnUrl, parseGoogleAuthIntent,
+  GOOGLE_AUTH_INTENT_KEY, GoogleAuthDraftError, googleAuthErrorMessage, googleAuthFetch, googleAuthReturnUrl, parseGoogleAuthIntent,
   prepareGoogleAuthReturn, type GoogleAuthIntent, type GoogleAuthStorage, type GoogleOAuthApi } from '../src/application/cloud/googleAccountAuth.ts';
 
 const now = Date.parse('2026-11-15T04:00:00Z');
@@ -45,6 +45,66 @@ test('draft or durable-storage failures prevent redirecting away from the record
     await assert.rejects(beginGoogleAuthentication(f.options));
     assert.equal(f.redirects.length, 0);
   }
+});
+
+test('a rejected record draft is never mislabeled as lost login verification storage', async () => {
+  for (const failOn of [1, 2]) {
+    const f = fixture(); let calls = 0;
+    f.options.saveDraft = () => ++calls !== failOn;
+    await assert.rejects(beginGoogleAuthentication(f.options), error => {
+      const message = googleAuthErrorMessage(error);
+      assert.match(message, /讀書紀錄/);
+      assert.doesNotMatch(message, /登入驗證資料/);
+      return true;
+    });
+    assert.equal(f.redirects.length, 0);
+  }
+});
+
+test('an actual intent write failure is identified as login storage even without a storage error string', async () => {
+  const f = fixture();
+  f.storage.setItem = async () => { throw new DOMException('private quota details', 'QuotaExceededError'); };
+  await assert.rejects(beginGoogleAuthentication(f.options), error => {
+    const message = googleAuthErrorMessage(error);
+    assert.match(message, /登入驗證資料/);
+    assert.ok(!message.includes('private quota details'));
+    return true;
+  });
+  assert.equal(f.requests.length, 0);
+  assert.equal(f.redirects.length, 0);
+});
+
+test('local validation messages remain specific and leave stored user content unchanged', async () => {
+  const f = fixture(), message = '登入前請先修正：起床時間格式不正確。';
+  f.storage.values.set('saved-record', 'retained notes');
+  f.options.saveDraft = () => { throw new GoogleAuthDraftError(message); };
+  await assert.rejects(beginGoogleAuthentication(f.options), error => {
+    assert.equal(googleAuthErrorMessage(error), message);
+    return true;
+  });
+  assert.equal(f.storage.values.get('saved-record'), 'retained notes');
+  assert.equal(f.requests.length, 0);
+});
+
+test('unexpected draft exceptions stay in the record stage and never expose private error details', async () => {
+  const f = fixture();
+  f.options.saveDraft = () => { throw new Error('private storage detail'); };
+  await assert.rejects(beginGoogleAuthentication(f.options), error => {
+    const message = googleAuthErrorMessage(error);
+    assert.match(message, /讀書紀錄/);
+    assert.doesNotMatch(message, /登入驗證資料|private storage detail/);
+    return true;
+  });
+  assert.equal(f.redirects.length, 0);
+});
+
+test('callback intent read failures are verification-storage failures and never allow code exchange', async () => {
+  const storage = store();
+  storage.getItem = async () => { throw new DOMException('private quota details', 'QuotaExceededError'); };
+  const result = await prepareGoogleAuthReturn('https://tracker.test/?google_auth=1&code=private', storage, now);
+  assert.equal(result.allowExchange, false);
+  assert.match(result.error!, /登入驗證資料/);
+  assert.ok(!result.error!.includes('private quota details'));
 });
 
 test('unexpected destinations and missing PKCE protection cannot start public sign-in', async () => {

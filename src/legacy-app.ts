@@ -29,7 +29,7 @@ import { studyRecordConflictDetailsText, studyRecordConflictSummary } from './st
 import { ACTIVE_RECORD_PREFIX_KEY, LEGACY_UNSCOPED_PREFIX, initialRecordPrefix, storagePrefixForUser } from './storage/local';
 import { browserAuthPersistence, createPersistentAuthStorage } from './infrastructure/storage/browserAuthStorage.ts';
 import { createSessionRestorationGate } from './application/cloud/sessionRestoration.ts';
-import { beginGoogleAuthentication, cleanGoogleAuthReturnUrl, completeGoogleAuthReturn, googleAuthErrorMessage, googleAuthFetch, prepareGoogleAuthReturn } from './application/cloud/googleAccountAuth.ts';
+import { GoogleAuthDraftError, beginGoogleAuthentication, cleanGoogleAuthReturnUrl, completeGoogleAuthReturn, googleAuthErrorMessage, googleAuthFetch, guardGoogleAuthStorage, prepareGoogleAuthReturn } from './application/cloud/googleAccountAuth.ts';
 import { incrementalSyncStart, latestServerWatermark, recordSyncWatermarkKey } from './storage/syncWatermark';
 import { calendarFixedTemplate } from './calendar/calendarBridge';
 import { prioritizeCalendarPageRanges } from './calendar/pagePriority';
@@ -1154,6 +1154,14 @@ function cloudGoogleSetMessage(message,ok){
  output.textContent=message||'';output.hidden=!message;output.dataset.state=ok===false?'error':(ok===true?'ok':'busy');
  if(ok===false){var settings=id('connectionSettings'),toggle=settings&&settings.querySelector('.connection-settings-toggle');if(settings&&!settings.open&&toggle)toggle.click()}
 }
+function saveGoogleLoginDraft(){
+ if(!data)throw new GoogleAuthDraftError('當日讀書紀錄尚未載入完成，請稍候再登入。');
+ if(data.storageIssue)throw new GoogleAuthDraftError(data.date+' 的原始讀書紀錄無法讀取，請先修復後再登入；原始資料仍保留。');
+ readHeader();var validation=validate();
+ if(!validation.ok)throw new GoogleAuthDraftError('登入前請先修正：'+validation.msg);
+ if(!persist(false))throw new GoogleAuthDraftError('登入前無法保存當日讀書紀錄。'+(localRecordRepository.saveError()||'請先按「儲存」查看原因，再重新登入。')+' 目前畫面內容仍保留，請先不要關閉頁面。');
+ return true;
+}
 async function cloudGoogleAuthenticate(){
  if(!cloudClient||!cloudGoogleAuthStorage||cloudAuthPending||cloudUser)return;
  if(cloudSessionRestoring){cloudGoogleSetMessage('登入狀態尚未確認，請確認瀏覽器允許此網站使用儲存空間，重新整理後再試；原有紀錄仍保留。',false);return}
@@ -1162,7 +1170,7 @@ async function cloudGoogleAuthenticate(){
   await beginGoogleAuthentication({
    auth:cloudClient.auth,storage:cloudGoogleAuthStorage,supabaseUrl:SUPABASE_URL,href:window.location.href,
    date:id('studyDate').value,currentUserId:function(){return cloudUser?cloudUser.id:null},
-   saveDraft:function(){return persist(false)},redirect:function(url){window.location.assign(url)}
+   saveDraft:saveGoogleLoginDraft,redirect:function(url){window.location.assign(url)}
   });
  }catch(error){cloudGoogleSetMessage(googleAuthErrorMessage(error),false)}
  finally{setCloudAuthPending(false)}
@@ -1493,11 +1501,11 @@ async function refreshCalendarAfterCloudActivation(serial){
 }
 async function initCloud(){
  cloudSessionRestoring=true;cloudSessionRestoreError=false;cloudUpdateUI();cloudSetMessage('正在恢復登入狀態…',true);
- var authStorage=createPersistentAuthStorage(browserAuthPersistence(window.indexedDB),{
+ var authStorage=guardGoogleAuthStorage(createPersistentAuthStorage(browserAuthPersistence(window.indexedDB),{
   getItem:function(key){return window.localStorage.getItem(key)},
   setItem:function(key,value){window.localStorage.setItem(key,value)},
   removeItem:function(key){window.localStorage.removeItem(key)}
- });
+ }));
  cloudGoogleAuthStorage=authStorage;
  var googleReturn=await prepareGoogleAuthReturn(window.location.href,authStorage);
  if(googleReturn.intent){id('studyDate').value=googleReturn.intent.date}
