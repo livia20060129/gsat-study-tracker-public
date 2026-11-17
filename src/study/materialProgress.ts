@@ -11,6 +11,7 @@ import {
   ENGLISH_WEEKLY_PLAN_BOOK,
   HISTORY_HAOHAOXUE_BOOK,
   HISTORY_SUPER_3_BOOK,
+  HISTORY_SUPER_3_MATERIAL_ID,
   pageMappedBookSocialSubject,
   pageMappedBookSubject,
   TOEFL_VOCABULARY_3800_BOOK,
@@ -241,6 +242,10 @@ function largeTopicSegments(rows: readonly PageMapRow[]): SegmentDefinition[] {
   }));
 }
 
+function bookDefinitionId(book: PageMappedBook): string {
+  return book === HISTORY_SUPER_3_BOOK ? HISTORY_SUPER_3_MATERIAL_ID : `book:${book}`;
+}
+
 function bookDefinition(book: PageMappedBook): MaterialDefinition {
   const mappedSubject = pageMappedBookSubject(book);
   const subject = mappedSubject === '國文' ? 'chinese' : mappedSubject === '社會' ? 'social' : 'english';
@@ -251,7 +256,7 @@ function bookDefinition(book: PageMappedBook): MaterialDefinition {
   const sections = BOOK_PAGE_MAPS[book];
   const largeTopics = book === TOEFL_VOCABULARY_3800_BOOK;
   return {
-    id: `book:${book}`,
+    id: bookDefinitionId(book),
     subject,
     group,
     title: book,
@@ -383,7 +388,7 @@ export function builtInMaterialCatalog(): CatalogMaterial[] {
       if (parts[1] === '新關鍵') rows = parts[2] === '1~2' ? NEWKEY_12_PAGE_MAP : NEWKEY_34_PAGE_MAP;
       if (parts[1] === '新大滿貫') rows = MATH_GRAND_SLAM_PAGE_MAP;
     } else if (definition.subject === 'social') {
-      const book = parts.slice(1).join(':') as PageMappedBook;
+      const book = definition.title as PageMappedBook;
       subject = pageMappedBookSocialSubject(book) ?? '歷史';
       title = definition.title.replace(/^(?:公民|歷史|地理)｜/, '');
       match = { title: book };
@@ -476,7 +481,7 @@ function markRange(recorded: Map<string, MaterialCoverage>, definitionId: string
 }
 
 function markBookSelection(recorded: Map<string, MaterialCoverage>, book: PageMappedBook, fields: LooseRecord): void {
-  const definitionId = `book:${book}`;
+  const definitionId = bookDefinitionId(book);
   const definition = definitionById.get(definitionId);
   if (!definition) return;
   const topic = String(fields.topic ?? '').trim();
@@ -528,7 +533,7 @@ function markStudyItem(recorded: Map<string, MaterialCoverage>, item: StudyItem)
 
     if (type === 'chineseReading') {
       if (usesSharedPageTemplate(item)) {
-        if (mappedBook) markRange(recorded, `book:${mappedBook}`, fields.start, fields.end);
+        if (mappedBook) markRange(recorded, bookDefinitionId(mappedBook), fields.start, fields.end);
       } else if (String(fields.kind ?? '') === 'reading' || /古今悅讀一百/.test(title)) {
         if (scope?.kind !== 'unit') markLinear(recorded, 'chinese:gujin', fields.round, fields.roundEnd ?? fields.round);
       } else if (!scope && mappedBook && pageMappedBookSubject(mappedBook) === '國文') {
@@ -540,7 +545,7 @@ function markStudyItem(recorded: Map<string, MaterialCoverage>, item: StudyItem)
       if (usesSharedPageTemplate(item)) {
         if (isAzarGrammarBookTitle(title)) markRange(recorded, 'english:azar-intermediate', fields.start, fields.end);
         else if (/英文文法總複習講義/.test(title)) markRange(recorded, 'english:grammar', fields.start, fields.end);
-        else if (mappedBook) markRange(recorded, `book:${mappedBook}`, fields.start, fields.end);
+        else if (mappedBook) markRange(recorded, bookDefinitionId(mappedBook), fields.start, fields.end);
       }
       else if (/ACE\s*Reading/i.test(title)) { if (scope?.kind !== 'unit') markLinear(recorded, 'english:ace', fields.round, fields.roundEnd ?? fields.round); }
       else if (isListeningTestBookTitle(title)) { if (scope?.kind !== 'unit') markLinear(recorded, 'english:listening', fields.round, fields.roundEnd ?? fields.round); }
@@ -564,7 +569,7 @@ function markStudyItem(recorded: Map<string, MaterialCoverage>, item: StudyItem)
         const explicitUnits = fields.unitStart !== undefined || fields.unit !== undefined;
         if (unitBookSections(mappedBook).length && range.start && (explicitUnits || !fields.start)) {
           const sections = unitBookSections(mappedBook).filter(section => section.unit >= Number(range.start) && section.unit <= Number(range.end));
-          for (const section of sections) markRange(recorded, `book:${mappedBook}`, section.start, section.end);
+          for (const section of sections) markRange(recorded, bookDefinitionId(mappedBook), section.start, section.end);
         } else if (!scope || (scope.kind === 'round' && fields.topic)
           || (unitBookSections(mappedBook).length && !explicitUnits && !fields.scopeKind)) {
           markBookSelection(recorded, mappedBook, fields);

@@ -19,7 +19,7 @@ const calendarPrompt = readFileSync(new URL('../public/gpt.prompt.html', import.
 
 test('Calendar prompt publishes Super History volume 3 identifier, page ranges and answer-book separation', () => {
   assert.ok(calendarPrompt.includes(LECTURE_IDENTIFIERS.historySuper3));
-  assert.match(calendarPrompt, /歷史《Super教學講義 3》/);
+  assert.match(calendarPrompt, /歷史｜Super教學講義｜3/);
   assert.match(calendarPrompt, /導論 p\.1–7/);
   assert.match(calendarPrompt, /第6章 歷史、當代與未來 p\.150–171/);
   assert.match(calendarPrompt, /解答篇另起 p\.1，不列入本文頁碼/);

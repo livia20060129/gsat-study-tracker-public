@@ -1,5 +1,34 @@
 # 最新更新
 
+版本：v171.6.0-public.66
+
+日期：2026-11-17（公開版）
+
+## 講義名稱與冊數分開
+
+- 以實際 GitHub public.65（`239051d59afb9fcbb922ca3480a4ab4b13ab589e`）為基準。
+- 本次教材正式名稱改為「歷史｜Super教學講義｜3」；網站 prompt 與 README 記錄之後新增講義皆使用「科目｜講義名稱｜冊數」的格式。
+- Canonical 名稱與 Calendar 投影使用新格式，舊「歷史｜Super教學講義 3」及其他既有別名仍可辨識。主碼 `GSAT-HIST-SUPER-3`、171 頁及七段章節地圖保留。
+- 教材選取／編輯用 ID 沿用 `book:歷史｜Super教學講義 3`，顯示名稱與持久身份分開。進度對照統一經過同一 ID 轉換，避免勾選失效或新增另一份教材。
+- 舊版已編輯目錄的原預設書名會在讀取時正規化顯示，保留原 revision、章節及其他設定，不回寫原紀錄；使用者自行改名的教材保留原名稱。舊／新名稱都可對應目錄範圍及進度。
+- 沿用公開版專案、Google 登入、儲存保護、單一箭頭、Calendar 唯讀與翻譯額度。本次沒有新套件、migration、Edge Function 或正式資料變更。
+
+## 驗證
+
+- `npm test`：966 個單元測試及 7 個公開專案綁定檢查通過；正式建置（含型別檢查）通過。402 個原始檔、1,080 個本機匯入無遺漏。
+- Chromium／WebKit 共 36 個教材目錄、編輯與收合動畫測試通過。
+- 額外核對 Chromium／WebKit、1280px／375px 四種畫面：載入舊名稱及舊教材勾選 ID，仍顯示已勾選的新名稱、七段進度與完成的最後一段；Tracker 原項目的教材選單顯示「Super教學講義｜3」，筆記仍保留，沒有新增重複教材。
+- 新增相容回歸驗證舊名稱的手動項目、已編輯目錄、章節與勾選可延續；模組讀取不修改原紀錄，Calendar 更新後只保留一份活動項目，並保留完成與 25 分鐘紀錄。
+- 外部服務使用測試資料攔截，未操作正式帳號、資料或部署；未重跑其他所有頁面之瀏覽器測試。
+
+按原目錄覆蓋 public.65，commit 並 push，讓新 commit 執行現有 GitHub Actions。本次未 commit、push 或部署。
+
+Suggested commit: `fix: separate lecture names and volumes while preserving material identity`
+
+---
+
+# public.65 更新紀錄
+
 版本：v171.6.0-public.65
 
 日期：2026-11-17（公開版）

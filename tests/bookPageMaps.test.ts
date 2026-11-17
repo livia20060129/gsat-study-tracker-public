@@ -25,7 +25,7 @@ import { cloneOriginalItemForMakeup } from '../src/study/makeup.ts';
 import type { StudyItem } from '../src/types.ts';
 
 test('SUPER History 3 matches its own third-volume aliases and photographed boundaries through page 171', () => {
-  for (const title of ['歷史 Super教學講義 3', '龍騰 SUPER 歷史3 教學講義', 'super 歷史 3', '龍騰歷史第三冊教學講義', 'GSAT-HIST-SUPER-3-20261117-01']) {
+  for (const title of ['歷史｜Super教學講義｜3', '歷史｜Super教學講義 3', '歷史 Super教學講義 3', '龍騰 SUPER 歷史3 教學講義', 'super 歷史 3', '龍騰歷史第三冊教學講義', 'GSAT-HIST-SUPER-3-20261117-01']) {
     assert.equal(canonicalPageMappedBook(title), HISTORY_SUPER_3_BOOK);
   }
   assert.equal(canonicalPageMappedBook('SUPER 歷史2 教學講義'), null);

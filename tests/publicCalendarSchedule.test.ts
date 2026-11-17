@@ -8,6 +8,9 @@ import { summarizeCompletionUnits } from '../src/study/completionMetrics.ts';
 import type { CalendarTaskRow } from '../src/calendar/calendarBridge.ts';
 import type { StudyRecord } from '../src/types.ts';
 import { builtInMaterialCatalog, materialProgressRows } from '../src/study/materialProgress.ts';
+import { effectiveMaterialCatalog } from '../src/study/materialCatalog.ts';
+import { parseMaterialSelection } from '../src/study/materialSelection.ts';
+import { selectedManualMaterialChoices } from '../src/study/manualMaterialSelection.ts';
 
 test('SUPER History 3 Calendar identifiers keep history colors and feed the seven-section 171-page material map', () => {
   const identifier = 'GSAT-HIST-SUPER-3-20261117-01';
@@ -15,12 +18,13 @@ test('SUPER History 3 Calendar identifiers keep history colors and feed the seve
   const items = calendarItemsByDate([task]).get(date)!;
   assert.equal(items.length, 1);
   assert.equal(items[0].type, 'socialStudy');
-  assert.equal(items[0].f.book, '歷史｜Super教學講義 3');
+  assert.equal(items[0].f.book, '歷史｜Super教學講義｜3');
   assert.equal(items[0].f.start, '150');
   assert.equal(items[0].f.end, '171');
   assert.equal(studyItemSubjectClass(items[0]), 'subject-card subject-history');
   const material = builtInMaterialCatalog().find(entry => entry.id === 'book:歷史｜Super教學講義 3')!;
   assert.equal(material.subject, '歷史');
+  assert.equal(material.title, 'Super教學講義｜3');
   assert.equal(material.total, 171);
   assert.equal(material.sections.length, 7);
   items[0].done = true;
@@ -28,6 +32,46 @@ test('SUPER History 3 Calendar identifiers keep history colors and feed the seve
   assert.equal(progress.group, '歷史');
   assert.equal(progress.segments.at(-1)?.completionPercent, 100);
   assert.equal(progress.segments[0].completionPercent, 0);
+});
+
+test('separating the history volume preserves old selections, stored page progress and edited catalog sections', () => {
+  const builtins = builtInMaterialCatalog();
+  const id = 'book:歷史｜Super教學講義 3';
+  const edited = { ...builtins.find(entry => entry.id === id)!, title: 'Super教學講義 3',
+    match: { title: '歷史｜Super教學講義 3' }, revision: 2, updatedAt: '2026-11-17T01:00:00Z' };
+  const record: StudyRecord = { date, notes: '保留筆記', materialCatalog: [edited], items: [{ id: 'legacy-history',
+    type: 'socialStudy', title: '歷史複習', source: 'custom', required: false, done: true, minutes: '25',
+    f: { subject: '歷史', book: '歷史｜Super教學講義 3', start: '150', end: '171' } }] };
+  const original = structuredClone(record);
+  const catalog = effectiveMaterialCatalog(builtins, [record]);
+  const selected = parseMaterialSelection(JSON.stringify([id]), catalog.map(entry => entry.id));
+  assert.deepEqual(selected, [id]);
+  const rows = materialProgressRows([record]);
+  const progress = rows.find(entry => entry.id === id)!;
+  assert.equal(progress.title, '歷史｜Super教學講義｜3');
+  assert.equal(progress.segments.at(-1)?.completionPercent, 100);
+  assert.equal(selectedManualMaterialChoices(rows, selected, catalog)[0].value, '歷史｜Super教學講義｜3');
+  assert.deepEqual(catalog.find(entry => entry.id === id)?.sections, edited.sections);
+  assert.deepEqual(record, original);
+  const renamed = structuredClone(record);
+  renamed.items[0].f.book = '歷史｜Super教學講義｜3';
+  assert.equal(materialProgressRows([renamed]).find(entry => entry.id === id)?.segments.at(-1)?.completionPercent, 100);
+});
+
+test('refreshing an old-named completed Calendar item after the rename preserves one item and its completion', () => {
+  const task = { ...row('歷史｜Super教學講義 3', 'GSAT-HIST-SUPER-3-20261117-01'),
+    description: '【識別碼】GSAT-HIST-SUPER-3-20261117-01\n【頁碼範圍】p.150–171' };
+  const items = calendarItemsByDate([task]).get(date)!;
+  items[0].title = '歷史｜Super教學講義 3';
+  items[0].f.book = '歷史｜Super教學講義 3';
+  items[0].done = true;
+  items[0].minutes = '25';
+  const refreshed = reconcileCalendarRecords([{ date, items }], [task], date)[0];
+  const active = refreshed.items.filter(item => !isArchivedCalendarItem(item));
+  assert.equal(active.length, 1);
+  assert.equal(active[0].done, true);
+  assert.equal(active[0].minutes, '25');
+  assert.equal(active[0].f.book, '歷史｜Super教學講義｜3');
 });
 
 const date = '2026-11-09';

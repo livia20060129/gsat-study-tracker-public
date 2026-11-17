@@ -10,7 +10,9 @@ export const ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK = '英語高頻字彙完全�
 export const UNLOCK_3_BOOK = 'Unlock 3 (Listening, Speaking, Critical Thinking)';
 export const TOEFL_VOCABULARY_3800_BOOK = 'TOEFL托福決戰字彙3800';
 export const HISTORY_HAOHAOXUE_BOOK = '歷史｜好好學';
-export const HISTORY_SUPER_3_BOOK = '歷史｜Super教學講義 3';
+export const HISTORY_SUPER_3_BOOK = '歷史｜Super教學講義｜3';
+// Persisted selections and edited catalog entries retain their original identity.
+export const HISTORY_SUPER_3_MATERIAL_ID = 'book:歷史｜Super教學講義 3';
 
 export type SocialStudiesSubject = '地理' | '歷史' | '公民';
 
@@ -327,7 +329,7 @@ export function canonicalPageMappedBook(value: unknown): PageMappedBook | null {
   if (/unlock\s*3\b/i.test(title)) return UNLOCK_3_BOOK;
   if (/托福\s*決戰\s*字[彙匯]\s*3800/i.test(title)) return TOEFL_VOCABULARY_3800_BOOK;
   if ((title.includes('好好學') && title.includes('歷史')) || title.replace(/\s+/g, '').includes('歷史好好學')) return HISTORY_HAOHAOXUE_BOOK;
-  if (/(?:歷史\s*(?:第\s*)?[3３三](?:冊)?|super\s*教學講義\s*[3３三](?:冊)?)(?![0-9０-９一二三四五六七八九十])/i.test(title)
+  if (/(?:歷史\s*(?:第\s*)?[3３三](?:冊)?|super\s*教學講義[\s｜|]*[3３三](?:冊)?)(?![0-9０-９一二三四五六七八九十])/i.test(title)
     && title.includes('歷史')
     && (/super/i.test(title) || (title.includes('龍騰') && title.includes('教學講義')))) return HISTORY_SUPER_3_BOOK;
   if (/學測週計[畫劃]/.test(title.replace(/\s+/g, '')) && ['地理', '歷史', '公民'].some(subject => title.includes(subject))) return null;

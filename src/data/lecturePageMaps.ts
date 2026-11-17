@@ -24,7 +24,7 @@ export const LECTURE_IDENTIFIERS = {
 export type LectureIdentifierMatch =
   | { kind: 'natural'; subject: '化學' | '物理' | '生物' | '地科'; material: string }
   | { kind: 'englishBook'; book: '學測週計畫' | '混合題30篇實戰演練' | '英語高頻字彙完全攻略' }
-  | { kind: 'socialBook'; subject: '歷史'; book: '歷史｜好好學' | '歷史｜Super教學講義 3' }
+  | { kind: 'socialBook'; subject: '歷史'; book: '歷史｜好好學' | '歷史｜Super教學講義｜3' }
   | { kind: 'math'; material: '新大滿貫'; book: 'A' };
 
 export function lectureIdentifierMatch(value: unknown): LectureIdentifierMatch | null {
@@ -41,7 +41,7 @@ export function lectureIdentifierMatch(value: unknown): LectureIdentifierMatch |
   if (matches(LECTURE_IDENTIFIERS.englishMixed30)) return { kind: 'englishBook', book: '混合題30篇實戰演練' };
   if (matches(LECTURE_IDENTIFIERS.englishHighFrequencyVocabulary)) return { kind: 'englishBook', book: '英語高頻字彙完全攻略' };
   if (matches(LECTURE_IDENTIFIERS.historyHaohaoxue)) return { kind: 'socialBook', subject: '歷史', book: '歷史｜好好學' };
-  if (matches(LECTURE_IDENTIFIERS.historySuper3)) return { kind: 'socialBook', subject: '歷史', book: '歷史｜Super教學講義 3' };
+  if (matches(LECTURE_IDENTIFIERS.historySuper3)) return { kind: 'socialBook', subject: '歷史', book: '歷史｜Super教學講義｜3' };
   if (matches(LECTURE_IDENTIFIERS.mathGrandSlamA)) return { kind: 'math', material: MATH_GRAND_SLAM_MATERIAL, book: 'A' };
   return null;
 }

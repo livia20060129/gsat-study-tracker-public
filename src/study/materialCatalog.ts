@@ -1,4 +1,5 @@
 import type { StudyItem, StudyRecord } from '../types.ts';
+import { canonicalPageMappedBook, HISTORY_SUPER_3_BOOK, HISTORY_SUPER_3_MATERIAL_ID } from '../data/bookPageMaps.ts';
 
 export const CATALOG_SUBJECTS = ['國文', '英文', '數學', '物理', '化學', '生物', '地科', '公民', '歷史', '地理'] as const;
 export type CatalogSubject = typeof CATALOG_SUBJECTS[number];
@@ -62,8 +63,12 @@ export function catalogOverrides(records: readonly StudyRecord[]): CatalogMateri
     if (!Array.isArray(record.materialCatalog)) continue;
     for (const entry of record.materialCatalog ?? []) {
       if (!entry || typeof entry.id !== 'string' || !Array.isArray(entry.sections) || catalogValidationError(entry)) continue;
-      const previous = latest.get(entry.id);
-      if (!previous || entry.revision > previous.revision || (entry.revision === previous.revision && entry.updatedAt > previous.updatedAt)) latest.set(entry.id, entry);
+      let normalized = entry;
+      if (entry.id === HISTORY_SUPER_3_MATERIAL_ID && entry.subject === '歷史' && entry.title === 'Super教學講義 3') {
+        normalized = { ...entry, title: HISTORY_SUPER_3_BOOK.slice('歷史｜'.length) };
+      }
+      const previous = latest.get(normalized.id);
+      if (!previous || normalized.revision > previous.revision || (normalized.revision === previous.revision && normalized.updatedAt > previous.updatedAt)) latest.set(normalized.id, normalized);
     }
   }
   return [...latest.values()];
@@ -94,7 +99,12 @@ export function catalogMaterialMatchesItem(material: CatalogMaterial, item: Stud
   if (['物理', '化學', '生物', '地科'].includes(material.subject) && (item.type !== 'scienceReview' || f.subject !== material.subject)) return false;
   if (['公民', '歷史', '地理'].includes(material.subject)
     && (!['socialStudy', 'general', 'calendarStudy'].includes(item.type) || f.subject !== material.subject)) return false;
-  if (match.title && ![f.title, f.book, item.title].includes(match.title)) return false;
+  if (match.title && ![f.title, f.book, item.title].includes(match.title)) {
+    const sameHistoryBook = material.id === HISTORY_SUPER_3_MATERIAL_ID
+      && canonicalPageMappedBook(match.title) === HISTORY_SUPER_3_BOOK
+      && [f.title, f.book, item.title].some(value => canonicalPageMappedBook(value) === HISTORY_SUPER_3_BOOK);
+    if (!sameHistoryBook) return false;
+  }
   if (match.material && f.material !== match.material) return false;
   if (match.book && f.book !== match.book) return false;
   if (match.kind && f.kind !== match.kind) return false;
