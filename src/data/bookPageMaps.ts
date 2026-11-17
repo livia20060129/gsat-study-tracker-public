@@ -10,6 +10,7 @@ export const ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK = '英語高頻字彙完全�
 export const UNLOCK_3_BOOK = 'Unlock 3 (Listening, Speaking, Critical Thinking)';
 export const TOEFL_VOCABULARY_3800_BOOK = 'TOEFL托福決戰字彙3800';
 export const HISTORY_HAOHAOXUE_BOOK = '歷史｜好好學';
+export const HISTORY_SUPER_3_BOOK = '歷史｜Super教學講義 3';
 
 export type SocialStudiesSubject = '地理' | '歷史' | '公民';
 
@@ -23,7 +24,8 @@ export type PageMappedBook =
   | typeof ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK
   | typeof UNLOCK_3_BOOK
   | typeof TOEFL_VOCABULARY_3800_BOOK
-  | typeof HISTORY_HAOHAOXUE_BOOK;
+  | typeof HISTORY_HAOHAOXUE_BOOK
+  | typeof HISTORY_SUPER_3_BOOK;
 
 export interface BookPageSection {
   start: number;
@@ -219,6 +221,17 @@ const historyHaohaoxue = groupedSections([{
   end: 281,
 }]);
 
+/** 龍騰 SUPER 歷史3教學講義，依目錄與使用者確認的本文末頁 p.171。 */
+const historySuper3: BookPageSection[] = [
+  { start: 1, end: 7, topic: 'SUPER歷史3', detail: '導論' },
+  { start: 8, end: 35, topic: '第1章', detail: '古代文化與基督教傳統' },
+  { start: 36, end: 73, topic: '第2章', detail: '個人、自由、理性' },
+  { start: 74, end: 95, topic: '第3章', detail: '伊斯蘭與世界' },
+  { start: 96, end: 119, topic: '第4章', detail: '西方與世界的交流' },
+  { start: 120, end: 149, topic: '第5章', detail: '世界大戰與冷戰局勢' },
+  { start: 150, end: 171, topic: '第6章', detail: '歷史、當代與未來' },
+];
+
 const unlock3: BookPageSection[] = [
   { start: 4, end: 7, topic: 'Front matter', detail: 'Map of the book' },
   { start: 8, end: 13, topic: 'Front matter', detail: 'Your guide to Unlock' },
@@ -296,6 +309,7 @@ export const BOOK_PAGE_MAPS: Record<PageMappedBook, BookPageSection[]> = {
   [UNLOCK_3_BOOK]: unlock3,
   [TOEFL_VOCABULARY_3800_BOOK]: toeflVocabulary3800,
   [HISTORY_HAOHAOXUE_BOOK]: historyHaohaoxue,
+  [HISTORY_SUPER_3_BOOK]: historySuper3,
 };
 
 export function canonicalPageMappedBook(value: unknown): PageMappedBook | null {
@@ -305,6 +319,7 @@ export function canonicalPageMappedBook(value: unknown): PageMappedBook | null {
   if (identifier.includes(LECTURE_IDENTIFIERS.englishMixed30)) return ENGLISH_MIXED_30_BOOK;
   if (identifier.includes(LECTURE_IDENTIFIERS.englishHighFrequencyVocabulary)) return ENGLISH_HIGH_FREQUENCY_VOCABULARY_BOOK;
   if (identifier.includes(LECTURE_IDENTIFIERS.historyHaohaoxue)) return HISTORY_HAOHAOXUE_BOOK;
+  if (new RegExp(`\\b${LECTURE_IDENTIFIERS.historySuper3}\\b`).test(identifier)) return HISTORY_SUPER_3_BOOK;
   if (title.includes('深耕十五')) return DEEP_FIFTEEN_BOOK;
   if (title.includes('主題百匯') && title.includes('閱讀寫作新進化')) return CHINESE_TOPIC_BOOK;
   if (title.includes('主題百匯') && (title.includes('篇章結構') || title.includes('閱讀測驗'))) return ENGLISH_TOPIC_READING_BOOK;
@@ -312,6 +327,9 @@ export function canonicalPageMappedBook(value: unknown): PageMappedBook | null {
   if (/unlock\s*3\b/i.test(title)) return UNLOCK_3_BOOK;
   if (/托福\s*決戰\s*字[彙匯]\s*3800/i.test(title)) return TOEFL_VOCABULARY_3800_BOOK;
   if ((title.includes('好好學') && title.includes('歷史')) || title.replace(/\s+/g, '').includes('歷史好好學')) return HISTORY_HAOHAOXUE_BOOK;
+  if (/(?:歷史\s*(?:第\s*)?[3３三](?:冊)?|super\s*教學講義\s*[3３三](?:冊)?)(?![0-9０-９一二三四五六七八九十])/i.test(title)
+    && title.includes('歷史')
+    && (/super/i.test(title) || (title.includes('龍騰') && title.includes('教學講義')))) return HISTORY_SUPER_3_BOOK;
   if (/學測週計[畫劃]/.test(title.replace(/\s+/g, '')) && ['地理', '歷史', '公民'].some(subject => title.includes(subject))) return null;
   if (/學測週計[畫劃]/.test(title.replace(/\s+/g, ''))) return ENGLISH_WEEKLY_PLAN_BOOK;
   if (title.replace(/\s+/g, '').includes('混合題30篇實戰演練')) return ENGLISH_MIXED_30_BOOK;
@@ -325,7 +343,7 @@ export function pageMappedBookSubject(book: PageMappedBook): '國文' | '英文'
 }
 
 export function pageMappedBookSocialSubject(book: PageMappedBook): SocialStudiesSubject | null {
-  if (book === HISTORY_HAOHAOXUE_BOOK) return '歷史';
+  if (book === HISTORY_HAOHAOXUE_BOOK || book === HISTORY_SUPER_3_BOOK) return '歷史';
   return null;
 }
 

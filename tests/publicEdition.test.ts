@@ -17,6 +17,14 @@ import {
 const runtime = readFileSync(new URL('../src/legacy-app.ts', import.meta.url), 'utf8');
 const calendarPrompt = readFileSync(new URL('../public/gpt.prompt.html', import.meta.url), 'utf8');
 
+test('Calendar prompt publishes Super History volume 3 identifier, page ranges and answer-book separation', () => {
+  assert.ok(calendarPrompt.includes(LECTURE_IDENTIFIERS.historySuper3));
+  assert.match(calendarPrompt, /歷史《Super教學講義 3》/);
+  assert.match(calendarPrompt, /導論 p\.1–7/);
+  assert.match(calendarPrompt, /第6章 歷史、當代與未來 p\.150–171/);
+  assert.match(calendarPrompt, /解答篇另起 p\.1，不列入本文頁碼/);
+});
+
 test('public edition only creates presets from the connected Google Calendar cache', () => {
   assert.match(runtime, /function calendarDefsForDate\(date\)\{\s*return calendarConnected&&calendarCacheLoaded\?cloudCalendarDefsForDate\(date\):\[\];\s*\}/);
   assert.match(runtime, /function presetsForDate\(date\)\{\s*return dedupePresetDefinitions\(calendarDefsForDate\(date\)\);\s*\}/);

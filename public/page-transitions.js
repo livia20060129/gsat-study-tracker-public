@@ -57,7 +57,7 @@
     for (const node of nodes) {
       if (node.hasAttribute('data-ui-icon')) hydrateIcon(node);
       else if (node.localName === 'button') decorateButton(node);
-      else if (node.localName === 'summary' && !node.matches('.connection-status-bar') && !node.querySelector('.ui-disclosure-chevron')) {
+      else if (node.localName === 'summary' && !node.matches('.connection-status-bar') && !node.querySelector('.ui-disclosure-chevron,.materials-panel-toggle')) {
         node.classList.add('ui-disclosure-summary');
         const icon = document.createElementNS(namespace,'svg');
         icon.dataset.uiIcon = 'chevron-down'; icon.classList.add('ui-disclosure-chevron');

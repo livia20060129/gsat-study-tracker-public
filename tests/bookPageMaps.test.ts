@@ -18,10 +18,26 @@ import {
   ENGLISH_TOPIC_READING_BOOK,
   ENGLISH_WEEKLY_PLAN_BOOK,
   HISTORY_HAOHAOXUE_BOOK,
+  HISTORY_SUPER_3_BOOK,
   UNLOCK_3_BOOK,
 } from '../src/data/bookPageMaps.ts';
 import { cloneOriginalItemForMakeup } from '../src/study/makeup.ts';
 import type { StudyItem } from '../src/types.ts';
+
+test('SUPER History 3 matches its own third-volume aliases and photographed boundaries through page 171', () => {
+  for (const title of ['歷史 Super教學講義 3', '龍騰 SUPER 歷史3 教學講義', 'super 歷史 3', '龍騰歷史第三冊教學講義', 'GSAT-HIST-SUPER-3-20261117-01']) {
+    assert.equal(canonicalPageMappedBook(title), HISTORY_SUPER_3_BOOK);
+  }
+  assert.equal(canonicalPageMappedBook('SUPER 歷史2 教學講義'), null);
+  assert.equal(canonicalPageMappedBook('歷史 Super教學講義 30'), null);
+  assert.equal(canonicalPageMappedBook('GSAT-HIST-SUPER-30'), null);
+  assert.deepEqual(BOOK_PAGE_MAPS[HISTORY_SUPER_3_BOOK].map(section => [section.start, section.end]), [
+    [1, 7], [8, 35], [36, 73], [74, 95], [96, 119], [120, 149], [150, 171],
+  ]);
+  assert.equal(bookPageText(HISTORY_SUPER_3_BOOK, 35, 36), '第1章｜古代文化與基督教傳統（p.35）、第2章｜個人、自由、理性（p.36）');
+  assert.equal(bookPageText(HISTORY_SUPER_3_BOOK, 171, 171), '第6章｜歷史、當代與未來（p.171）');
+  assert.equal(bookPageMatches(HISTORY_SUPER_3_BOOK, 172, 172).length, 0);
+});
 
 test('identifies every supported book from punctuation and surrounding Calendar text', () => {
   assert.equal(canonicalPageMappedBook('國文｜深耕十五'), DEEP_FIFTEEN_BOOK);

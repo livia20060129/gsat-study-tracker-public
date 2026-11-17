@@ -1,98 +1,118 @@
 {
-  "version": "171.6.0-public.64",
+  "version": "171.6.0-public.65",
   "baseRepository": "livia20060129/gsat-study-tracker-public",
-  "baseCommit": "7870fa3fd08d9043cebad6c5e843f1e38f80c0f6",
-  "sourceFileCount": 18,
+  "baseCommit": "66ec570260ae4fd41a26bcb06d7aa04a503f9799",
+  "sourceFileCount": 22,
   "deletePaths": [],
   "files": [
     {
       "path": "LATEST_UPDATE.md",
-      "sha256": "b682b270468a7d056511052d077e9bed61d5f8653a33e21a7e46b904ef37b328",
-      "bytes": 88791
+      "sha256": "18991ee68e5f822fb91e918bdcdc1c7d5f0f249b2fa9055d52655d566e96a652",
+      "bytes": 91358
     },
     {
       "path": "README.md",
-      "sha256": "077613de6204fc9c7079b812fbd7ec10441efd137e8b62155a019cb48f430b39",
-      "bytes": 41051
-    },
-    {
-      "path": "e2e/googleAccountAuth.spec.ts",
-      "sha256": "0a947c6bca5b1d7adff28e88a8202370ae13aea2c4ab01cbb022dbd503840fd8",
-      "bytes": 19896
+      "sha256": "d59a09047f23e5d39f544274209d3d8b49221cfedf6984d2587b08915fb20bdb",
+      "bytes": 41538
     },
     {
       "path": "index.html",
-      "sha256": "3419d1d9e772ef51682bb8823ad15f7403eb2d8508b4fed178cd2f2f1009185d",
+      "sha256": "26b75c469b337fd714bb758388d70f0a5baeada2dcf7c4de8c1cd03bb01f25dd",
       "bytes": 19076
     },
     {
       "path": "material.catalog.html",
-      "sha256": "25c2621ec918d2e31f352f40c216b1733309989447253897c28b73638a4e939f",
+      "sha256": "5ceae4767d37bcba14988ac916332693e0420e7ddb76c580247be737d5f37554",
       "bytes": 642
     },
     {
       "path": "material.progress.html",
-      "sha256": "9abec70df8adf2a21ade6e65ef16fe2442a2d7032160148137e6d93a8d3854d9",
+      "sha256": "8bb0c55b2ca77a32613008f13ebb6635de7183631adeb0b52c5f444eddb0f822",
       "bytes": 6534
     },
     {
       "path": "package-lock.json",
-      "sha256": "b2bd006dec1a974b58481dfda9b9fffc1a08c10d991f066c3aaa737d77e87f37",
+      "sha256": "4f2dac1c7b2255ba70405c989e2db76e092209729b204e385388ee1cd3368c95",
       "bytes": 99887
     },
     {
       "path": "package.json",
-      "sha256": "9cd79d74c08cd72bd5c9a65ff48395edaee28cecc711ffc210c02cfe49a82f56",
+      "sha256": "36e1933f819fbb33f7c81978d254dae0de0504ca43d1ed5a278c75f74762e56f",
       "bytes": 1843
     },
     {
       "path": "public/gpt.prompt.html",
-      "sha256": "3a1898591209ac870cfa351c3d9c2927da6cce6d9c4322f6af6d907fc88da216",
-      "bytes": 44020
+      "sha256": "f0fb2cbae5a42fd43bad0e3700b0f6165ef8835b272be84ef746f1cb6132f235",
+      "bytes": 44851
+    },
+    {
+      "path": "public/page-transitions.js",
+      "sha256": "f4d291ff5d4e37458e63f80729a6fc3f2567e6bdf6ac89c56b2c500f48fea232",
+      "bytes": 25179
     },
     {
       "path": "public/privacy.html",
-      "sha256": "7b5d49415c467e65e9094834ac9b3179ee36ef59c13287bdd9b30ad7485979f7",
+      "sha256": "1e366f65080591930003da14bf4f89b295d80ce946442e3bebf816dbc77a5bea",
       "bytes": 19866
     },
     {
       "path": "public/support.html",
-      "sha256": "e8b73b6ec7e997b210fa4ba1e726b115e307ec427505f9029a93eb064d364b55",
+      "sha256": "71fa8fd4d28c6cb247ec6bc62b12b81ae88c8b72ff6f54b5a598f9b09d3e594c",
       "bytes": 8624
     },
     {
       "path": "public/terms.html",
-      "sha256": "365df83ffe408acbb592a97a007021135c43776fb41d0b89d4e5a96ed8600ffe",
+      "sha256": "f38393db6df99c39acbda088794c79107d94437d49c61359813ee9fd38ed158f",
       "bytes": 11278
     },
     {
       "path": "public/vocabulary.sources.html",
-      "sha256": "b2167128d1561634bdea33fff0be67ac336a6b0c1e14f45ffb50b4805c2a02fa",
+      "sha256": "17f7414a21a16696758c331159a36efde9626f8ae04e6cf8667681cee1e90db2",
       "bytes": 5252
     },
     {
-      "path": "src/legacy-app.ts",
-      "sha256": "3199c1bfa920aba46308917086bcb1db14b02ea7682e464e0c22d02132a5df69",
-      "bytes": 359729
+      "path": "src/data/bookPageMaps.ts",
+      "sha256": "ebc5a700ae58c06395e9c6ea6c23d4c7e05d539c81985867e2f5118d800cc7ae",
+      "bytes": 24292
+    },
+    {
+      "path": "src/data/lecturePageMaps.ts",
+      "sha256": "dcef49c05127120533ccf6d869c770a46b2f53cb2c0ecc75bbf7868e8a4a4350",
+      "bytes": 10571
+    },
+    {
+      "path": "src/study/materialProgress.ts",
+      "sha256": "853bdfcaf04f7e186658d6205d24e710863801d80e6634b1badc8271f316cd7a",
+      "bytes": 40774
     },
     {
       "path": "summary.html",
-      "sha256": "4d933d6c13e270560f12873c69228f6ffbb9f1617733e26fa312e64cb9763bef",
+      "sha256": "3a28803084a5562ded82db8bfed2ef438b2e94f94cd42dcd804276d699303232",
       "bytes": 6928
     },
     {
-      "path": "tests/legacyRecordPersistence.test.ts",
-      "sha256": "a80c8205c0ef243e1e89909962871b71f6e7b0816b86dd62b1125da1e97489b6",
-      "bytes": 4315
+      "path": "tests/bookPageMaps.test.ts",
+      "sha256": "5827caf6b66d3b6563f311def30b947a36ec09e5be5f49615ab2047b6da3c751",
+      "bytes": 7685
+    },
+    {
+      "path": "tests/publicCalendarSchedule.test.ts",
+      "sha256": "15b75a81781b84cd603545c1879073d63d56296ced588aa21a4ecd86fecb0c57",
+      "bytes": 4142
+    },
+    {
+      "path": "tests/publicEdition.test.ts",
+      "sha256": "d345ead4cb3b86cef0f0194eaab765eb42a607eebbd1c412a4103ea7389462c1",
+      "bytes": 5976
     },
     {
       "path": "todo.html",
-      "sha256": "39d2b989f8d5d8c51ae1bb2c0aee35ecdc85d78ed17f9c4bb8616c24dab81ff0",
+      "sha256": "fc28a0352d82266bf3ab05f200beb53a98493b87a1d3822c002f97e947356410",
       "bytes": 4942
     },
     {
       "path": "vocabulary.review.html",
-      "sha256": "9899535ea47d700fe901b2c16565d1c91e06fb88f54448bc34780f383b07c1f0",
+      "sha256": "c09ebb494b25981a01f46a4fad86bf1c5687a901681c15934ece7b15be9b81dc",
       "bytes": 5782
     }
   ]

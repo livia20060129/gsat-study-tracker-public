@@ -7,6 +7,28 @@ import { summaryCompletionUnitsForRecord } from '../src/study/learningSummary.ts
 import { summarizeCompletionUnits } from '../src/study/completionMetrics.ts';
 import type { CalendarTaskRow } from '../src/calendar/calendarBridge.ts';
 import type { StudyRecord } from '../src/types.ts';
+import { builtInMaterialCatalog, materialProgressRows } from '../src/study/materialProgress.ts';
+
+test('SUPER History 3 Calendar identifiers keep history colors and feed the seven-section 171-page material map', () => {
+  const identifier = 'GSAT-HIST-SUPER-3-20261117-01';
+  const task = { ...row('今日歷史複習', identifier), description: `【識別碼】${identifier}\n【頁碼範圍】p.150–171` };
+  const items = calendarItemsByDate([task]).get(date)!;
+  assert.equal(items.length, 1);
+  assert.equal(items[0].type, 'socialStudy');
+  assert.equal(items[0].f.book, '歷史｜Super教學講義 3');
+  assert.equal(items[0].f.start, '150');
+  assert.equal(items[0].f.end, '171');
+  assert.equal(studyItemSubjectClass(items[0]), 'subject-card subject-history');
+  const material = builtInMaterialCatalog().find(entry => entry.id === 'book:歷史｜Super教學講義 3')!;
+  assert.equal(material.subject, '歷史');
+  assert.equal(material.total, 171);
+  assert.equal(material.sections.length, 7);
+  items[0].done = true;
+  const progress = materialProgressRows([{ date, items }]).find(entry => entry.id === material.id)!;
+  assert.equal(progress.group, '歷史');
+  assert.equal(progress.segments.at(-1)?.completionPercent, 100);
+  assert.equal(progress.segments[0].completionPercent, 0);
+});
 
 const date = '2026-11-09';
 function row(title: string, identifier: string): CalendarTaskRow {
